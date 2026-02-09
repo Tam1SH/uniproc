@@ -17,6 +17,9 @@
 <div align="center">
   <img src="assets/screenshot.png" alt="Uniproc Screenshot" width="800" />
 </div>
+<p align="center">
+  <i>I tried my best to make it look cool :(</i>
+</p>
 
 ## What is it?
 **Uniproc** is a modern and fast system monitor for Windows 11 built with **Rust** and **Slint**. It serves as a lightweight alternative to the default Task Manager, providing unified process monitoring across Windows, WSL, and Docker in a single, seamless interface.
