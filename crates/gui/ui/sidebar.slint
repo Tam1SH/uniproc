@@ -99,7 +99,7 @@ export component SideBar inherits Rectangle {
 
         SideBarItem {
             icon: @image-url("assets/proc-regular.svg");
-            text: "Процессы";
+            text: "Processes";
             active: Navigation.active-tab == 0;
             clicked => {
                 Navigation.request-tab-switch(0);
@@ -108,7 +108,7 @@ export component SideBar inherits Rectangle {
 
         SideBarItem {
             icon: @image-url("assets/pulse-regular.svg");
-            text: "Производительность";
+            text: "Perfomance";
 
             active: Navigation.active-tab == 1;
             clicked => {
@@ -118,7 +118,7 @@ export component SideBar inherits Rectangle {
 
         SideBarItem {
             icon: @image-url("assets/settings-regular.svg");
-            text: "Параметры";
+            text: "Settings";
 
             active: Navigation.active-tab == 2;
             clicked => {
