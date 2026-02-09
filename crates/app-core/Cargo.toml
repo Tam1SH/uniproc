@@ -1,0 +1,8 @@
+[package]
+name = "app-core"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+slint = { workspace = true }
+tokio = { workspace = true }

@@ -1,0 +1,129 @@
+import { EnvManager } from "distro.slint";
+import { WslDistro } from "wsl-distro-type.slint";
+import { Theme, Navigation, WindowClickHandler } from "globals.slint";
+component SideBarItem inherits Rectangle {
+    in-out property <image> icon;
+    in-out property <string> text;
+    in-out property <bool> active;
+    in-out property <bool> has-icon: true;
+    in-out property <length> indent: 12px;
+    callback clicked;
+
+    height: 40px;
+    background: active ? rgba(255, 255, 255, 0.06) : (touch.has-hover ? rgba(255, 255, 255, 0.03) : transparent);
+    border-radius: 6px;
+
+    touch := TouchArea {
+        clicked => {
+            root.clicked()
+        }
+    }
+
+    HorizontalLayout {
+        padding-left: root.indent;
+        spacing: 12px;
+
+        if (root.has-icon): VerticalLayout {
+            alignment: center;
+            Image {
+                source: root.icon;
+                width: 18px;
+                height: 18px;
+                image-fit: contain;
+                colorize: active ? Theme.accent_color : white;
+            }
+        }
+
+        Text {
+            text: root.text;
+            vertical-alignment: center;
+            color: active ? white : rgba(255, 255, 255, 0.7);
+            font-size: 14px;
+            font-weight: active ? 600 : 400;
+        }
+    }
+
+    if (active): Rectangle {
+        x: 0;
+        width: 3px;
+        height: 16px;
+        background: Theme.accent_color;
+        border-radius: 2px;
+        y: (parent.height - self.height) / 2;
+
+        animate height {
+            duration: 150ms;
+            easing: ease-out;
+        }
+        animate opacity { duration: 200ms; }
+    }
+}
+
+export component SideBar inherits Rectangle {
+    width: 260px;
+
+    in-out property <string> selected-env: "Host";
+    in property <[WslDistro]> wsl-distros;
+    in property <bool> has-wsl;
+    in property <image> host-icon;
+    in property <string> host-name;
+
+    callback install-agent(string);
+
+    unfocus := TouchArea {
+        pointer-event(evt) => {
+            if (evt.kind == PointerEventKind.down) {
+                WindowClickHandler.window-clicked();
+            }
+        }
+    }
+
+    VerticalLayout {
+        padding: 6px;
+        spacing: 4px;
+        alignment: start;
+
+        EnvManager {
+            wsl-distros: root.wsl-distros;
+            has-wsl: root.has-wsl;
+            host-name: root.host-name;
+            host-icon: root.host-icon;
+            install-agent(name) => {
+                root.install-agent(name);
+            }
+        }
+
+        Rectangle {
+            height: 16px;
+        }
+
+        SideBarItem {
+            icon: @image-url("assets/proc-regular.svg");
+            text: "Процессы";
+            active: Navigation.active-tab == 0;
+            clicked => {
+                Navigation.request-tab-switch(0);
+            }
+        }
+
+        SideBarItem {
+            icon: @image-url("assets/pulse-regular.svg");
+            text: "Производительность";
+
+            active: Navigation.active-tab == 1;
+            clicked => {
+                Navigation.request-tab-switch(1);
+            }
+        }
+
+        SideBarItem {
+            icon: @image-url("assets/settings-regular.svg");
+            text: "Параметры";
+
+            active: Navigation.active-tab == 2;
+            clicked => {
+                Navigation.request-tab-switch(2);
+            }
+        }
+    }
+}

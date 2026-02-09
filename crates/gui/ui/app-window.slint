@@ -1,0 +1,98 @@
+import {
+    Button,
+    VerticalBox,
+    HorizontalBox,
+    StandardTableView,
+    ComboBox,
+} from "std-widgets.slint";
+import { SideBar } from "sidebar.slint";
+import { ProcessView } from "process-view.slint";
+import { ResizeHandler } from "resize-area.slint";
+import { WslDistro } from "wsl-distro-type.slint";
+import { TitleBar } from "title-bar.slint";
+import { MainBody } from "main-body.slint";
+import {
+    MachineStats,
+    ProcessBridge,
+    TitleBarActions,
+    ContextMenuProxy,
+    Theme,
+    WindowClickHandler,
+    ProcessGroup,
+    MainBodyState,
+    EnvsLoading,
+    Navigation,
+} from "globals.slint";
+import { RunTaskProxy, RunEnv, RunTaskDialog } from "run-task-dialog.slint";
+import { ProcessContextMenu } from "context-menu.slint";
+import { Palette } from "std-widgets.slint";
+export { Palette }
+export { RunTaskProxy, RunEnv, RunTaskDialog }
+export { Navigation, MachineStats, ProcessBridge, TitleBarActions, Theme, ProcessContextMenu, ContextMenuProxy, ProcessGroup, MainBodyState, EnvsLoading }
+
+export component AppWindow inherits Window {
+
+    in property <[WslDistro]> wsl-distros;
+    in property <bool> has-wsl;
+
+    in property <image> host-icon;
+    in property <string> host-name;
+
+    in property <string> selected-env;
+
+    min-width: 800px;
+    min-height: 600px;
+
+    no-frame: true;
+    background: transparent;
+    default-font-family: "Segoe UI Variable Display";
+    full-screen: false;
+    has-wsl: true;
+
+    callback start-resize(int);
+
+    callback process-clicked(int);
+
+    property <int> active-tab: 0;
+    always-on-top: false;
+
+    callback install-agent(string);
+
+    VerticalLayout {
+        padding: 0;
+        spacing: 0;
+
+        TitleBar { }
+
+        HorizontalLayout {
+
+            SideBar {
+                wsl-distros: root.wsl-distros;
+                has-wsl: root.has-wsl;
+                host-name: root.host-name;
+                host-icon: root.host-icon;
+                install-agent(name) => {
+                    root.install-agent(name);
+                }
+            }
+
+            MainBody { }
+        }
+    }
+
+    if (ContextMenuProxy.is-open): TouchArea {
+        z: 9999;
+        pointer-event(evt) => {
+            if (evt.kind == PointerEventKind.down) {
+                ContextMenuProxy.is-open = false;
+                ContextMenuProxy.close-menu();
+            }
+        }
+    }
+
+    ResizeHandler {
+        resize_requested(dir) => {
+            root.start_resize(dir);
+        }
+    }
+}

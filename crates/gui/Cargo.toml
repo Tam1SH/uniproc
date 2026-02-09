@@ -1,0 +1,30 @@
+[package]
+name = "gui"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+slint = { workspace = true }
+window-vibrancy = { workspace = true }
+raw-window-handle = { workspace = true }
+i-slint-backend-winit = { workspace = true }
+anyhow = { workspace = true }
+windows = { workspace = true }
+sysinfo = { workspace = true }
+winit = { workspace = true }
+ttl_cache = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+smallvec = { workspace = true }
+app-core = { workspace = true }
+tokio = { workspace = true }
+
+[build-dependencies]
+slint-build = "1.14.1"
+winresource = "0.1.30"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
+opt-level = "s"

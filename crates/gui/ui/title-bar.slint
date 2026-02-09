@@ -1,0 +1,96 @@
+
+import { WindowControls } from "controls.slint";
+import { TitleBarActions, WindowClickHandler } from "globals.slint";
+export component TitleBar {
+
+    unfocus := TouchArea {
+        pointer-event(evt) => {
+            if (evt.kind == PointerEventKind.down) {
+                WindowClickHandler.window-clicked();
+            }
+        }
+    }
+
+    Rectangle {
+        height: 32px;
+
+        TouchArea {
+            moved => {
+                TitleBarActions.drag();
+            }
+        }
+
+        HorizontalLayout {
+            spacing: 8px;
+            padding-left: 8px;
+
+            VerticalLayout {
+                alignment: center;
+                Image {
+                    source: @image-url("assets/uniproc-logo.svg");
+                    width: 24px;
+                    height: 16px;
+                    image-fit: contain;
+                }
+            }
+
+            Text {
+                vertical-alignment: center;
+                color: white;
+                font-size: 12px;
+                text: "Uniproc";
+            }
+
+            HorizontalLayout {
+                alignment: end;
+                spacing: 12px;
+//                VerticalLayout {
+//                    alignment: center;
+//                    Rectangle {
+//                        width: 160px;
+//                        border-radius: 6px;
+//                        border-color: white.with-alpha(0.4);
+//                        height: 22px;
+//                        background: white.with-alpha(0.1);
+//                        TextInput {
+//                            vertical-alignment: center;
+//                            color: #aaa;
+//                        }
+//                    }
+//                }
+
+                VerticalLayout {
+                    alignment: center;
+
+                    Image {
+
+                        source: @image-url("assets/search.svg");
+                        width: 18px;
+                        colorize: #aaa;
+                    }
+                }
+
+                VerticalLayout {
+                    alignment: center;
+                    Rectangle {
+                        width: 1px;
+                        height: 18px;
+                        background: white.with-alpha(0.1);
+                    }
+                }
+            }
+
+            WindowControls {
+                minimize => {
+                    TitleBarActions.minimize();
+                }
+                maximize => {
+                    TitleBarActions.maximize();
+                }
+                close => {
+                    TitleBarActions.close();
+                }
+            }
+        }
+    }
+}

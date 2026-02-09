@@ -1,0 +1,56 @@
+component ControlBtn inherits Rectangle {
+    in property <image> icon;
+    in property <bool> is-close: false;
+    callback clicked();
+
+    width: 46px;
+    height: 32px;
+    background: touch.pressed ? (is-close ? #e81123 : rgba(255, 255, 255, 0.1)) : touch.has-hover ? (is-close ? #e81123 : rgba(255, 255, 255, 0.05)) : transparent;
+
+    touch := TouchArea {
+        clicked => {
+            root.clicked()
+        }
+    }
+
+    Image {
+        source: root.icon;
+        width: 16px;
+        height: 16px;
+        colorize: (is-close && touch.has-hover) ? white : rgba(255, 255, 255, 0.9);
+    }
+}
+
+export component WindowControls inherits HorizontalLayout {
+    spacing: 0px;
+    alignment: end;
+    in property <bool> minimizable: true;
+    in property <bool> maximizable: true;
+    in property <bool> is-maximized: false;
+
+    callback minimize();
+    callback maximize();
+    callback close();
+
+    if (minimizable): ControlBtn {
+        icon: @image-url("assets/minimize.svg");
+        clicked => {
+            root.minimize()
+        }
+    }
+
+    if (maximizable): ControlBtn {
+        icon: root.is-maximized ? @image-url("assets/restore.svg") : @image-url("assets/maximize.svg");
+        clicked => {
+            root.maximize()
+        }
+    }
+
+    ControlBtn {
+        icon: @image-url("assets/dismiss.svg");
+        is-close: true;
+        clicked => {
+            root.close()
+        }
+    }
+}

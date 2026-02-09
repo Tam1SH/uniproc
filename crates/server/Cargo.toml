@@ -1,0 +1,25 @@
+[package]
+name = "server"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+rkyv = { workspace = true }
+compio = { workspace = true }
+socket2 = { workspace = true }
+windows = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+futures = { workspace = true }
+tracing-subscriber = { workspace = true }
+bytes = { workspace = true }
+libc = "1.0.0-alpha.2"
+dhat = { version = "0.3", optional = true }
+flume = { workspace = true }
+dashmap = { workspace = true }
+oneshot = "0.1.13"
+[features]
+dhat-heap = ["dep:dhat"]
+
+[dev-dependencies]
+hdrhistogram = "7.5.4"

@@ -1,0 +1,106 @@
+export component ResizeHandler inherits Rectangle {
+
+    in property <length> thickness: 6px;
+    callback resize_requested(int);
+
+    // Top
+    TouchArea {
+        y: 0;
+        height: root.thickness / 2;
+        width: 100%;
+        mouse-cursor: n-resize;
+        pointer-event(event) => {
+            if (event.button == PointerEventButton.left && event.kind == PointerEventKind.down) {
+                root.resize_requested(0);
+            }
+        }
+    }
+        // Bottom
+    TouchArea {
+        y: parent.height - root.thickness;
+        height: root.thickness;
+        width: 100%;
+        mouse-cursor: s-resize;
+        pointer-event(event) => {
+            if (event.button == PointerEventButton.left && event.kind == PointerEventKind.down) {
+                root.resize_requested(1);
+            }
+        }
+    }
+        // Left
+    TouchArea {
+        x: 0;
+        width: root.thickness;
+        height: 100%;
+        mouse-cursor: w-resize;
+        pointer-event(event) => {
+            if (event.button == PointerEventButton.left && event.kind == PointerEventKind.down) {
+                root.resize_requested(2);
+            }
+        }
+    }
+        // Right
+    TouchArea {
+        x: parent.width - root.thickness;
+        width: root.thickness;
+        height: 100%;
+        mouse-cursor: e-resize;
+        pointer-event(event) => {
+            if (event.button == PointerEventButton.left && event.kind == PointerEventKind.down) {
+                root.resize_requested(3);
+            }
+        }
+    }
+        // Corners
+    TouchArea {
+        x: 0;
+        y: 0;
+        width: 12px;
+        height: 12px;
+        mouse-cursor: nw-resize;
+        pointer-event(event) => {
+            if (event.button == PointerEventButton.left && event.kind == PointerEventKind.down) {
+                root.resize_requested(4);
+            }
+        }
+    }
+
+    TouchArea {
+        x: parent.width - 12px;
+        y: 0;
+        width: 12px;
+        height: 12px;
+        mouse-cursor: ne-resize;
+        pointer-event(event) => {
+            if (event.button == PointerEventButton.left && event.kind == PointerEventKind.down) {
+                root.resize_requested(5);
+            }
+        }
+    }
+
+    TouchArea {
+        x: 0;
+        y: parent.height - 12px;
+        width: 12px;
+        height: 12px;
+        mouse-cursor: sw-resize;
+        pointer-event(event) => {
+            if (event.button == PointerEventButton.left && event.kind == PointerEventKind.down) {
+                root.resize_requested(6);
+            }
+        }
+    }
+
+    TouchArea {
+        x: parent.width - 12px;
+        y: parent.height - 12px;
+        width: 12px;
+        height: 12px;
+        mouse-cursor: se-resize;
+        pointer-event(event) => {
+            if (event.button == PointerEventButton.left && event.kind == PointerEventKind.down) {
+                root.resize_requested(7);
+            }
+        }
+    }
+}

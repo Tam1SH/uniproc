@@ -1,0 +1,133 @@
+export struct ProcessEntry {
+    pid: int,
+    name: string,
+
+    cpu_text: string,    // "12.5%"
+    cpu_usage: float,    // 12.5
+
+    ram_text: string,    // "1.4 GB"
+    ram_usage: float,    // 0..100
+
+    disk_text: string,   // "500 KB/s"
+    disk_usage: float,   // 0..100
+
+    net_text: string,
+    net_usage: float,
+
+    icon: image,
+    is_dead: bool,
+    is_expanded: bool,
+    depth: int,
+    has_children: bool,
+}
+
+export struct ProcessGroup {
+    parent: ProcessEntry,
+    children: [ProcessEntry]
+}
+
+export global ContextMenuProxy {
+    in-out property <bool> is-open: false;
+    callback close-menu();
+    callback show_context_menu(length, length);
+}
+
+export global MainBodyState {
+    in property <bool> is-loading: true;
+}
+
+export global Navigation {
+    in property <int> active-tab: 0;
+    in-out property <bool> content-visible: true;
+
+    callback tab-changed(int);
+
+    callback request-tab-switch(int);
+}
+
+export global EnvsLoading {
+    in property <bool> wsl-distros-is-loading: true;
+    in property <bool> wsl-is-loading: true;
+}
+
+export global ProcessBridge {
+    callback toggle-expand-group(string);
+    callback select_process(int, int);
+    callback terminate();
+    callback open-file-location();
+    callback open-properties();
+    callback sort-by(string);
+
+    in property <string> current-sort: "cpu";
+    in property <bool> current-sort-descending: false;
+    in-out property <int> selected-pid: -1;
+    in-out property <string> selected-name: "";
+}
+
+export global WindowClickHandler {
+    callback window-clicked();
+
+    window-clicked => {
+        ProcessBridge.select_process(-1, -1);
+    }
+}
+
+export global TitleBarActions {
+    callback drag();
+    callback close();
+    callback minimize();
+    callback maximize();
+}
+
+export global MachineStats {
+
+    in property <[ProcessGroup]> process_groups: [
+        {
+            parent: {
+                pid: 1,
+                name: "Taskmgr sucks",
+                cpu_text: "12.5%",
+                cpu_usage: 12.5,
+                ram_text: "1.4 GiB",    // "1.4 GB"
+                ram_usage: 59,    // 0..100
+
+                disk_text: "500 KiB/s",   // "500 KB/s"
+                disk_usage: 56,   // 0..100
+
+                net_text: "100 KB/s",
+                net_usage: 100,
+                is_dead: false,
+                is_expanded: true,
+                depth: 0,
+                has_children: true,
+            },
+            children: [
+                {
+                    pid: 1,
+                    name: "Taskmgr sucks",
+                    cpu_text: "12.5%",
+                    cpu_usage: 12.5,
+                    ram_text: "1.4 GiB",
+                    ram_usage: 59,
+                    disk_text: "500 KiB/s",
+                    disk_usage: 56,
+                    net_text: "100 KB/s",
+                    net_usage: 100,
+                    is_dead: false,
+                    is_expanded: true,
+                    depth: 1,
+                }
+            ]
+        }
+    ];
+    in property <[int]> expanded_pids;
+
+    in property <float> cpu-usage;
+    in property <float> ram-usage;
+    in property <float> disk-usage;
+    in property <float> net-usage;
+}
+
+export global Theme {
+    in-out property <color> accent_color: #0078d4;
+}

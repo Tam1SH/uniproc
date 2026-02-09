@@ -1,0 +1,590 @@
+import { ListView } from "std-widgets.slint";
+import { MachineStats, ProcessBridge, Theme } from "globals.slint";
+import { ContextMenuProxy } from "globals.slint";
+import { ProcessEntry } from "globals.slint";
+import { RunTaskProxy } from "run-task-dialog.slint";
+
+component DataCell inherits Rectangle {
+    in property <string> text;
+    in property <float> val;
+    in property <float> threshold: 0.5;
+    in property <length> cell_width: 80px;
+
+    in property <bool> is_dead;
+
+    in property <bool> is-child;
+
+    width: cell_width;
+
+    background: is_dead ? rgba(255, 255, 255, 0.01) : (val > threshold ? rgba(232, 17, 35, (val / 100) * 0.8 + 0.1) : rgba(255, 255, 255, 0.03));
+    HorizontalLayout {
+        padding-right: 10px;
+        if (!is-child): Text {
+            text: root.text;
+            vertical-alignment: center;
+            horizontal-alignment: right;
+            color: is_dead ? rgba(255, 255, 255, 0.2) : white;
+            font-size: 12px;
+        }
+    }
+}
+
+component ColumnHeader inherits Rectangle {
+    in property <string> val;
+    in property <string> label;
+    in property <length> cell_width;
+    in property <string> sort_field;
+    width: cell_width;
+
+    if(sort_field == ProcessBridge.current-sort): HorizontalLayout {
+        padding: 8px;
+        Image {
+            source: @image-url("assets/arrow-up-regular.svg");
+            transform-rotation: ProcessBridge.current-sort-descending ? -90deg : 90deg;
+            transform-origin: { x: 2.5px, y: 5px };
+            colorize: white;
+            width: 10px;
+            height: 10px;
+        }
+    }
+
+    HorizontalLayout {
+        width: root.cell_width;
+        alignment: end;
+        padding-right: 10px;
+
+        VerticalLayout {
+            alignment: center;
+            spacing: 0px;
+
+            Text {
+                text: root.val;
+                horizontal-alignment: right;
+                color: white;
+                font-size: 15px;
+            }
+
+            Text {
+                text: root.label;
+                horizontal-alignment: right;
+                color: #ddd;
+                font-size: 12px;
+            }
+        }
+    }
+
+    header_touch := TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            ProcessBridge.sort-by(root.sort_field);
+        }
+    }
+}
+
+component ProcessItem inherits Rectangle {
+
+    in-out property <ProcessEntry> entry;
+
+    in property <ProcessEntry> parent-entry;
+
+    in property <length> col_name_width;
+    in property <length> col_data_width;
+    in property <color> sep_color;
+    in property <int> idx;
+    in property <bool> is-child;
+
+    height: 32px;
+    background: entry.pid == ProcessBridge.selected-pid ? Theme.accent_color.with_alpha(0.1) : (row_touch.has-hover ? rgba(255, 255, 255, 0.05) : transparent);
+
+    if (entry.pid == ProcessBridge.selected-pid): Rectangle {
+        x: 0;
+        width: 1px;
+        background: Theme.accent_color;
+    }
+
+    row_touch := TouchArea {
+        mouse-cursor: pointer;
+        pointer-event(evt) => {
+            if (evt.button == PointerEventButton.right && evt.kind == PointerEventKind.down) {
+                ContextMenuProxy.show_context_menu(
+                    self.absolute_position.x + self.mouse-x,
+                    self.absolute_position.y + self.mouse-y);
+            }
+            if (evt.kind == PointerEventKind.down) {
+                ProcessBridge.select_process(entry.pid, idx);
+            }
+        }
+    }
+
+    HorizontalLayout {
+        // Name Column
+        HorizontalLayout {
+            width: col_name_width;
+            padding-left: 8px + entry.depth * 16px;
+            spacing: 8px;
+
+            if (entry.has_children): Rectangle {
+                width: 12px;
+                height: 32px;
+                VerticalLayout {
+                    alignment: center;
+                    Image {
+                        source: @image-url("assets/arrow-up-regular.svg");
+                        width: 12px;
+                        height: 12px;
+                        colorize: white;
+                        rotation-angle: entry.is_expanded ? 270deg : 180deg;
+                        image-fit: contain;
+                    }
+                }
+
+                arrow_touch := TouchArea {
+                    clicked => {
+                        if (!is-child) {
+                            ProcessBridge.toggle-expand-group(entry.name);
+                        }
+                    }
+                }
+            }
+            if (!entry.has-children): Rectangle {
+                width: 12px;
+                height: 32px;
+                background: transparent;
+            }
+            VerticalLayout {
+                alignment: center;
+                Image {
+                    source: entry.icon;
+                    width: 16px;
+                    height: 16px;
+                    image-fit: contain;
+                }
+            }
+
+            HorizontalLayout {
+                spacing: 1px;
+                Text {
+                    text: entry.name;
+                    vertical-alignment: center;
+                    color: white;
+                    overflow: elide;
+                    font-size: 12px;
+                }
+
+                if (entry.is_dead): Text {
+                    text: "terminated";
+                    vertical-alignment: center;
+                    color: #888888;
+                    font-size: 12px;
+                    font-italic: true;
+                }
+            }
+        }
+
+        Rectangle {
+            width: 1px;
+            background: sep_color;
+        }
+
+        // CPU Cell
+        DataCell {
+            text: entry.cpu_text;
+            val: entry.cpu_usage;
+            cell_width: col_data_width;
+            is_dead: entry.is_dead;
+        }
+
+        Rectangle {
+            width: 1px;
+            background: sep_color;
+        }
+
+        // Memory Cell
+        DataCell {
+            text: entry.ram_text;
+            val: entry.ram_usage;
+            threshold: 1.0;
+            cell_width: col_data_width;
+            is_dead: entry.is_dead;
+        }
+
+        Rectangle {
+            width: 1px;
+            background: sep_color;
+        }
+
+        // Disk Cell
+        DataCell {
+            text: entry.disk_text;
+            val: entry.disk_usage;
+            threshold: 0.1;
+            cell_width: col_data_width;
+            is_dead: entry.is_dead;
+        }
+
+        Rectangle {
+            width: 1px;
+            background: sep_color;
+        }
+
+        // Network Cell
+        DataCell {
+            text: entry.net_text;
+            val: entry.net_usage;
+            threshold: 0.1;
+            cell_width: col_data_width;
+            is_dead: entry.is_dead;
+        }
+
+        Rectangle {
+            width: 1px;
+            background: sep_color;
+        }
+    }
+}
+
+component ProcessGroup inherits Rectangle {
+    in-out property <ProcessEntry> parent_process;
+    in property <[ProcessEntry]> child_processes;
+
+    in property <length> col_name_width;
+    in property <length> col_data_width;
+    in property <color> sep_color;
+    in property <int> parent-idx;
+
+    VerticalLayout {
+
+        ProcessItem {
+            entry: parent_process;
+            col_name_width: root.col_name_width;
+            col_data_width: root.col_data_width;
+            sep_color: root.sep_color;
+            is-child: false;
+            idx: parent-idx;
+        }
+
+        if (parent_process.is-expanded && child_processes.length > 0): VerticalLayout {
+            for child in child_processes: ProcessItem {
+                entry: child;
+                parent-entry: parent_process;
+                is-child: true;
+                col_name_width: root.col_name_width;
+                col_data_width: root.col_data_width;
+                sep_color: root.sep_color;
+                idx: parent-idx;
+            }
+        }
+    }
+}
+
+component HeaderButton inherits Rectangle {
+
+    in property <string> text: "Run new task";
+    in property <image> icon: @image-url("assets/new-task.svg");
+
+    callback clicked <=> touch.clicked;
+
+    padding-left: 12px;
+    padding-right: 12px;
+    border-radius: 4px;
+
+    background: touch.pressed ? rgba(255, 255, 255, 0.04) : (touch.has-hover ? rgba(255, 255, 255, 0.08) : transparent);
+
+    animate background { duration: 150ms; }
+
+    touch := TouchArea {
+        mouse-cursor: pointer;
+    }
+
+    VerticalLayout { }
+
+    HorizontalLayout {
+        padding: 8px;
+        spacing: 8px;
+        alignment: center;
+        VerticalLayout {
+            alignment: center;
+            Image {
+                source: root.icon;
+                colorize: touch.pressed ? rgba(255, 255, 255, 0.8) : (touch.has-hover ? rgba(255, 255, 255, 0.9) : white);
+                width: 20px;
+                height: 20px;
+            }
+        }
+
+        Text {
+            text: root.text;
+            font-size: 14px;
+            font-weight: 400;
+            color: touch.pressed ? rgba(255, 255, 255, 0.8) : (touch.has-hover ? rgba(255, 255, 255, 0.9) : white);
+            vertical-alignment: center;
+        }
+    }
+}
+
+component Tooltip inherits Rectangle {
+    in property <string> text;
+
+    background: #2b2b2b;
+    border-color: white.with-alpha(0.1);
+    border-width: 1px;
+    border-radius: 4px;
+    padding: 6px;
+
+    Text {
+        text: root.text;
+        color: white;
+        font-size: 12px;
+    }
+}
+
+component Header inherits Rectangle {
+    property <bool> has_selection: ProcessBridge.selected-pid != -1;
+    height: 60px;
+    background: transparent;
+
+    HorizontalLayout {
+        padding: 12px;
+        spacing: 8px;
+
+        Rectangle {
+            horizontal-stretch: 1;
+            clip: true; 
+//            width: root.preferred-width;
+
+            VerticalLayout {
+                alignment: center;
+                y: root.has_selection ? -30px : 0;
+                animate y {
+                    duration: 100ms;
+                    easing: ease-out;
+                }
+                Text {
+                    text: "Processes";
+                    font-size: 14px;
+                    font-weight: 600;
+                    color: white;
+                    vertical-alignment: center;
+                    opacity: root.has_selection ? 0 : 1;
+
+                    animate opacity {
+                        duration: 100ms;
+                        easing: ease-out;
+                    }
+                }
+            }
+
+            HorizontalLayout {
+                spacing: 8px;
+                alignment: start;
+
+                y: root.has_selection ? 0 : 30px;
+                opacity: root.has_selection ? 1 : 0;
+
+                animate y, opacity {
+                    duration: 150ms;
+                    easing: ease-out;
+                }
+
+                Text {
+                    text: ProcessBridge.selected-name;
+                    font-size: 14px;
+                    font-weight: 600;
+                    color: white;
+                    vertical-alignment: center;
+                    overflow: elide;
+                }
+
+                Text {
+                    text: "(PID: " + ProcessBridge.selected-pid + ")";
+                    font-size: 14px;
+                    font-weight: 400;
+                    color: white.with-alpha(0.6);
+                    vertical-alignment: center;
+                    overflow: elide;
+                }
+            }
+        }
+
+        HorizontalLayout {
+            alignment: end;
+//            spacing: 16px;
+            width: self.preferred-width;
+            if root.has_selection: HorizontalLayout {
+                spacing: 12px;
+
+                //                Image {
+//                    width: 18px;
+////                    source: @image-url("assets/leaf.svg");
+//                    colorize: #85f085;
+//                }
+
+
+
+
+                TouchArea {
+                    width: 24px;
+                    mouse-cursor: pointer;
+                    clicked => {
+                        ProcessBridge.terminate()
+                    }
+
+                    Image {
+                        width: 18px;
+                        colorize: #FF6060;
+                        source: @image-url("assets/prohibited.svg");
+                    }
+                }
+
+                TouchArea {
+                    width: 18px;
+                    mouse-cursor: pointer;
+                    clicked => {
+                        ProcessBridge.select_process(-1, -1);
+                    }
+                    Image {
+                        width: 14px;
+                        colorize: white.with-alpha(0.8);
+                        source: @image-url("assets/dismiss.svg");
+                    }
+                }
+            }
+
+            Rectangle {
+                width: root.has_selection ? 0px : 130px;
+                opacity: root.has_selection ? 0 : 1;
+                clip: true;
+
+                animate width, opacity {
+                    duration: 150ms;
+                    easing: ease-in-out;
+                }
+
+                HeaderButton {
+                    clicked => {
+                        RunTaskProxy.open();
+                    }
+                    x: root.has_selection ? 40px : 0px;
+                    animate x {
+                        duration: 150ms;
+                        easing: ease-out;
+                    }
+                }
+            }
+        }
+    }
+}
+
+export component ProcessView inherits Rectangle {
+
+    property <length> col_name_width: 220px;
+    property <length> col_data_width: 72px;
+    property <color> sep_color: rgba(255, 255, 255, 0.08);
+
+    background: transparent;
+
+    VerticalLayout {
+        padding: 10px;
+        padding-top: 0px;
+        Header { }
+
+        Rectangle {
+            height: 1px;
+            width: 100%;
+            background: root.sep_color;
+        }
+
+        Rectangle {
+            height: 50px;
+            HorizontalLayout {
+                alignment: start;
+                Rectangle {
+                    width: root.col_name_width;
+
+                    HorizontalLayout {
+                        alignment: start;
+                        VerticalLayout {
+                            alignment: end;
+                            padding-bottom: 10px;
+                            padding-left: 12px;
+                            Text {
+                                text: "Name";
+                                color: #aaa;
+                            }
+                        }
+                    }
+                }
+
+                Rectangle {
+                    width: 1px;
+                    background: root.sep_color;
+                }
+
+                ColumnHeader {
+                    val: Math.round(MachineStats.cpu_usage) + "%";
+                    label: "CPU";
+                    cell_width: root.col_data_width;
+                    sort_field: "cpu";
+                }
+
+                Rectangle {
+                    width: 1px;
+                    background: root.sep_color;
+                }
+
+                ColumnHeader {
+                    val: Math.round(MachineStats.ram_usage) + "%";
+                    label: "Memory";
+                    cell_width: root.col_data_width;
+                    sort_field: "memory";
+                }
+
+                Rectangle {
+                    width: 1px;
+                    background: root.sep_color;
+                }
+
+                ColumnHeader {
+                    val: Math.round(MachineStats.disk_usage) + "%";
+                    label: "Disk";
+                    cell_width: root.col_data_width;
+                    sort_field: "disk";
+                }
+
+                Rectangle {
+                    width: 1px;
+                    background: root.sep_color;
+                }
+
+                ColumnHeader {
+                    val: Math.round(MachineStats.net-usage) + "%";
+                    label: "Network";
+                    cell_width: root.col_data_width;
+                    sort_field: "network";
+                }
+
+                Rectangle {
+                    width: 1px;
+                    background: root.sep_color;
+                }
+            }
+        }
+
+        Rectangle {
+            height: 1px;
+            width: 100%;
+            background: root.sep_color;
+        }
+
+        ListView {
+            for group[idx] in MachineStats.process_groups: ProcessGroup {
+                parent_process: group.parent;
+                child_processes: group.children;
+                parent-idx: idx;
+                col_name_width: root.col_name_width;
+                col_data_width: root.col_data_width;
+                sep_color: root.sep_color;
+            }
+        }
+    }
+}

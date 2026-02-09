@@ -1,0 +1,263 @@
+import { WslDistro } from "wsl-distro-type.slint";
+import { Theme, EnvsLoading } from "globals.slint";
+import { LoaderArea, LoadingSpinner } from "loader-area.slint";
+component SideBarItem inherits Rectangle {
+    in-out property <image> icon;
+    in-out property <string> text;
+    in-out property <bool> active;
+    in-out property <bool> has-icon: true;
+    callback clicked;
+
+    height: 40px;
+    background: active ? rgba(255, 255, 255, 0.06) : (touch.has-hover ? rgba(255, 255, 255, 0.03) : transparent);
+    border-radius: 6px;
+
+    touch := TouchArea {
+        clicked => {
+            root.clicked()
+        }
+    }
+
+    HorizontalLayout {
+        padding-left: 16px;
+        spacing: 12px;
+
+        if (root.has-icon): VerticalLayout {
+            alignment: center;
+            Image {
+                source: root.icon;
+                width: 16px;
+                height: 16px;
+                image-fit: contain;
+                colorize: active ? Theme.accent_color : white;
+            }
+        }
+
+        Text {
+            text: root.text;
+            vertical-alignment: center;
+            color: active ? white : rgba(255, 255, 255, 0.7);
+            font-size: 14px;
+        }
+    }
+
+    if (active): Rectangle {
+        x: 0;
+        width: 3px;
+        height: 16px;
+        background: Theme.accent_color;
+        border-radius: 2px;
+        y: (parent.height - self.height) / 2;
+
+        animate height {
+            duration: 150ms;
+            easing: ease-out;
+        }
+        animate opacity { duration: 200ms; }
+    }
+}
+
+component AccordionHeader inherits Rectangle {
+    in-out property <string> text;
+    in-out property <bool> open;
+    in-out property <image> icon;
+    in property <bool> is-loading;
+    callback toggled;
+
+    height: 40px;
+    border-radius: 6px;
+
+    touch := TouchArea {
+        clicked => {
+            root.open = !root.open;
+            root.toggled();
+        }
+    }
+
+    HorizontalLayout {
+
+        padding-left: 12px;
+        padding-right: 12px;
+        spacing: 12px;
+
+        if (icon.width > 0): VerticalLayout {
+            alignment: center;
+            Image {
+                source: root.icon;
+                width: 18px;
+                colorize: Theme.accent_color;
+            }
+        }
+
+        Text {
+            text: root.text;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+            vertical-alignment: center;
+        }
+
+        Rectangle { } // Spacer
+        
+        if (is-loading): VerticalLayout {
+            alignment: center;
+            LoadingSpinner {
+                width: 16px;
+                height: 16px;
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+
+            Image {
+                source: @image-url("assets/arrow-up-regular.svg");
+                image-fit: contain;
+                width: 12px;
+                height: 12px;
+
+                colorize: rgba(255, 255, 255, 0.5);
+
+                transform-origin: { x: 3px, y: 6px };
+
+                rotation-angle: root.open ? 90deg : 270deg;
+            }
+        }
+    }
+}
+
+component DistroItem inherits Rectangle {
+    in-out property <string> name;
+    in-out property <bool> active;
+    in-out property <bool> installed;
+    in-out property <bool> running;
+
+    callback clicked;
+    callback install_clicked;
+
+    height: 36px;
+    background: active ? rgba(0, 163, 255, 0.1) : (touch.has-hover ? rgba(255, 255, 255, 0.03) : transparent);
+    border-radius: 4px;
+
+    touch := TouchArea {
+        clicked => {
+            if (root.installed) {
+                root.clicked();
+            }
+        }
+    }
+
+    HorizontalLayout {
+        padding-left: 54px;
+        padding-right: 8px;
+        spacing: 8px;
+
+        VerticalLayout {
+            alignment: center;
+            Rectangle {
+                width: 8px;
+                height: 8px;
+                border-radius: 4px;
+                background: root.installed ? (root.running ? #00FF85 : #555) : #333;
+            }
+        }
+
+        Text {
+            text: root.name;
+            color: root.installed ? (active ? white : rgba(255, 255, 255, 0.8)) : rgba(255, 255, 255, 0.3);
+            font-size: 13px;
+            vertical-alignment: center;
+            horizontal-stretch: 1;
+        }
+
+        if (!root.installed): Rectangle {
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            background: install-touch.has-hover ? rgba(255, 255, 255, 0.1) : transparent;
+
+            Text {
+                color: Theme.accent_color;
+            }
+
+            install-touch := TouchArea {
+                clicked => {
+                    root.install_clicked();
+                }
+            }
+        }
+    }
+}
+
+export component EnvManager inherits VerticalLayout {
+    in property <bool> has-wsl: true;
+    in property <[WslDistro]> wsl-distros;
+    in property <string> host-name;
+    in property <image> host-icon;
+
+    in-out property <string> selected-env: host-name;
+
+    callback install-agent(string);
+
+    spacing: 2px;
+    Rectangle {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 6px;
+        VerticalLayout {
+            spacing: 2px;
+            env_main := AccordionHeader {
+                text: "Окружения";
+                icon: @image-url("assets/layer-regular.svg");
+                open: true;
+                is-loading: EnvsLoading.wsl-is-loading;
+            }
+
+            if (env_main.open): VerticalLayout {
+                spacing: 2px;
+
+                SideBarItem {
+                    text: root.host-name;
+                    icon: root.host-icon;
+                    active: root.selected-env == root.host-name;
+                    clicked => {
+                        root.selected-env = root.host-name;
+                    }
+                }
+
+                if (root.has-wsl): Rectangle {
+
+                    VerticalLayout {
+                        spacing: 2px;
+
+                        wsl_sub := AccordionHeader {
+                            text: "WSL";
+                            icon: @image-url("assets/wsl.svg");
+                            open: true;
+                            is-loading: EnvsLoading.wsl-distros-is-loading;
+                        }
+
+                        if (wsl_sub.open): VerticalLayout {
+                            spacing: 2px;
+                            for distro in root.wsl-distros: SideBarItem {
+                                text: distro.name;
+                                icon: distro.icon;
+                                active: root.selected-env == distro.name;
+                                clicked => {
+                                    root.selected-env = distro.name;
+                                }
+
+                                Rectangle {
+                                    width: 8px;
+                                    height: 8px;
+                                    border-radius: 4px;
+                                    x: parent.width - 24px;
+                                    y: (parent.height - self.height) / 2;
+                                    background: distro.is_installed ? (distro.is_running ? #00FF85 : #555) : rgba(255, 255, 255, 0.4);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

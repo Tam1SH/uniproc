@@ -1,0 +1,26 @@
+
+import { Theme } from "globals.slint";
+
+export component LoadingSpinner inherits Rectangle {
+    width: 32px;
+    height: 32px;
+    Image {
+        width: 100%;
+        height: 100%;
+        source: @image-url("assets/spinner.svg");
+        colorize: Theme.accent_color;
+
+        transform-rotation: (animation-tick() / 1s) * 360deg;
+
+        transform-origin: { x: self.width / 2, y: self.height / 2 };
+    }
+}
+
+export component LoaderArea inherits Rectangle {
+    in property <bool> is-loading;
+    @children
+
+    if is-loading: Rectangle {
+        LoadingSpinner { }
+    }
+}

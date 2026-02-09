@@ -1,0 +1,187 @@
+import { Button, LineEdit, ComboBox, Palette } from "std-widgets.slint";
+import { Theme } from "globals.slint";
+import { WindowControls } from "controls.slint";
+
+export struct RunEnv {
+    name: string,
+    icon: image,
+    id: string, // "cmd", "powershell", "wsl:ubuntu", etc.
+}
+
+export global RunTaskProxy {
+    in property <string> current-env: "Ubuntu";
+    callback run_task(string, string); // env_id, command
+    callback close();
+    callback open();
+    callback drag();
+}
+
+component TitleBar {
+
+    Rectangle {
+        height: 40px;
+
+        TouchArea {
+            moved => {
+                RunTaskProxy.drag();
+            }
+        }
+
+        VerticalLayout {
+            alignment: center;
+            HorizontalLayout {
+                spacing: 16px;
+                padding-left: 8px;
+                alignment: start;
+                Image {
+                    source: @image-url("assets/new-task.svg");
+                    width: 16px;
+                    colorize: Theme.accent_color;
+                    height: 16px;
+                    image-fit: contain;
+                }
+
+                HorizontalLayout {
+                    spacing: 8px;
+                    alignment: start;
+                    Image {
+                        source: @image-url("assets/app.svg");
+                        colorize: white;
+                        width: 16px;
+                        height: 16px;
+                    }
+
+                    VerticalLayout {
+                        alignment: center;
+                        Text {
+                            text: "cmd.exe";
+                        }
+                    }
+                }
+            }
+
+            //            VerticalLayout {
+//                alignment: center;
+//                Text {
+//                    vertical-alignment: center;
+//                    color: white;
+//                    font-size: 12px;
+//                    text: "Run";
+//                }
+//            }
+
+
+        }
+
+        VerticalLayout {
+            alignment: center;
+            WindowControls {
+                maximizable: false;
+                minimizable: false;
+                close => {
+                }
+            }
+        }
+    }
+}
+
+export component RunTaskDialog inherits Window {
+    in property <[RunEnv]> envs: [{ name: "Command Prompt", id: "cmd" }, { name: "PowerShell", id: "pwsh" }];
+
+    title: "Run";
+    no-frame: true;
+    background: transparent;
+    width: 400px;
+    height: 150px;
+    always-on-top: true;
+
+    VerticalLayout {
+
+        TitleBar { }
+
+        Rectangle {
+//            background: #212121;
+            HorizontalLayout {
+                padding: 12px;
+                VerticalLayout {
+                    spacing: 8px;
+
+                    HorizontalLayout {
+                        spacing: 10px;
+
+                        cmd_input := LineEdit {
+                            placeholder-text: "Enter command...";
+                            accepted => {
+                            //                    RunTaskProxy.run_task(root.envs[env_combo.current-index].id, self.text);
+                                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        HorizontalLayout {
+            padding: 12px;
+            Rectangle {
+//                height: 30px;
+
+
+                VerticalLayout {
+                    alignment: center;
+                    HorizontalLayout {
+                        alignment: start;
+                        spacing: 8px;
+                        Image {
+                            source: @image-url("assets/settings-filled.svg");
+                            width: 20px;
+                            height: 20px;
+                            colorize: Theme.accent_color;
+                        }
+
+                        Rectangle {
+                            width: 1px;
+                            height: 20px;
+                            background: white.with-alpha(0.6);
+                        }
+
+                        Image {
+                            source: @image-url("assets/layer-filled.svg");
+                            width: 20px;
+                            height: 20px;
+                            colorize: Theme.accent_color;
+                        }
+
+                        VerticalLayout {
+                            alignment: center;
+                            Text {
+                                text: RunTaskProxy.current-env;
+                                font-size: 12px;
+                                color: white.with-alpha(0.5);
+                            }
+                        }
+                    }
+                }
+
+                HorizontalLayout {
+                    alignment: end;
+                    spacing: 10px;
+                    height: 32px;
+                    Button {
+                        text: "OK";
+                        primary: true;
+                        clicked => {
+        //                    RunTaskProxy.run_task(root.envs[env_combo.current-index].id, cmd_input.text);
+                        }
+                    }
+
+                    Button {
+                        text: "Cancel";
+                        clicked => {
+                            RunTaskProxy.close();
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

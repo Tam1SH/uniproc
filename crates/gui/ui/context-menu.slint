@@ -1,0 +1,119 @@
+import { Button, VerticalBox } from "std-widgets.slint";
+import { Theme, ProcessBridge } from "globals.slint";
+
+component MenuItem inherits Rectangle {
+    in property <string> text;
+    in property <image> icon;
+    in property <bool> is-danger: false;
+    callback clicked;
+
+    height: 32px;
+    border-radius: 4px;
+    private property <color> danger: #FF6060;
+    background: ta.has-hover ? (root.is-danger ? root.danger.with-alpha(0.1) : Theme.accent_color.with-alpha(0.1)) : Theme.accent_color.with-alpha(0.0);
+    animate background { duration: 100ms; }
+
+    ta := TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            root.clicked();
+        }
+    }
+
+    HorizontalLayout {
+        padding-left: 10px;
+        padding-right: 10px;
+        spacing: 12px;
+        VerticalLayout {
+            alignment: center;
+
+            if (root.icon.width > 0): Image {
+                source: root.icon;
+                width: 20px;
+                height: 20px;
+                vertical-alignment: center;
+                colorize: root.is-danger ? root.danger : ta.has-hover ? Theme.accent_color : white;
+                animate colorize { duration: 100ms; }
+            }
+        }
+
+        Text {
+            cache-rendering-hint: true;
+            text: root.text;
+            color: white;
+            font-size: 14px;
+            vertical-alignment: center;
+        }
+    }
+}
+
+component MenuSeparator inherits Rectangle {
+    height: 1px;
+    background: white.with-alpha(0.1);
+}
+
+export component ProcessContextMenu inherits Window {
+    no-frame: true;
+    always-on-top: true;
+    background: transparent;
+
+    width: 220px;
+    height: layout.preferred-height;
+
+    in-out property <float> show_progress: 1.0;
+
+    callback action(string);
+
+    //
+    layout := Rectangle {
+
+        opacity: root.show-progress;
+//        y: (1.0 - root.show-progress) * -10px;
+
+        animate opacity {
+            duration: 150ms;
+            easing: ease-out;
+        }
+//        animate y {
+//            duration: 150ms;
+//            easing: ease-out;
+//        }
+
+        background: #2c2c2c;
+        border-radius: 8px;
+        border-width: 1px;
+        border-color: #ffffff1a;
+
+        VerticalLayout {
+            padding: 4px;
+            spacing: 2px;
+
+            MenuItem {
+                text: "End task";
+                is-danger: true;
+                icon: @image-url("assets/prohibited.svg");
+                clicked => {
+                    root.action("terminate");
+                }
+            }
+
+            MenuItem {
+                text: "Open file location";
+                icon: @image-url("assets/folder.svg");
+                clicked => {
+                    root.action("open-location");
+                }
+            }
+
+            MenuSeparator { }
+
+            MenuItem {
+                text: "Properties";
+                icon: @image-url("assets/info.svg");
+                clicked => {
+                    root.action("properties");
+                }
+            }
+        }
+    }
+}
