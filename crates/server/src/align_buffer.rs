@@ -5,6 +5,20 @@ use std::mem::MaybeUninit;
 #[derive(Default)]
 pub struct AlignedBuffer(pub AlignedVec);
 
+impl AlignedBuffer {
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn as_mut_ptr(&mut self) -> *mut u8 {
+        self.0.as_mut_ptr()
+    }
+
+    pub fn as_ptr(&mut self) -> *const u8 {
+        self.0.as_ptr()
+    }
+}
+
 impl IoBuf for AlignedBuffer {
     fn as_init(&self) -> &[u8] {
         self.0.as_slice()
@@ -20,9 +34,12 @@ impl SetLen for AlignedBuffer {
 impl IoBufMut for AlignedBuffer {
     fn as_uninit(&mut self) -> &mut [MaybeUninit<u8>] {
         unsafe {
-            let ptr = self.0.as_mut_ptr() as *mut MaybeUninit<u8>;
+            let len = self.0.len();
+            let capacity = self.0.capacity();
 
-            std::slice::from_raw_parts_mut(ptr, self.0.len())
+            let ptr = self.0.as_mut_ptr().add(len) as *mut MaybeUninit<u8>;
+
+            std::slice::from_raw_parts_mut(ptr, capacity - len)
         }
     }
 }

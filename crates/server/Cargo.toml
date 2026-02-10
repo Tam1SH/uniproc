@@ -17,7 +17,15 @@ libc = "1.0.0-alpha.2"
 dhat = { version = "0.3", optional = true }
 flume = { workspace = true }
 dashmap = { workspace = true }
+affinity = "0.1.2"
+num_cpus = "1.17.0"
 oneshot = "0.1.13"
+smallvec = { workspace = true }
+
+[profile.release]
+debug = true
+split-debuginfo = "packed"
+
 [features]
 dhat-heap = ["dep:dhat"]
 

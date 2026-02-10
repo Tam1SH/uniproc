@@ -1,13 +1,8 @@
 use crate::align_buffer::AlignedBuffer;
-use crate::peer::tpc_pool::TpcPool;
+use crate::server::tpc_pool::TpcPool;
 use anyhow::Result;
 
-pub trait BufferPool: Send + Sync + 'static {
-    fn acquire(&self) -> AlignedBuffer;
-    fn release(&self, buf: AlignedBuffer);
-}
-
-pub trait Protocol: Send + Sync + 'static {
+pub trait MessageProtocol: Send + Sync + 'static {
     type Request: Send + Sync + 'static;
     type Response: Send + Sync + 'static;
 
@@ -25,14 +20,15 @@ pub trait Protocol: Send + Sync + 'static {
 pub enum Message<Req, Res> {
     Request { id: u64, payload: Req },
     Response { id: u64, payload: Res },
+    Push { payload: Req },
 }
 
-pub struct ResponseGuard<P: Protocol> {
+pub struct ResponseGuard<P: MessageProtocol> {
     buffer: AlignedBuffer,
     _phantom: std::marker::PhantomData<P>,
 }
 
-impl<P: Protocol> ResponseGuard<P> {
+impl<P: MessageProtocol> ResponseGuard<P> {
     pub fn new(buffer: AlignedBuffer) -> Self {
         Self {
             buffer,
@@ -41,7 +37,7 @@ impl<P: Protocol> ResponseGuard<P> {
     }
 }
 
-impl<P: Protocol> std::ops::Deref for ResponseGuard<P> {
+impl<P: MessageProtocol> std::ops::Deref for ResponseGuard<P> {
     type Target = P::ResponseView;
 
     fn deref(&self) -> &Self::Target {
@@ -54,7 +50,7 @@ impl<P: Protocol> std::ops::Deref for ResponseGuard<P> {
     }
 }
 
-impl<P: Protocol> Drop for ResponseGuard<P> {
+impl<P: MessageProtocol> Drop for ResponseGuard<P> {
     fn drop(&mut self) {
         TpcPool::release_body(std::mem::replace(
             &mut self.buffer,

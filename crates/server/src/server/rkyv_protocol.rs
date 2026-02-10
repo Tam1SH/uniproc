@@ -1,17 +1,18 @@
 use crate::align_buffer::AlignedBuffer;
-use crate::server::protocol::{Message, Protocol};
+use crate::server::message_protocol::{Message, MessageProtocol};
 use anyhow::Result;
-use rkyv::api::high::{HighSerializer, HighValidator};
+use rkyv::api::high::{to_bytes_in, HighSerializer, HighValidator};
 use rkyv::bytecheck::CheckBytes;
 use rkyv::rancor::Error;
 use rkyv::ser::allocator::ArenaHandle;
 use rkyv::util::AlignedVec;
-use rkyv::{access, to_bytes, Archive, Serialize};
+use rkyv::{access, Archive, Serialize};
 
 #[derive(Archive, Serialize)]
 pub(crate) enum RkyvEnvelope<Req, Res> {
     Request { id: u64, payload: Req },
     Response { id: u64, payload: Res },
+    Push { payload: Req },
 }
 
 pub trait SerializeBounds:
@@ -46,7 +47,7 @@ pub struct RkyvProtocol<Req, Res> {
     _phantom: std::marker::PhantomData<(Req, Res)>,
 }
 
-impl<Req, Res> Protocol for RkyvProtocol<Req, Res>
+impl<Req, Res> MessageProtocol for RkyvProtocol<Req, Res>
 where
     Req: SerializeBounds,
     for<'a> Req::Archived: ArchivedBounds,
@@ -74,6 +75,7 @@ where
                 id: u64::from(*id),
                 payload,
             }),
+            ArchivedRkyvEnvelope::Push { payload } => Ok(Message::Push { payload }),
         }
     }
 
@@ -86,10 +88,11 @@ where
         let envelope = match msg {
             Message::Request { id, payload } => RkyvEnvelope::Request { id, payload },
             Message::Response { id, payload } => RkyvEnvelope::Response { id, payload },
+            Message::Push { payload } => RkyvEnvelope::Push { payload },
         };
 
-        let bytes = to_bytes::<Error>(&envelope)?;
-        dest.0.extend_from_slice(&bytes);
-        Ok(dest)
+        let bytes = to_bytes_in::<_, Error>(&envelope, dest.0)?;
+
+        Ok(AlignedBuffer(bytes))
     }
 }
