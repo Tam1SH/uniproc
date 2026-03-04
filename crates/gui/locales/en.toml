@@ -1,0 +1,5 @@
+perfomance_tab = "Performance"
+settings_save_btn = "Save"
+search_placeholder = "Search processes..."
+error_connection_lost = "Connection lost"
+environments = "Environments"

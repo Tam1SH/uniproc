@@ -5,40 +5,16 @@ import {
     StandardTableView,
     ComboBox,
 } from "std-widgets.slint";
-import { SideBar } from "sidebar.slint";
-import { ProcessView } from "process-view.slint";
-import { ResizeHandler } from "resize-area.slint";
-import { WslDistro } from "wsl-distro-type.slint";
-import { TitleBar } from "title-bar.slint";
-import { MainBody } from "main-body.slint";
-import {
-    MachineStats,
-    ProcessBridge,
-    TitleBarActions,
-    ContextMenuProxy,
-    Theme,
-    WindowClickHandler,
-    ProcessGroup,
-    MainBodyState,
-    EnvsLoading,
-    Navigation,
-} from "globals.slint";
-import { RunTaskProxy, RunEnv, RunTaskDialog } from "run-task-dialog.slint";
-import { ProcessContextMenu } from "context-menu.slint";
-import { Palette } from "std-widgets.slint";
-export { Palette }
-export { RunTaskProxy, RunEnv, RunTaskDialog }
-export { Navigation, MachineStats, ProcessBridge, TitleBarActions, Theme, ProcessContextMenu, ContextMenuProxy, ProcessGroup, MainBodyState, EnvsLoading }
+import { TitleBar } from "title/title-bar.slint";
+import { Content } from "content/index.slint";
+import { SideBar } from "features/navigation/sidebar.slint";
+import { ContextMenuProxy } from "features/processes/context-menu/globals.slint";
+import { ResizeHandler } from "utils/resize-area.slint";
+import { WslDistro } from "features/environments/globals.slint";
+
+export * from "globals-export.slint";
 
 export component AppWindow inherits Window {
-
-    in property <[WslDistro]> wsl-distros;
-    in property <bool> has-wsl;
-
-    in property <image> host-icon;
-    in property <string> host-name;
-
-    in property <string> selected-env;
 
     min-width: 800px;
     min-height: 600px;
@@ -46,18 +22,10 @@ export component AppWindow inherits Window {
     no-frame: true;
     background: transparent;
     default-font-family: "Segoe UI Variable Display";
-    full-screen: false;
-    has-wsl: true;
-
-    callback start-resize(int);
-
-    callback process-clicked(int);
-
-    property <int> active-tab: 0;
     always-on-top: false;
-
-    callback install-agent(string);
-
+    
+    callback start_resize(int);
+    
     VerticalLayout {
         padding: 0;
         spacing: 0;
@@ -65,18 +33,9 @@ export component AppWindow inherits Window {
         TitleBar { }
 
         HorizontalLayout {
+            SideBar { }
 
-            SideBar {
-                wsl-distros: root.wsl-distros;
-                has-wsl: root.has-wsl;
-                host-name: root.host-name;
-                host-icon: root.host-icon;
-                install-agent(name) => {
-                    root.install-agent(name);
-                }
-            }
-
-            MainBody { }
+            Content { }
         }
     }
 

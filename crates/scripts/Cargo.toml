@@ -1,0 +1,7 @@
+[package]
+name = "scripts"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+windows = { workspace = true, features = ["Win32_NetworkManagement_NetManagement", "Win32_Security", "Win32_System_SystemServices", "Win32_System"] }

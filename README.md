@@ -1,7 +1,5 @@
 <div align="center">
-  <img src="assets/icon.png" alt="Uniproc Icon" width="128" height="128" />
-
-# Uniproc
+  <img src="assets/uniproc-preview.png" alt="Uniproc Icon"/>
 
 **A modern, blazing fast 🚀 system monitor for the Windows 11 & WSL.**
 
@@ -11,15 +9,6 @@
 </div>
 
 ---
-
-## 📸 Preview
-
-<div align="center">
-  <img src="assets/screenshot.png" alt="Uniproc Screenshot" width="800" />
-</div>
-<p align="center">
-  <i>I tried my best to make it look cool :(</i>
-</p>
 
 ## What is it?
 
@@ -40,11 +29,3 @@ The project addresses three main pain points:
   ** guidelines. It provides professional-grade monitoring without the interface "vibes" from the early 2000s.
 
 ## Architecture
-
-`uniproc` is built on top of several specialized components that work together:
-
-| Component                                                                | Description                                                                                 |
-|--------------------------------------------------------------------------|---------------------------------------------------------------------------------------------|
-| [oguRPChik](https://github.com/Tam1SH/oguRPChik)                         | Transport-agnostic RPC framework — the communication backbone that ties everything together |
-| [uniproc-linux-agent](https://github.com/Tam1SH/uniproc-linux-agent)     | eBPF-based telemetry agent running inside WSL2                                              |
-| [uniproc-windows-agent](https://github.com/Tam1SH/uniproc-windows-agent) | ETW-based telemetry agent running on Windows 11                                             |

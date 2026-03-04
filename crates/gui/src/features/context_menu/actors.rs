@@ -5,7 +5,7 @@ use crate::features::context_menu::utils::{configure_window_styles, get_window_h
 use crate::features::context_menu::utils::{start_win_event_hook, stop_win_event_hook};
 use crate::ProcessContextMenu;
 use crate::{messages, ContextMenuProxy};
-use crate::{AppWindow, ProcessBridge};
+use crate::{AppWindow, ProcessesFeatureGlobal};
 use slint::{ComponentHandle, SharedString};
 use windows::Win32::Foundation::HWND;
 use windows::Win32::UI::Input::KeyboardAndMouse::SetActiveWindow;
@@ -74,14 +74,14 @@ impl Handler<HandleAction, AppWindow> for ContextMenuActor {
         stop_win_event_hook();
 
         ctx.with_ui(|ui| {
-            let bridge = ui.global::<ProcessBridge>();
+            let bridge = ui.global::<ProcessesFeatureGlobal>();
 
             ui.global::<ContextMenuProxy>().set_is_open(false);
 
             match msg.0.as_str() {
                 "terminate" => bridge.invoke_terminate(),
-                "open-location" => bridge.invoke_open_file_location(),
-                "properties" => bridge.invoke_open_properties(),
+                // "open-location" => bridge.invoke_open_file_location(),
+                // "properties" => bridge.invoke_open_properties(),
                 _ => {}
             }
         });

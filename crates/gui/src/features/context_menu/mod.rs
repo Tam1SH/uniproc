@@ -5,10 +5,8 @@ use crate::features::context_menu::utils::configure_window_styles;
 use crate::features::cosmetics::utils::{apply_native_win11_style, WindowTexture};
 use crate::features::cosmetics::CosmeticsFeature;
 use crate::features::Feature;
-use crate::AppWindow;
+use crate::{AppWindow, Theme};
 use crate::{ContextMenuProxy, ProcessContextMenu};
-use i_slint_backend_winit::WinitWindowAccessor;
-use raw_window_handle::HasWindowHandle;
 use slint::ComponentHandle;
 use std::cell::RefCell;
 use windows::Win32::UI::Accessibility::HWINEVENTHOOK;
@@ -59,7 +57,7 @@ impl Feature for ContextMenuFeature {
 
                 apply_native_win11_style(m.window(), WindowTexture::None).await;
                 if let Some(accent) = CosmeticsFeature::get_system_accent_color() {
-                    m.global::<crate::Theme>().set_accent_color(accent);
+                    m.global::<Theme>().set_accent(accent);
                 }
             }
         })?;

@@ -1,0 +1,22 @@
+
+import { Theme } from "theme.slint";
+
+export component SelectionIndicator inherits Rectangle {
+
+    in property <bool> is-active: false;
+
+    if (is-active): Rectangle {
+        x: 0;
+        width: 3px;
+        height: 15px;
+        background: Theme.accent;
+        border-radius: 2px;
+        y: (parent.height - self.height) / 2;
+
+        animate height {
+            duration: 150ms;
+            easing: ease-out;
+        }
+        animate opacity { duration: 200ms; }
+    }
+}

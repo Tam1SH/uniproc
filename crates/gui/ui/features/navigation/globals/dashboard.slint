@@ -1,0 +1,14 @@
+export struct PageEntry {
+    id: int,
+    text: string,
+    icon: image,
+}
+
+export global Dashboard {
+
+    in-out property <int> active_page: 0;
+
+    in property <[PageEntry]> pages: [];
+
+    callback request_page_switch(int);
+}

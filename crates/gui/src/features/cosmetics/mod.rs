@@ -25,7 +25,7 @@ impl Feature for CosmeticsFeature {
         let ui_weak = ui.as_weak();
 
         if let Some(accent) = Self::get_system_accent_color() {
-            ui.global::<Theme>().set_accent_color(accent);
+            ui.global::<Theme>().set_accent(accent);
         }
 
         slint::spawn_local(async move {

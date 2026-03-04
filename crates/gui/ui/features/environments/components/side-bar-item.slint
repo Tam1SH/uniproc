@@ -1,0 +1,60 @@
+
+import {
+    SelectionIndicator,
+} from "../../../components/selection-indicator.slint";
+import { Theme } from "theme.slint";
+import { Icons } from "icons.slint";
+
+export component SideBarItem inherits Rectangle {
+    in-out property <image> icon: Icons.ubuntu;
+    in-out property <string> text: "Ubuntu";
+    in-out property <bool> active;
+    in-out property <bool> has-icon: true;
+    in property <bool> colorize: true;
+    in property <int> latency-ms: -1;
+    callback clicked;
+
+    height: 40px;
+    background: active ? Theme.fill_subtle_secondary : (touch.has-hover ? Theme.fill_subtle_hover : transparent);
+    animate background { duration: 100ms; }
+    border-radius: 6px;
+
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            root.clicked()
+        }
+    }
+
+    SelectionIndicator {
+        is-active: root.active;
+
+        y: (parent.height - self.height) / 2;
+    }
+
+    HorizontalLayout {
+        padding-left: 12px;
+        spacing: 12px;
+
+        if (root.has-icon): VerticalLayout {
+            alignment: center;
+            Image {
+                source: root.icon;
+                width: 16px;
+                height: 16px;
+                image-fit: contain;
+                colorize: colorize ? (active ? Theme.accent : Theme.text_secondary) : transparent;
+                animate colorize { duration: Theme.primary_animation_time; }
+            }
+        }
+
+        Text {
+            text: root.text;
+            vertical-alignment: center;
+            font-size: Theme.font_size_body;
+            color: active ? Theme.text_primary : Theme.text_secondary;
+
+            animate color { duration: Theme.primary_animation_time; }
+        }
+    }
+}

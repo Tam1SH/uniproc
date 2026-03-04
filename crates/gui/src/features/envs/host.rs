@@ -1,7 +1,8 @@
 use super::get_icon_for_env;
 use crate::core::reactor::Reactor;
 use crate::features::Feature;
-use crate::AppWindow;
+use crate::{AppWindow, EnvironmentsFeatureGlobal};
+use slint::ComponentHandle;
 use sysinfo::System;
 
 pub struct HostFeature;
@@ -11,10 +12,11 @@ impl Feature for HostFeature {
         let os_name = System::name().unwrap_or_else(|| "Windows".into());
         let os_icon = get_icon_for_env(&os_name);
 
-        ui.set_host_name(os_name.clone().into());
-        ui.set_host_icon(os_icon);
+        let global = ui.global::<EnvironmentsFeatureGlobal>();
 
-        ui.set_selected_env(os_name.into());
+        global.set_host_name(os_name.clone().into());
+        global.set_host_icon(os_icon);
+        global.set_selected_env(os_name.into());
 
         Ok(())
     }

@@ -1,0 +1,79 @@
+import { LoadingSpinner } from "../../../utils/loader-area.slint";
+import { Theme } from "theme.slint";
+import { Icons } from "icons.slint";
+
+export component AccordionHeader inherits Rectangle {
+    in-out property <string> text;
+    in-out property <bool> open;
+    in-out property <image> icon;
+    in property <bool> is-loading;
+    callback toggled;
+
+    height: 40px;
+    border-radius: 6px;
+
+    background: touch.has-hover ? Theme.fill_subtle_hover : transparent;
+    animate background { duration: 100ms; }
+
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            root.open = !root.open;
+            root.toggled();
+        }
+    }
+
+    HorizontalLayout {
+
+        padding-left: 11px;
+        padding-right: 12px;
+        spacing: 12px;
+
+        VerticalLayout {
+            alignment: center;
+            Image {
+                source: root.icon;
+                width: 16px;
+            }
+        }
+
+        Text {
+            text: root.text;
+            color: Theme.text_primary;
+            font-weight: 600;
+            font-size: Theme.font_size_body;
+            vertical-alignment: center;
+        }
+
+        Rectangle { }
+
+        if (is-loading): VerticalLayout {
+            alignment: center;
+            LoadingSpinner {
+                width: 16px;
+                height: 16px;
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+
+            Image {
+                source: Icons.arrow-up-regular;
+                image-fit: contain;
+                width: 12px;
+                height: 12px;
+
+                colorize: rgba(255, 255, 255, 0.5);
+
+                transform-origin: { x: 4.5px, y: 6px };
+
+                transform-rotation: root.open ? 90deg : 270deg;
+
+                animate transform-rotation {
+                    duration: Theme.primary_animation_time * 1.25;
+                    easing: ease-out;
+                }
+            }
+        }
+    }
+}

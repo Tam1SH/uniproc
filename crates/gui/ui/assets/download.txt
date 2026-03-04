@@ -1,0 +1,7 @@
+data-area:https://api.iconify.design/fluent-color:data-area-20.svg
+database:https://api.iconify.design/fluent-color:database-24.svg
+statistics:https://api.iconify.design/fluent-color:data-trending-24.svg
+people:https://api.iconify.design/fluent-color:people-24.svg
+settings:https://api.iconify.design/fluent-color:settings-24.svg
+puzzle:https://api.iconify.design/fluent-color:puzzle-piece-24.svg
+dashed-settings:https://api.iconify.design/fluent-color:arrow-clockwise-dashes-settings-24.svg

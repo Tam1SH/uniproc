@@ -6,6 +6,7 @@ pub mod window_actions;
 pub mod context_menu;
 pub mod navigation;
 
+pub mod l10n;
 pub mod run_task;
 
 use crate::core::reactor::Reactor;

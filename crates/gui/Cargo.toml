@@ -9,7 +9,7 @@ window-vibrancy = { workspace = true }
 raw-window-handle = { workspace = true }
 i-slint-backend-winit = { workspace = true }
 anyhow = { workspace = true }
-windows = { workspace = true }
+windows = { workspace = true, features = ["Win32_System_SystemInformation", "Wdk_System_Threading", "Wdk_System_SystemInformation"], version = "1.0.0" }
 sysinfo = { workspace = true }
 winit = { workspace = true }
 ttl_cache = { workspace = true }
@@ -18,13 +18,13 @@ tracing-subscriber = { workspace = true }
 smallvec = { workspace = true }
 app-core = { workspace = true }
 tokio = { workspace = true }
+uniproc-protocol.workspace = true
+ogurpchik.workspace = true
+rust-i18n.workspace = true
 
 [build-dependencies]
 slint-build = "1.14.1"
 winresource = "0.1.30"
+toml.workspace = true
 
-[profile.release]
-lto = true
-codegen-units = 1
-strip = true
-opt-level = "s"
+

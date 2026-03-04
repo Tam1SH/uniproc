@@ -1,0 +1,17 @@
+export struct TabData {
+    title: string,
+    active_page: int,
+}
+
+export global Navigation {
+
+    in-out property <[TabData]> tabs: [{ title: "Dashboard 1", active_page: 0 }, { title: "Dashboard 2", active_page: 1 }];
+
+    in-out property <int> active_tab_index: 0;
+
+    in-out property <bool> content_visible: true;
+
+    callback request_tab_switch(int);
+    callback request_tab_close(int);
+    callback request_tab_add();
+}

@@ -42,7 +42,7 @@ impl Feature for RunTaskFeature {
             apply_native_win11_style(ui.window(), WindowTexture::Mica).await;
 
             if let Some(accent) = CosmeticsFeature::get_system_accent_color() {
-                ui.global::<Theme>().set_accent_color(accent);
+                ui.global::<Theme>().set_accent(accent);
             }
         });
 
