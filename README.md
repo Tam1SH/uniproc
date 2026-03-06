@@ -29,3 +29,26 @@ The project addresses three main pain points:
   ** guidelines. It provides professional-grade monitoring without the interface "vibes" from the early 2000s.
 
 ## Architecture
+
+```mermaid
+flowchart TB
+    WA["uniproc-windows-agent | ETW · Windows 11"]
+    LA["uniproc-linux-agent | eBPF · WSL2"]
+
+    subgraph CORE["Uniproc"]
+        direction LR
+        F1["Feature A"] --> A1["Actor A"]
+        F2["Feature B"] --> A2["Actor B"]
+        F3["Feature C"] --> A3["Actor C"]
+        A1 --- S1["Slint A"]
+        A2 --- S2["Slint B"]
+        A3 --- S3["Slint C"]
+        EB["Event Bus"]
+        A1 --- EB
+        A2 --- EB
+        A3 --- EB
+    end
+
+    WA ---|oguRPChik| CORE
+    LA ---|oguRPChik| CORE
+```
