@@ -26,8 +26,19 @@ export global Theme {
     out property <length> spacing_xs: 4px;
     out property <length> spacing_s: 8px;
     out property <length> spacing_m: 12px;
+    out property <length> spacing_l: 16px;
+    out property <length> border_radius_xs: 2px;
     out property <length> border_radius_s: 4px;
     out property <length> border_radius_m: 8px;
+
+    out property <length> icon_size_s: 12px;
+    out property <length> icon_size_m: 16px;
+    out property <length> icon_size_l: 20px;
+
+    out property <length> title_bar_height: 32px;
+    out property <length> title_control_width: 46px;
+    out property <length> selection_indicator_width: 3px;
+    out property <length> selection_indicator_height: 15px;
 
     out property <length> font_size_body: 14px;
     out property <length> font_size_caption: 12px;
@@ -39,5 +50,13 @@ export global Theme {
     out property <color> disabled: is_dark ? rgba(255,255,255,0.15) : rgba(0,0,0,0.15);
     out property <color> item_active_background: accent.with_alpha(0.1);
 
+    out property <color> title_control_hover: is_dark ? rgba(255, 255, 255, 0.05) : rgba(0, 0, 0, 0.06);
+    out property <color> title_control_pressed: is_dark ? rgba(255, 255, 255, 0.10) : rgba(0, 0, 0, 0.12);
+    out property <color> title_close: #e81123;
+    out property <color> title_icon: is_dark ? rgba(255, 255, 255, 0.9) : rgba(0, 0, 0, 0.85);
+    out property <color> title_icon_active: #ffffff;
+
+    out property <duration> fast_animation_time: 150ms;
     out property <duration> primary_animation_time: 100ms;
+    out property <duration> slow_animation_time: 200ms;
 }

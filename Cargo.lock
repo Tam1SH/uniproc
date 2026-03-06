@@ -2102,10 +2102,14 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "app-core",
+ "async-trait",
  "i-slint-backend-winit",
  "ogurpchik",
  "raw-window-handle",
+ "rkyv",
  "rust-i18n",
+ "serde",
+ "serde_json",
  "slint",
  "slint-build",
  "smallvec",
@@ -3715,7 +3719,7 @@ dependencies = [
 [[package]]
 name = "ogurpchik"
 version = "0.2.0"
-source = "git+https://github.com/Tam1SH/oguRPChik?branch=master#c8c237c36a1ecceea2a6515d2af63ff4f0ca454f"
+source = "git+https://github.com/Tam1SH/oguRPChik?branch=master#83792c733726ba1d6864b5ed92ef14b1d630e012"
 dependencies = [
  "affinity",
  "anyhow",
@@ -5643,7 +5647,7 @@ checksum = "ebc1c04c71510c7f702b52b7c350734c9ff1295c464a03335b00bb84fc54f853"
 [[package]]
 name = "uniproc-protocol"
 version = "0.1.0"
-source = "git+https://github.com/Tam1SH/uniproc-protocol?branch=master#aba972b724b481b59a9e0fc4194c72950328f3b8"
+source = "git+https://github.com/Tam1SH/uniproc-protocol?branch=master#5a0654d18c44477fed4579a77c30cb99a2fce1e7"
 dependencies = [
  "ogurpchik",
  "rkyv",

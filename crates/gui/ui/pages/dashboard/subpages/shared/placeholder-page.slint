@@ -1,0 +1,13 @@
+import { Theme } from "theme.slint";
+
+export component PlaceholderPage inherits Rectangle {
+    in property <string> title;
+
+    Text {
+        text: root.title;
+        color: Theme.text_secondary;
+        font-size: Theme.font_size_title;
+        x: 20px;
+        y: 20px;
+    }
+}

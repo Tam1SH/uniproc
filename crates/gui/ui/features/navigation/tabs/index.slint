@@ -1,0 +1,40 @@
+import { Theme } from "theme.slint";
+import { Navigation } from "../globals/tabs-navigation.slint";
+import { BrowserTabItem } from "components/tab-item.slint";
+
+export component TabBar inherits Rectangle {
+    height: 40px;
+    background: Theme.surface;
+
+    HorizontalLayout {
+        alignment: start;
+        padding-left: 10px;
+        padding-top: 4px;
+
+        for tab[i] in Navigation.tabs: BrowserTabItem {
+            title: tab.title;
+            active: Navigation.active_tab_index == i;
+            clicked => {
+                Navigation.request_tab_switch(i);
+            }
+            close_clicked => {
+                Navigation.request_tab_close(i);
+            }
+        }
+
+        Rectangle {
+            width: 30px;
+            Text {
+                text: "+";
+                color: white;
+                font-size: 20px;
+            }
+
+            TouchArea {
+                clicked => {
+                    Navigation.request_tab_add();
+                }
+            }
+        }
+    }
+}

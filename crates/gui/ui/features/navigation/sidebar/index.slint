@@ -1,0 +1,40 @@
+import { Environments } from "../../environments/views/environments.slint";
+import { Navigation } from "../globals/tabs-navigation.slint";
+import { Dashboard } from "../globals/dashboard.slint";
+import { WindowClickHandler } from "../../../title/title-bar.slint";
+import { NavItem } from "components/nav-item.slint";
+
+export component SideBar inherits Rectangle {
+    accessible-role: AccessibleRole.button;
+    width: 260px;
+
+    unfocus := TouchArea {
+        pointer-event(evt) => {
+            if (evt.kind == PointerEventKind.down) {
+                WindowClickHandler.window-clicked();
+            }
+        }
+    }
+
+    VerticalLayout {
+        padding: 6px;
+        spacing: 4px;
+        alignment: start;
+
+        Environments { }
+
+        Rectangle {
+            height: 16px;
+        }
+
+        for page in Dashboard.pages: NavItem {
+            icon: page.icon;
+            text: page.text;
+            active: Dashboard.active_page == page.id;
+            colorize: false;
+            clicked => {
+                Navigation.request_tab_switch(page.id);
+            }
+        }
+    }
+}

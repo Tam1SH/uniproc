@@ -1,12 +1,13 @@
 import { Icons } from "icons.slint";
+import { Theme } from "theme.slint";
 component ControlBtn inherits Rectangle {
     in property <image> icon;
     in property <bool> is-close: false;
     callback clicked();
 
-    width: 46px;
-    height: 32px;
-    background: touch.pressed ? (is-close ? #e81123 : rgba(255, 255, 255, 0.1)) : touch.has-hover ? (is-close ? #e81123 : rgba(255, 255, 255, 0.05)) : transparent;
+    width: Theme.title_control_width;
+    height: Theme.title_bar_height;
+    background: touch.pressed ? (is-close ? Theme.title_close : Theme.title_control_pressed) : touch.has-hover ? (is-close ? Theme.title_close : Theme.title_control_hover) : transparent;
 
     touch := TouchArea {
         clicked => {
@@ -16,9 +17,9 @@ component ControlBtn inherits Rectangle {
 
     Image {
         source: root.icon;
-        width: 16px;
-        height: 16px;
-        colorize: (is-close && touch.has-hover) ? white : rgba(255, 255, 255, 0.9);
+        width: Theme.icon_size_m;
+        height: Theme.icon_size_m;
+        colorize: (is-close && touch.has-hover) ? Theme.title_icon_active : Theme.title_icon;
     }
 }
 

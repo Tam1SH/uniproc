@@ -1,0 +1,75 @@
+import { Theme } from "theme.slint";
+import { AccordionHeader } from "../components/accordion-header.slint";
+import { SideBarItem } from "../components/side-bar-item.slint";
+import { EnvsLoading, EnvironmentsFeatureGlobal } from "../globals.slint";
+import { Icons } from "icons.slint";
+import { L10n } from "localization.slint";
+
+export component Environments inherits VerticalLayout {
+    spacing: 2px;
+
+    Rectangle {
+        background: Theme.layer_background;
+        border-radius: 6px;
+        VerticalLayout {
+            spacing: 2px;
+            env_main := AccordionHeader {
+                text: L10n.environments;
+                icon: Icons.coin;
+                open: true;
+                is-loading: EnvsLoading.wsl-is-loading;
+            }
+
+            if (env_main.open): VerticalLayout {
+                spacing: 2px;
+
+                SideBarItem {
+                    text: EnvironmentsFeatureGlobal.host-name;
+                    icon: EnvironmentsFeatureGlobal.host-icon;
+                    active: EnvironmentsFeatureGlobal.selected-env == EnvironmentsFeatureGlobal.host-name;
+                    colorize: false;
+                    clicked => {
+                        EnvironmentsFeatureGlobal.selected-env = EnvironmentsFeatureGlobal.host-name;
+                    }
+                }
+
+                if (EnvironmentsFeatureGlobal.has-wsl): Rectangle {
+                    VerticalLayout {
+                        spacing: 2px;
+
+                        wsl_sub := AccordionHeader {
+                            text: "WSL";
+                            icon: Icons.wsl;
+                            open: true;
+                            is-loading: EnvsLoading.wsl-distros-is-loading;
+                        }
+
+                        if (wsl_sub.open): VerticalLayout {
+                            spacing: 2px;
+                            for distro in EnvironmentsFeatureGlobal.wsl-distros: SideBarItem {
+                                text: distro.name;
+                                icon: distro.icon;
+                                active: EnvironmentsFeatureGlobal.selected-env == distro.name;
+                                latency-ms: distro.latency-ms;
+
+                                clicked => {
+                                    EnvironmentsFeatureGlobal.selected-env = distro.name;
+                                }
+
+                                Rectangle {
+                                    width: 8px;
+                                    height: 8px;
+                                    border-radius: Theme.border_radius_s;
+                                    x: parent.width - 24px;
+                                    y: (parent.height - self.height) / 2;
+
+                                    background: !distro.is_running ? Theme.disabled : !distro.is_installed ? Theme.offline : distro.latency_ms == -1 ? Theme.warn : Theme.success;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

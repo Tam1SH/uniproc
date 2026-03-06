@@ -1,99 +1,78 @@
 import { Theme } from "theme.slint";
-import { ProcessView } from "../features/processes/process-view.slint";
 import {
     Navigation,
 } from "../features/navigation/globals/tabs-navigation.slint";
+import { Dashboard } from "../features/navigation/globals/dashboard.slint";
+import { ProcessesPageBody, ProcessesPageHeader } from "../pages/dashboard/subpages/processes/index.slint";
+import { PerformancePage } from "../pages/dashboard/subpages/performance/index.slint";
+import { DiskPage } from "../pages/dashboard/subpages/disk/index.slint";
+import { StatisticsPage } from "../pages/dashboard/subpages/statistics/index.slint";
+import { StartupAppsPage } from "../pages/dashboard/subpages/startup-apps/index.slint";
+import { UsersPage } from "../pages/dashboard/subpages/users/index.slint";
+import { ServicesPage } from "../pages/dashboard/subpages/services/index.slint";
 
+component PageHeader inherits Rectangle {
+    in property <string> title;
+
+    height: 60px;
+
+    HorizontalLayout {
+        padding: 12px;
+        Text {
+            text: root.title;
+            color: Theme.text_secondary;
+            font-size: Theme.font_size_body;
+            font-weight: 600;
+            vertical-alignment: center;
+        }
+    }
+}
 
 export component Content inherits Rectangle {
     background: Theme.background;
     border-top-left-radius: Theme.border_radius_m;
     clip: true;
+    private property <int> current-page-id: Navigation.tabs.length > Navigation.active_tab_index ? Navigation.tabs[Navigation.active_tab_index].active_page : 0;
+    private property <string> current-page-title: Dashboard.pages.length > root.current-page-id ? Dashboard.pages[root.current-page-id].text : "";
 
     init => {
         Navigation.request-tab-switch(0);
     }
 
-    content-layer := Rectangle {
-        opacity: Navigation.content-visible ? 1 : 0;
-        y: Navigation.content-visible ? 0px : 30px;
+    VerticalLayout {
+        spacing: 0;
 
-        animate opacity {
-            duration: 150ms;
-            easing: ease-in-out;
-        }
-        animate y {
-            duration: 400ms;
-            easing: cubic-bezier(0.1, 0.9, 0.2, 1.0);
+        if (root.current-page-id == 0): ProcessesPageHeader {}
+        if (root.current-page-id != 0): PageHeader {
+            title: root.current-page-title;
         }
 
-        Rectangle {
-            visible: Navigation.active_tab_index == 0;
+        page-body-layer := Rectangle {
+            vertical-stretch: 1;
+            clip: true;
 
-            ProcessView {
+            content-layer := Rectangle {
                 width: 100%;
                 height: 100%;
-            }
-        }
+                opacity: Navigation.content-visible ? 1 : 0;
+                y: Navigation.content-visible ? 0px : 30px;
 
-        Rectangle {
-            visible: Navigation.active_tab_index == 1;
-            Text {
-                text: "Performance Tab";
-                color: white;
-                font-size: 20px;
-                x: 20px;
-                y: 20px;
-            }
-        }
+                animate opacity {
+                    duration: 150ms;
+                    easing: ease-in-out;
+                }
+                animate y {
+                    duration: 400ms;
+                    easing: cubic-bezier(0.1, 0.9, 0.2, 1.0);
+                }
 
-        Rectangle {
-            visible: Navigation.active_tab_index == 2;
-            Text {
-                text: "Settings / Info";
-                color: #aaa;
-                x: 20px;
-                y: 20px;
-            }
-        }
-
-        Rectangle {
-            visible: Navigation.active_tab_index == 3;
-            Text {
-                text: "Settings / Info";
-                color: #aaa;
-                x: 20px;
-                y: 20px;
-            }
-        }
-
-        Rectangle {
-            visible: Navigation.active_tab_index == 4;
-            Text {
-                text: "Settings / Info";
-                color: #aaa;
-                x: 20px;
-                y: 20px;
-            }
-        }
-
-        Rectangle {
-            visible: Navigation.active_tab_index == 5;
-            Text {
-                text: "Settings / Info";
-                color: #aaa;
-                x: 20px;
-                y: 20px;
-            }
-        }
-
-        Rectangle {
-            visible: Navigation.active_tab_index == 6;
-            Text {
-                text: "Settings / Info";
-                color: #aaa;
-                x: 20px;
-                y: 20px;
+                if (root.current-page-id == 0): ProcessesPageBody { width: 100%; height: 100%; }
+                if (root.current-page-id == 1): PerformancePage { width: 100%; height: 100%; }
+                if (root.current-page-id == 2): DiskPage { width: 100%; height: 100%; }
+                if (root.current-page-id == 3): StatisticsPage { width: 100%; height: 100%; }
+                if (root.current-page-id == 4): StartupAppsPage { width: 100%; height: 100%; }
+                if (root.current-page-id == 5): UsersPage { width: 100%; height: 100%; }
+                if (root.current-page-id == 6): ServicesPage { width: 100%; height: 100%; }
             }
         }
     }

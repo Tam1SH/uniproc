@@ -5,12 +5,14 @@ use ttl_cache::TtlCache;
 
 pub struct NameProvider {
     cache: TtlCache<String, SharedString>,
+    ttl: Duration,
 }
 
 impl NameProvider {
-    pub fn new() -> Self {
+    pub fn new(ttl: Duration) -> Self {
         Self {
             cache: TtlCache::new(1000),
+            ttl,
         }
     }
 
@@ -27,21 +29,25 @@ impl NameProvider {
         let shared = SharedString::from(clean);
 
         self.cache
-            .insert(clean.to_string(), shared.clone(), Duration::from_secs(300));
+            .insert(clean.to_string(), shared.clone(), self.ttl);
         shared
     }
 }
 pub struct IconProvider {
     cache: TtlCache<String, Image>,
     default_icon: Image,
+    ttl: Duration,
 }
 
 impl IconProvider {
-    pub fn new() -> Self {
+    pub fn new(ttl: Duration) -> Self {
         Self {
             cache: TtlCache::new(256),
-            default_icon: Image::load_from_svg_data(include_bytes!("../../../../ui/assets/app.svg"))
-                .unwrap(),
+            default_icon: Image::load_from_svg_data(include_bytes!(
+                "../../../../ui/assets/app.svg"
+            ))
+            .unwrap(),
+            ttl,
         }
     }
 
@@ -56,11 +62,7 @@ impl IconProvider {
 
         let icon = extract_icon_raw(path).unwrap_or_else(|| self.default_icon.clone());
 
-        self.cache
-            .insert(path.to_string(), icon.clone(), Duration::from_secs(120));
+        self.cache.insert(path.to_string(), icon.clone(), self.ttl);
         icon
     }
 }
-
-
-

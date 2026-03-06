@@ -2,13 +2,19 @@ use super::get_icon_for_env;
 use crate::core::reactor::Reactor;
 use crate::features::Feature;
 use crate::{AppWindow, EnvironmentsFeatureGlobal};
+use app_core::SharedState;
 use slint::ComponentHandle;
 use sysinfo::System;
 
 pub struct HostFeature;
 
 impl Feature for HostFeature {
-    fn install(self, _reactor: &mut Reactor, ui: &AppWindow) -> anyhow::Result<()> {
+    fn install(
+        self,
+        _reactor: &mut Reactor,
+        ui: &AppWindow,
+        _shared: &SharedState,
+    ) -> anyhow::Result<()> {
         let os_name = System::name().unwrap_or_else(|| "Windows".into());
         let os_icon = get_icon_for_env(&os_name);
 

@@ -1,3 +1,5 @@
+use async_trait::async_trait;
+
 #[derive(Debug, Clone)]
 pub enum FieldValue {
     U64(u64),
@@ -35,7 +37,8 @@ pub trait ScanResult: Send {
     fn visit_stats(&self, visitor: &mut dyn FnMut(Field));
 }
 
+#[async_trait]
 pub trait ProcessScanner: Send {
     fn schema_id(&self) -> &'static str;
-    fn scan(&mut self) -> Box<dyn ScanResult>;
+    async fn scan(&mut self) -> Box<dyn ScanResult>;
 }

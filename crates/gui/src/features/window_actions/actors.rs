@@ -1,6 +1,6 @@
 use crate::core::actor::traits::Message;
 use crate::core::actor::traits::{Context, Handler};
-use crate::{messages, AppWindow};
+use crate::{AppWindow, messages};
 use i_slint_backend_winit::WinitWindowAccessor;
 use slint::ComponentHandle;
 

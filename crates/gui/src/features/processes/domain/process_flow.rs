@@ -1,4 +1,4 @@
-use crate::features::processes::domain::process_tree::{sort_processes_inplace, ProcessTreeState};
+use crate::features::processes::domain::process_tree::{ProcessTreeState, sort_processes_inplace};
 use crate::features::processes::services::metadata::ProcessMetadata;
 use crate::features::processes::ui::slint_bridge::BridgeSnapshot;
 use crate::{ProcessEntry, ProcessGroup};

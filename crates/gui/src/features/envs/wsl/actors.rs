@@ -1,23 +1,30 @@
+use crate::core::actor::event_bus::EVENT_BUS;
 use crate::core::actor::traits::{Context, Handler, Message};
 use crate::features::envs::get_icon_for_env;
-use crate::features::envs::wsl::agent::{connect_wsl_agent, ping_wsl_agent, WslClient};
+use crate::features::envs::wsl::agent::{WslClient, connect_wsl_agent, ping_wsl_agent};
 use crate::features::envs::wsl::domain::{
-    check_wsl_availability_async, fetch_distros_data, inject_agent_async, RawDistroData,
+    RawDistroData, check_wsl_availability_async, fetch_distros_data, inject_agent_async,
 };
 use crate::features::envs::wsl::state::{
     ConnectionEvent, ConnectionMachine, ConnectionState, Transition, TransitionEffect,
 };
-use crate::{messages, AppWindow, EnvironmentsFeatureGlobal, EnvsLoading, WslDistro};
+use crate::{AppWindow, EnvironmentsFeatureGlobal, EnvsLoading, WslDistro, messages};
 use slint::{ComponentHandle, Model, ModelRc, SharedString, VecModel};
 use std::fmt::Debug;
 use tracing::{debug, error, info, instrument, trace, warn};
 
-const CONNECT_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(8);
+#[derive(Clone)]
+pub struct WslAgentRuntimeEvent {
+    pub state: ConnectionState,
+    pub client: Option<WslClient>,
+}
+impl Message for WslAgentRuntimeEvent {}
 
 pub struct WslActor {
     client: Option<WslClient>,
     connection: ConnectionMachine,
     ping_in_flight: bool,
+    connect_timeout_secs: u64,
 }
 
 impl Debug for WslActor {
@@ -30,11 +37,12 @@ impl Debug for WslActor {
 }
 
 impl WslActor {
-    pub fn new() -> Self {
+    pub fn new(connect_timeout_secs: u64) -> Self {
         Self {
             client: None,
             connection: ConnectionMachine::new(),
             ping_in_flight: false,
+            connect_timeout_secs,
         }
     }
 
@@ -58,8 +66,9 @@ impl WslActor {
     }
 
     fn spawn_connect_now(&self, ctx: &Context<Self, AppWindow>) {
+        let timeout_secs = self.connect_timeout_secs;
         ctx.spawn_bg(async move {
-            match connect_wsl_agent().await {
+            match connect_wsl_agent(timeout_secs).await {
                 Ok(client) => ConnectResult(Some(client)),
                 Err(err) => {
                     warn!("Failed to connect to WSL guest: {err}");
@@ -91,6 +100,15 @@ impl WslActor {
             global.set_wsl_distros(ModelRc::new(VecModel::from(updated)));
         });
     }
+
+    fn publish_runtime(&self) {
+        EVENT_BUS.with(|bus| {
+            bus.publish(WslAgentRuntimeEvent {
+                state: self.connection.state(),
+                client: self.client.clone(),
+            })
+        });
+    }
 }
 
 messages! {
@@ -116,6 +134,7 @@ impl Handler<Init, AppWindow> for WslActor {
     #[instrument(skip(self, ctx))]
     fn handle(&mut self, _msg: Init, ctx: &Context<Self, AppWindow>) {
         info!("Initializing WSL actor");
+        self.publish_runtime();
         ctx.addr().send(CheckStatus);
         ctx.addr().send(StartConnect);
     }
@@ -126,6 +145,7 @@ impl Handler<StartConnect, AppWindow> for WslActor {
     fn handle(&mut self, _msg: StartConnect, ctx: &Context<Self, AppWindow>) {
         if let Some(transition) = self.apply_transition(ConnectionEvent::BeginConnect) {
             if transition.to == ConnectionState::Connecting {
+                self.publish_runtime();
                 self.spawn_connect_now(ctx);
             }
         }
@@ -144,12 +164,15 @@ impl Handler<ConnectResult, AppWindow> for WslActor {
                     info!("WSL client connected successfully");
                     self.client = Some(client);
                     self.ping_in_flight = false;
+                    self.publish_runtime();
                     ctx.addr().send(CheckStatus);
                     ctx.addr().send(Ping);
                 }
             }
             None => {
                 if let Some(transition) = self.apply_transition(ConnectionEvent::ConnectFailed) {
+                    self.client = None;
+                    self.publish_runtime();
                     if let TransitionEffect::ScheduleRetry { delay_secs } = transition.effect {
                         ctx.addr().send(TryConnectWithDelay(delay_secs));
                     }
@@ -177,6 +200,7 @@ impl Handler<RetryTimerElapsed, AppWindow> for WslActor {
     fn handle(&mut self, _msg: RetryTimerElapsed, ctx: &Context<Self, AppWindow>) {
         if let Some(transition) = self.apply_transition(ConnectionEvent::RetryDelayElapsed) {
             if transition.to == ConnectionState::Connecting {
+                self.publish_runtime();
                 self.spawn_connect_now(ctx);
             }
         }
@@ -264,6 +288,7 @@ impl Handler<ConnectionLost, AppWindow> for WslActor {
         warn!("WSL connection lost");
         self.client = None;
         self.ping_in_flight = false;
+        self.publish_runtime();
 
         Self::update_all_distro_install_state(ctx, false);
         ctx.addr().send(StartConnect);

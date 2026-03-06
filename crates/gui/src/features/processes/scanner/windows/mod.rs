@@ -13,6 +13,7 @@ use crate::features::processes::scanner::windows::phd_scanner::PdhScanner;
 use crate::features::processes::scanner::windows::types::{
     WindowsProcessStat, WindowsScanResult, WindowsStats,
 };
+use async_trait::async_trait;
 use smallvec::SmallVec;
 use sysinfo::{Networks, ProcessesToUpdate, System, Users};
 
@@ -43,13 +44,13 @@ impl WindowsScanner {
         }
     }
 }
-
+#[async_trait]
 impl ProcessScanner for WindowsScanner {
     fn schema_id(&self) -> &'static str {
         "windows"
     }
 
-    fn scan(&mut self) -> Box<dyn ScanResult> {
+    async fn scan(&mut self) -> Box<dyn ScanResult> {
         self.sys.refresh_cpu_usage();
         self.sys.refresh_memory();
         self.sys.refresh_processes(ProcessesToUpdate::All, true);

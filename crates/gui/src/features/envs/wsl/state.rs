@@ -77,7 +77,12 @@ impl ConnectionMachine {
             (ConnectionState::Connected, ConnectionEvent::ConnectionLost) => {
                 (ConnectionState::Disconnected, TransitionEffect::None)
             }
-            _ => return Err(InvalidTransition { state: self.state, event }),
+            _ => {
+                return Err(InvalidTransition {
+                    state: self.state,
+                    event,
+                });
+            }
         };
 
         self.state = to;
@@ -94,4 +99,3 @@ impl ConnectionMachine {
         self.state
     }
 }
-

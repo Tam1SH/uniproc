@@ -5,4 +5,3 @@ pub struct RawDistroData {
     pub is_running: bool,
     pub latency_ms: i32,
 }
-

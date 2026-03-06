@@ -11,6 +11,7 @@ use crate::features::envs::EnvironmentsFeature;
 use crate::features::l10n::L10nFeature;
 use crate::features::navigation::NavigationFeature;
 use crate::features::processes::ProcessFeature;
+use crate::features::settings::SettingsFeature;
 use crate::features::window_actions::WindowActionsFeature;
 pub use app_core::messages;
 use tracing::Level;
@@ -41,6 +42,7 @@ fn main() -> anyhow::Result<()> {
     let _guard = rt.enter();
 
     App::new()?
+        .feature(SettingsFeature::default())?
         .feature(CosmeticsFeature)?
         .feature(EnvironmentsFeature)?
         .feature(ProcessFeature { show_icons: true })?

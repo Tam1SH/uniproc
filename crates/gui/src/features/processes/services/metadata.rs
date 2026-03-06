@@ -1,5 +1,6 @@
 use crate::features::processes::services::providers::{IconProvider, NameProvider};
 use slint::{Image, SharedString};
+use std::time::Duration;
 
 pub trait ProcessMetadata {
     fn clean_name(&mut self, raw_name: &str) -> SharedString;
@@ -12,10 +13,10 @@ pub struct ProcessMetadataService {
 }
 
 impl ProcessMetadataService {
-    pub fn new() -> Self {
+    pub fn new(name_ttl: Duration, icon_ttl: Duration) -> Self {
         Self {
-            name_provider: NameProvider::new(),
-            icon_provider: IconProvider::new(),
+            name_provider: NameProvider::new(name_ttl),
+            icon_provider: IconProvider::new(icon_ttl),
         }
     }
 }
@@ -29,4 +30,3 @@ impl ProcessMetadata for ProcessMetadataService {
         self.icon_provider.get_icon(path)
     }
 }
-

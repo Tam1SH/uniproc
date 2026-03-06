@@ -1,7 +1,8 @@
+use crate::AppWindow;
 use crate::core::reactor::Reactor;
 use crate::features::Feature;
 use crate::shared::icons::Icons;
-use crate::AppWindow;
+use app_core::SharedState;
 use slint::Image;
 
 pub mod host;
@@ -10,9 +11,14 @@ pub mod wsl;
 pub struct EnvironmentsFeature;
 
 impl Feature for EnvironmentsFeature {
-    fn install(self, reactor: &mut Reactor, ui: &AppWindow) -> anyhow::Result<()> {
-        host::HostFeature.install(reactor, ui)?;
-        wsl::WslFeature.install(reactor, ui)?;
+    fn install(
+        self,
+        reactor: &mut Reactor,
+        ui: &AppWindow,
+        shared: &SharedState,
+    ) -> anyhow::Result<()> {
+        host::HostFeature.install(reactor, ui, shared)?;
+        wsl::WslFeature.install(reactor, ui, shared)?;
         Ok(())
     }
 }

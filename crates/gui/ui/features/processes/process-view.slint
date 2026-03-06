@@ -136,7 +136,7 @@ component ColumnHeader inherits Rectangle {
 
             MetricSplitBar {
                 value: def.stat-numeric;
-                threshold: def.threshold;
+                threshold: 100.0;
                 bar-width: root.cell-width;
                 accent-color: Theme.accent;
             }
@@ -196,7 +196,7 @@ component ProcessItem inherits Rectangle {
                         width: 12px;
                         height: 12px;
                         colorize: white;
-                        rotation-angle: entry.is-expanded ? 270deg : 180deg;
+                        transform-rotation: entry.is-expanded ? 270deg : 180deg;
                         image-fit: contain;
                     }
                 }
@@ -498,14 +498,11 @@ component Header inherits Rectangle {
     }
 }
 
-export component ProcessView inherits Rectangle {
-    property <length> col-name-width: 220px;
-    property <int> env-filter-index: 0;
+component ProcessBodyInternal inherits Rectangle {
+    in property <length> col-name-width: 220px;
+    in-out property <int> env-filter-index: 0;
 
     VerticalLayout {
-
-        Header { }
-
         HorizontalLayout {
             padding-top: 8px;
             padding-bottom: 8px;
@@ -591,6 +588,22 @@ export component ProcessView inherits Rectangle {
                 parent-idx: idx;
                 col-name-width: root.col-name-width;
             }
+        }
+    }
+}
+
+export component ProcessViewHeader inherits Header {}
+export component ProcessViewBody inherits ProcessBodyInternal {}
+
+export component ProcessView inherits Rectangle {
+    property <length> col-name-width: 220px;
+    property <int> env-filter-index: 0;
+
+    VerticalLayout {
+        Header { }
+        ProcessBodyInternal {
+            col-name-width: root.col-name-width;
+            env-filter-index: root.env-filter-index;
         }
     }
 }

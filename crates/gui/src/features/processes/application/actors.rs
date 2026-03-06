@@ -1,10 +1,12 @@
 use crate::core::actor::traits::{Context, Handler, Message, NoOp};
+use crate::features::envs::wsl::WslAgentRuntimeEvent;
 use crate::features::navigation::TabChanged;
 use crate::features::processes::domain::process_flow::ProcessFlowState;
 use crate::features::processes::scanner::base::{ProcessScanner, ScanResult};
+use crate::features::processes::scanner::wsl::SharedWslClient;
 use crate::features::processes::services::metadata::ProcessMetadataService;
 use crate::features::processes::ui::slint_bridge::{
-    build_snapshot, BridgeSnapshot, VisitorSharedState,
+    BridgeSnapshot, ColumnWidthConfig, VisitorSharedState, build_snapshot,
 };
 use crate::{AppWindow, MainBodyState, ProcessField, ProcessGroup, ProcessesFeatureGlobal};
 use app_core::messages;
@@ -40,7 +42,9 @@ pub struct ProcessActor {
 
     pub scanners: Option<Vec<Box<dyn ProcessScanner>>>,
     pub widths_by_schema: HashMap<&'static str, VisitorSharedState>,
+    pub width_config: ColumnWidthConfig,
     pub is_active: bool,
+    pub wsl_client: SharedWslClient,
 }
 
 impl ProcessActor {
@@ -128,7 +132,7 @@ impl Handler<ScanTick, AppWindow> for ProcessActor {
 
                     for scanner in scanners.iter_mut() {
                         let schema_id = scanner.schema_id();
-                        let result = scanner.scan();
+                        let result = scanner.scan().await;
                         scanned.push(ScannedResult { schema_id, result });
                     }
 
@@ -136,6 +140,19 @@ impl Handler<ScanTick, AppWindow> for ProcessActor {
                 },
                 move |_, _| {},
             );
+        }
+    }
+}
+
+impl Handler<WslAgentRuntimeEvent, AppWindow> for ProcessActor {
+    fn handle(&mut self, msg: WslAgentRuntimeEvent, ctx: &Context<Self, AppWindow>) {
+        let _state = msg.state;
+        if let Ok(mut client) = self.wsl_client.write() {
+            *client = msg.client;
+        }
+
+        if self.is_active {
+            ctx.addr().send(ScanTick);
         }
     }
 }
@@ -149,7 +166,7 @@ impl Handler<ScanResponse, AppWindow> for ProcessActor {
             let shared = self
                 .widths_by_schema
                 .entry(item.schema_id)
-                .or_insert_with(VisitorSharedState::new)
+                .or_insert_with(|| VisitorSharedState::with_config(&self.width_config))
                 .clone();
             snapshots.push(build_snapshot(item.result.as_ref(), &shared));
         }

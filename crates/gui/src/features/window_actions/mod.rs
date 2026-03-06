@@ -5,13 +5,14 @@ use crate::core::actor::addr::Addr;
 use crate::core::reactor::Reactor;
 use crate::features::window_actions::actors::*;
 use crate::{AppWindow, TitleBarActions};
+use app_core::SharedState;
 use i_slint_backend_winit::WinitWindowAccessor;
 use slint::ComponentHandle;
 
 pub struct WindowActionsFeature;
 
 impl Feature for WindowActionsFeature {
-    fn install(self, _: &mut Reactor, ui: &AppWindow) -> anyhow::Result<()> {
+    fn install(self, _: &mut Reactor, ui: &AppWindow, _: &SharedState) -> anyhow::Result<()> {
         let addr = Addr::new(WindowActor, ui.as_weak());
 
         let actions = ui.global::<TitleBarActions>();

@@ -1,6 +1,6 @@
 use crate::actor::addr::{Addr, REGISTRY};
-use crate::actor::event_bus::subscribe::Event;
 use crate::actor::event_bus::EVENT_BUS;
+use crate::actor::event_bus::subscribe::Event;
 use crate::messages;
 use slint::ComponentHandle;
 

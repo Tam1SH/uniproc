@@ -4,15 +4,32 @@ use crate::features::context_menu::actors::*;
 use crate::features::context_menu::utils::configure_window_styles;
 use crate::features::cosmetics::utils::{apply_native_win11_style, WindowTexture};
 use crate::features::cosmetics::CosmeticsFeature;
+use crate::features::settings::{settings_from, SettingsStore};
 use crate::features::Feature;
+use crate::shared::settings::{FeatureSettings, SettingsScope};
 use crate::{AppWindow, Theme};
 use crate::{ContextMenuProxy, ProcessContextMenu};
+use app_core::SharedState;
 use slint::ComponentHandle;
 use std::cell::RefCell;
 use windows::Win32::UI::Accessibility::HWINEVENTHOOK;
 
 mod actors;
 pub mod utils;
+
+const REVEAL_DELAY_MS: &str = "reveal_delay_ms";
+
+struct ContextMenuSettings;
+
+impl SettingsScope for ContextMenuSettings {
+    const PREFIX: &'static str = "context_menu";
+}
+
+impl FeatureSettings for ContextMenuSettings {
+    fn ensure_defaults(settings: &SettingsStore) -> anyhow::Result<()> {
+        Self::ensure_default(settings, REVEAL_DELAY_MS, 20u64)
+    }
+}
 
 thread_local! {
     static HOOK_HANDLE: RefCell<Option<HWINEVENTHOOK>> = RefCell::new(None);
@@ -23,7 +40,13 @@ thread_local! {
 pub struct ContextMenuFeature;
 
 impl Feature for ContextMenuFeature {
-    fn install(self, reactor: &mut Reactor, ui: &AppWindow) -> anyhow::Result<()> {
+    fn install(self, _: &mut Reactor, ui: &AppWindow, shared: &SharedState) -> anyhow::Result<()> {
+        let settings = settings_from(shared);
+
+        ContextMenuSettings::ensure_defaults(&settings)?;
+
+        let reveal_delay_ms = ContextMenuSettings::get_or(&settings, REVEAL_DELAY_MS, 20u64);
+
         let menu = ProcessContextMenu::new()?;
 
         configure_window_styles(&menu, 0);
@@ -34,6 +57,7 @@ impl Feature for ContextMenuFeature {
             menu,
             main_hwnd: 0,
             menu_hwnd: 0,
+            reveal_delay_ms,
         };
 
         let addr = Addr::new(state, ui.as_weak());

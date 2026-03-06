@@ -2,10 +2,11 @@ use super::Feature;
 use crate::core::reactor::Reactor;
 use crate::{AppWindow, Theme};
 use anyhow::Context;
+use app_core::SharedState;
 use i_slint_backend_winit::WinitWindowAccessor;
 use slint::{Color, ComponentHandle};
 
-use crate::features::cosmetics::utils::{apply_native_win11_style, WindowTexture};
+use crate::features::cosmetics::utils::{WindowTexture, apply_native_win11_style};
 use windows::UI::ViewManagement::{UIColorType, UISettings};
 
 pub mod utils;
@@ -21,7 +22,12 @@ impl CosmeticsFeature {
 }
 
 impl Feature for CosmeticsFeature {
-    fn install(self, _reactor: &mut Reactor, ui: &AppWindow) -> anyhow::Result<()> {
+    fn install(
+        self,
+        _reactor: &mut Reactor,
+        ui: &AppWindow,
+        _shared: &SharedState,
+    ) -> anyhow::Result<()> {
         let ui_weak = ui.as_weak();
 
         if let Some(accent) = Self::get_system_accent_color() {

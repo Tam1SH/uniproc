@@ -1,11 +1,11 @@
+use crate::ProcessContextMenu;
 use crate::core::actor::traits::Context;
 use crate::core::actor::traits::Handler;
 use crate::core::actor::traits::Message;
 use crate::features::context_menu::utils::{configure_window_styles, get_window_hwnd};
 use crate::features::context_menu::utils::{start_win_event_hook, stop_win_event_hook};
-use crate::ProcessContextMenu;
-use crate::{messages, ContextMenuProxy};
 use crate::{AppWindow, ProcessesFeatureGlobal};
+use crate::{ContextMenuProxy, messages};
 use slint::{ComponentHandle, SharedString};
 use windows::Win32::Foundation::HWND;
 use windows::Win32::UI::Input::KeyboardAndMouse::SetActiveWindow;
@@ -21,6 +21,7 @@ pub struct ContextMenuActor {
     pub menu: ProcessContextMenu,
     pub main_hwnd: isize,
     pub menu_hwnd: isize,
+    pub reveal_delay_ms: u64,
 }
 
 impl Handler<Show, AppWindow> for ContextMenuActor {
@@ -49,11 +50,14 @@ impl Handler<Show, AppWindow> for ContextMenuActor {
             ui.global::<ContextMenuProxy>().set_is_open(true);
 
             let menu_weak = self.menu.as_weak();
-            slint::Timer::single_shot(std::time::Duration::from_millis(20), move || {
-                if let Some(m) = menu_weak.upgrade() {
-                    m.set_show_progress(1.0);
-                }
-            });
+            slint::Timer::single_shot(
+                std::time::Duration::from_millis(self.reveal_delay_ms.max(1)),
+                move || {
+                    if let Some(m) = menu_weak.upgrade() {
+                        m.set_show_progress(1.0);
+                    }
+                },
+            );
         });
     }
 }

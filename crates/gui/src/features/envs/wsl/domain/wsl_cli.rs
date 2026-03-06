@@ -1,4 +1,4 @@
-use crate::features::envs::wsl::domain::{parse_wsl_output, RawDistroData};
+use crate::features::envs::wsl::domain::{RawDistroData, parse_wsl_output};
 
 use std::process::Stdio;
 use tokio::io::AsyncWriteExt;
@@ -66,4 +66,3 @@ pub async fn inject_agent_async(distro: &str) -> anyhow::Result<()> {
     child.wait().await?;
     Ok(())
 }
-

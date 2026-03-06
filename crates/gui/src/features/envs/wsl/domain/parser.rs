@@ -35,4 +35,3 @@ pub fn parse_wsl_output(output: &str) -> Vec<(String, bool)> {
         })
         .collect()
 }
-

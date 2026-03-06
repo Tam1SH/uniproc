@@ -15,7 +15,7 @@ pub struct RunTaskActor {
 }
 
 impl Handler<Drag, AppWindow> for RunTaskActor {
-    fn handle(&mut self, _msg: Drag, ctx: &Context<Self, AppWindow>) {
+    fn handle(&mut self, _msg: Drag, _: &Context<Self, AppWindow>) {
         self.window.window().with_winit_window(|w| {
             let _ = w.drag_window();
         });
@@ -49,7 +49,7 @@ impl Handler<Hide, AppWindow> for RunTaskActor {
 
 impl Handler<Execute, AppWindow> for RunTaskActor {
     fn handle(&mut self, msg: Execute, ctx: &Context<Self, AppWindow>) {
-        let cmd_str = msg.command.to_string();
+        // let cmd_str = msg.command.to_string();
         // let env_id = msg.env_id.as_str();
         //
 

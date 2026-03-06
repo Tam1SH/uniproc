@@ -7,16 +7,16 @@ export component SelectionIndicator inherits Rectangle {
 
     if (is-active): Rectangle {
         x: 0;
-        width: 3px;
-        height: 15px;
+        width: Theme.selection_indicator_width;
+        height: Theme.selection_indicator_height;
         background: Theme.accent;
-        border-radius: 2px;
+        border-radius: Theme.border_radius_xs;
         y: (parent.height - self.height) / 2;
 
         animate height {
-            duration: 150ms;
+            duration: Theme.fast_animation_time;
             easing: ease-out;
         }
-        animate opacity { duration: 200ms; }
+        animate opacity { duration: Theme.slow_animation_time; }
     }
 }

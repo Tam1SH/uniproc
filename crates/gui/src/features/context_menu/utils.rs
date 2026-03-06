@@ -1,14 +1,14 @@
+use crate::ProcessContextMenu;
 use crate::features::context_menu::actors::SystemFocusChanged;
 use crate::features::context_menu::{ACTOR_ADDR, HOOK_HANDLE};
-use crate::ProcessContextMenu;
 use i_slint_backend_winit::WinitWindowAccessor;
 use raw_window_handle::{HasWindowHandle, RawWindowHandle};
 use slint::ComponentHandle;
-use windows::core::BOOL;
 use windows::Win32::Foundation::HWND;
-use windows::Win32::Graphics::Dwm::{DwmSetWindowAttribute, DWMWA_TRANSITIONS_FORCEDISABLED};
-use windows::Win32::UI::Accessibility::{SetWinEventHook, UnhookWinEvent, HWINEVENTHOOK};
+use windows::Win32::Graphics::Dwm::{DWMWA_TRANSITIONS_FORCEDISABLED, DwmSetWindowAttribute};
+use windows::Win32::UI::Accessibility::{HWINEVENTHOOK, SetWinEventHook, UnhookWinEvent};
 use windows::Win32::UI::WindowsAndMessaging::*;
+use windows::core::BOOL;
 
 pub fn configure_window_styles(menu: &ProcessContextMenu, main_hwnd: isize) {
     menu.window().with_winit_window(|winit_win| {

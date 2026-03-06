@@ -1,0 +1,75 @@
+import { Theme } from "theme.slint";
+import { Icons } from "icons.slint";
+
+export component DistroItem inherits Rectangle {
+    in-out property <string> name;
+    in-out property <bool> active;
+    in-out property <bool> installed;
+    in-out property <bool> running;
+
+    callback clicked;
+    callback install_clicked;
+
+    height: 36px;
+    border-radius: Theme.border_radius_s;
+
+    background: active ? Theme.item_active_background : (touch.has-hover ? Theme.fill_subtle_hover : transparent);
+    animate background { duration: Theme.primary_animation_time; }
+
+    touch := TouchArea {
+        enabled: root.installed;
+        mouse-cursor: pointer;
+        clicked => {
+            if (root.installed) {
+                root.clicked();
+            }
+        }
+    }
+
+    HorizontalLayout {
+        padding-left: 54px;
+        padding-right: 8px;
+        spacing: 8px;
+
+        VerticalLayout {
+            alignment: center;
+            Rectangle {
+                width: 8px;
+                height: 8px;
+                border-radius: Theme.border_radius_s;
+                background: !root.installed ? Theme.disabled : (root.running ? Theme.success : Theme.offline);
+                animate background { duration: Theme.primary_animation_time; }
+            }
+        }
+
+        Text {
+            text: root.name;
+            font-size: Theme.font_size_caption;
+            vertical-alignment: center;
+            horizontal-stretch: 1;
+            color: !root.installed ? Theme.text_disabled : (active ? Theme.text_primary : Theme.text_secondary);
+            animate color { duration: Theme.primary_animation_time; }
+        }
+
+        if (!root.installed): Rectangle {
+            width: 24px;
+            height: 24px;
+            border-radius: Theme.border_radius_s;
+            background: install-touch.has-hover ? Theme.fill_subtle_hover : transparent;
+
+            Image {
+                source: Icons.download-regular;
+                width: 16px;
+                height: 16px;
+                colorize: install-touch.has-hover ? Theme.accent : Theme.text_secondary;
+                animate colorize { duration: Theme.primary_animation_time; }
+            }
+
+            install-touch := TouchArea {
+                clicked => {
+                    root.install_clicked();
+                }
+            }
+        }
+    }
+}

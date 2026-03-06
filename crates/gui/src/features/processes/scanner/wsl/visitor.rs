@@ -35,60 +35,68 @@ impl ProcessVisitor for WslProcessStat {
 
     fn visit(&self, _ctx: &dyn VisitorContext, visitor: &mut dyn FnMut(Field)) {
         visitor(Field {
+            id: "cpu",
+            label: "CPU",
+            value: FieldValue::Percent(self.cpu_percent),
+            numeric: self.cpu_percent,
+            threshold: 50.0,
+        });
+
+        visitor(Field {
             id: "memory",
             label: "Memory",
             value: FieldValue::Bytes(self.rss_kb * 1024),
-            numeric: self.rss_kb as f32,
+            numeric: self.rss_kb as f32 / (1024.0 * 1024.0),
             threshold: 1.0,
         });
 
         visitor(Field {
-            id: "net_vsock",
-            label: "vSock",
-            value: FieldValue::Bytes(self.vsock_rx_bytes + self.vsock_tx_bytes),
-            numeric: (self.vsock_rx_bytes + self.vsock_tx_bytes) as f32,
-            threshold: 0.1,
-        });
-
-        visitor(Field {
-            id: "net_p9",
-            label: "P9",
-            value: FieldValue::Bytes(self.p9_rx_bytes + self.p9_tx_bytes),
-            numeric: (self.p9_rx_bytes + self.p9_tx_bytes) as f32,
-            threshold: 0.1,
-        });
-
-        visitor(Field {
-            id: "net_tcp",
-            label: "TCP",
-            value: FieldValue::Bytes(self.tcp_tx_remote_bytes + self.tcp_rx_remote_bytes),
-            numeric: (self.tcp_tx_remote_bytes + self.tcp_rx_remote_bytes) as f32,
-            threshold: 0.1,
-        });
-
-        visitor(Field {
-            id: "net_uds",
-            label: "UDS",
-            value: FieldValue::Bytes(self.uds_tx_bytes + self.uds_rx_bytes),
-            numeric: (self.uds_tx_bytes + self.uds_rx_bytes) as f32,
-            threshold: 0.1,
-        });
-
-        visitor(Field {
             id: "disk_read",
-            label: "Disk R",
+            label: "Disk",
             value: FieldValue::Bytes(self.disk_read_bytes),
             numeric: self.disk_read_bytes as f32,
             threshold: 0.1,
         });
 
-        visitor(Field {
-            id: "disk_write",
-            label: "Disk W",
-            value: FieldValue::Bytes(self.disk_write_bytes),
-            numeric: self.disk_write_bytes as f32,
-            threshold: 0.1,
-        });
+        // visitor(Field {
+        //     id: "disk_write",
+        //     label: "Disk W",
+        //     value: FieldValue::Bytes(self.disk_write_bytes),
+        //     numeric: self.disk_write_bytes as f32,
+        //     threshold: 0.1,
+        // });
+
+        // visitor(Field {
+        //     id: "net_vsock",
+        //     label: "vSock",
+        //     value: FieldValue::Bytes(self.vsock_rx_bytes + self.vsock_tx_bytes),
+        //     numeric: (self.vsock_rx_bytes + self.vsock_tx_bytes) as f32,
+        //     threshold: 0.1,
+        // });
+        //
+        // visitor(Field {
+        //     id: "net_p9",
+        //     label: "P9",
+        //     value: FieldValue::Bytes(self.p9_rx_bytes + self.p9_tx_bytes),
+        //     numeric: (self.p9_rx_bytes + self.p9_tx_bytes) as f32,
+        //     threshold: 0.1,
+        // });
+        //
+        // visitor(Field {
+        //     id: "net_tcp",
+        //     label: "TCP",
+        //     value: FieldValue::Bytes(self.tcp_tx_remote_bytes + self.tcp_rx_remote_bytes),
+        //     numeric: (self.tcp_tx_remote_bytes + self.tcp_rx_remote_bytes) as f32,
+        //     threshold: 0.1,
+        // });
+        //
+        // visitor(Field {
+        //     id: "net_uds",
+        //     label: "UDS",
+        //     value: FieldValue::Bytes(self.uds_tx_bytes + self.uds_rx_bytes),
+        //     numeric: (self.uds_tx_bytes + self.uds_rx_bytes) as f32,
+        //     threshold: 0.1,
+        // });
     }
 }
 

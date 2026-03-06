@@ -4,6 +4,29 @@ use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
 #[derive(Clone, Debug)]
+pub struct ColumnWidthConfig {
+    pub widths_px: HashMap<&'static str, u32>,
+    pub min_widths_px: HashMap<&'static str, u32>,
+    pub default_width_px: u32,
+}
+
+impl Default for ColumnWidthConfig {
+    fn default() -> Self {
+        let mut widths_px = HashMap::new();
+        widths_px.insert("memory", 120);
+
+        let mut min_widths_px = HashMap::new();
+        min_widths_px.insert("memory", 120);
+
+        Self {
+            widths_px,
+            min_widths_px,
+            default_width_px: 70,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct VisitorSharedState {
     widths_px: Arc<RwLock<HashMap<&'static str, u32>>>,
     min_widths_px: Arc<RwLock<HashMap<&'static str, u32>>>,
@@ -12,16 +35,14 @@ pub struct VisitorSharedState {
 
 impl VisitorSharedState {
     pub fn new() -> Self {
-        let mut widths_px = HashMap::new();
-        widths_px.insert("memory", 140);
+        Self::with_config(&ColumnWidthConfig::default())
+    }
 
-        let mut min_widths_px = HashMap::new();
-        min_widths_px.insert("memory", 140);
-
+    pub fn with_config(config: &ColumnWidthConfig) -> Self {
         Self {
-            widths_px: Arc::new(RwLock::new(widths_px)),
-            min_widths_px: Arc::new(RwLock::new(min_widths_px)),
-            default_width_px: 70,
+            widths_px: Arc::new(RwLock::new(config.widths_px.clone())),
+            min_widths_px: Arc::new(RwLock::new(config.min_widths_px.clone())),
+            default_width_px: config.default_width_px,
         }
     }
 

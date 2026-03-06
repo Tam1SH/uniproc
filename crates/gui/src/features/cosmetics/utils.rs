@@ -3,8 +3,8 @@ use std::ptr::null_mut;
 use window_vibrancy::{apply_acrylic, apply_mica};
 use windows::Win32::Foundation::HWND;
 use windows::Win32::Graphics::Dwm::{
-    DwmExtendFrameIntoClientArea, DwmSetWindowAttribute, DWMWA_WINDOW_CORNER_PREFERENCE,
-    DWMWCP_ROUND,
+    DWMWA_WINDOW_CORNER_PREFERENCE, DWMWCP_ROUND, DwmExtendFrameIntoClientArea,
+    DwmSetWindowAttribute,
 };
 use windows::Win32::UI::Controls::MARGINS;
 

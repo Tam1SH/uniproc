@@ -1,20 +1,53 @@
 use crate::core::actor::event_bus::EVENT_BUS;
 use crate::core::actor::traits::Message;
 use crate::core::reactor::Reactor;
-use crate::features::navigation::utils::get_tab_name_by_index;
 use crate::features::Feature;
+use crate::features::navigation::utils::get_tab_name_by_index;
+use crate::features::settings::{SettingsStore, settings_from};
 use crate::shared::icons::Icons;
-use crate::{messages, AppWindow, Dashboard};
+use crate::shared::settings::{FeatureSettings, SettingsScope};
+use crate::{AppWindow, Dashboard, messages};
 use crate::{Navigation, PageEntry};
+use app_core::SharedState;
 use slint::{ComponentHandle, ModelRc, SharedString, VecModel};
 use std::time::Duration;
 
 pub mod utils;
 
+const SWITCH_HIDE_DELAY_MS: &str = "switch_hide_delay_ms";
+const SWITCH_SHOW_DELAY_MS: &str = "switch_show_delay_ms";
+
+struct NavigationSettings;
+
+impl SettingsScope for NavigationSettings {
+    const PREFIX: &'static str = "navigation";
+}
+
+impl FeatureSettings for NavigationSettings {
+    fn ensure_defaults(settings: &SettingsStore) -> anyhow::Result<()> {
+        Self::ensure_default(settings, SWITCH_HIDE_DELAY_MS, 60u64)?;
+        Self::ensure_default(settings, SWITCH_SHOW_DELAY_MS, 20u64)?;
+        Ok(())
+    }
+}
+
 pub struct NavigationFeature;
 
 impl Feature for NavigationFeature {
-    fn install(self, _reactor: &mut Reactor, ui: &AppWindow) -> anyhow::Result<()> {
+    fn install(
+        self,
+        _reactor: &mut Reactor,
+        ui: &AppWindow,
+        shared: &SharedState,
+    ) -> anyhow::Result<()> {
+        let settings = settings_from(shared);
+
+        NavigationSettings::ensure_defaults(&settings)?;
+
+        let hide_delay_ms =
+            NavigationSettings::get_or(&settings, SWITCH_HIDE_DELAY_MS, 60u64).max(1);
+        let show_delay_ms =
+            NavigationSettings::get_or(&settings, SWITCH_SHOW_DELAY_MS, 20u64).max(1);
         let ui_handle = ui.as_weak();
 
         ui.global::<Dashboard>()
@@ -56,19 +89,6 @@ impl Feature for NavigationFeature {
                 },
             ])));
 
-        // pub fn get_tab_name_by_index(index: i32) -> &'static str {
-        //     match index {
-        //         0 => "Processes",
-        //         1 => "Performance",
-        //         2 => "Disk",
-        //         3 => "Statistics",
-        //         4 => "Startup apps",
-        //         5 => "Users",
-        //         6 => "Services",
-        //         _ => "Unknown",
-        //     }
-        // }
-
         ui.global::<Navigation>()
             .on_request_tab_switch(move |new_index| {
                 let ui = match ui_handle.upgrade() {
@@ -91,12 +111,12 @@ impl Feature for NavigationFeature {
 
                 nav.set_content_visible(false);
 
-                slint::Timer::single_shot(Duration::from_millis(60), move || {
+                slint::Timer::single_shot(Duration::from_millis(hide_delay_ms), move || {
                     let nav = ui.global::<Navigation>();
 
                     nav.set_active_tab_index(new_index);
 
-                    slint::Timer::single_shot(Duration::from_millis(20), move || {
+                    slint::Timer::single_shot(Duration::from_millis(show_delay_ms), move || {
                         ui.global::<Navigation>().set_content_visible(true);
                     });
                 });

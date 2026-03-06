@@ -1,8 +1,7 @@
 use std::collections::HashMap;
 use windows::Win32::Foundation::CloseHandle;
 use windows::Win32::System::Threading::{
-    GetProcessIoCounters, OpenProcess, IO_COUNTERS,
-    PROCESS_QUERY_LIMITED_INFORMATION,
+    GetProcessIoCounters, IO_COUNTERS, OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION,
 };
 
 pub struct ProcessNetProvider {
