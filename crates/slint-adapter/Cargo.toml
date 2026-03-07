@@ -1,0 +1,28 @@
+[package]
+name = "slint-adapter"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+slint = { workspace = true }
+app-contracts = { workspace = true }
+app-core = { workspace = true }
+anyhow = { workspace = true }
+i-slint-backend-winit = { workspace = true }
+winit = { workspace = true }
+raw-window-handle = { workspace = true }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+window-vibrancy = { workspace = true }
+windows = { workspace = true, features = [
+    "UI",
+    "UI_ViewManagement",
+    "Win32_Foundation",
+    "Win32_Graphics_Dwm",
+    "Win32_UI_Controls",
+    "Win32_UI_WindowsAndMessaging",
+] }
+
+[build-dependencies]
+slint-build = "1.14.1"
+toml.workspace = true

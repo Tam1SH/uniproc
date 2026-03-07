@@ -8,7 +8,7 @@ members = [
     "crates/*",
 ]
 
-default-members = ["crates/gui"]
+default-members = ["crates/desktop"]
 
 resolver = "2"
 
@@ -16,7 +16,9 @@ resolver = "2"
 ogurpchik = { git = "https://github.com/Tam1SH/oguRPChik", branch = "master", features = ["rkyv-codec", "vsock"] }
 rust-i18n = "3"
 app-core = { path = "crates/app-core" }
-slint = { version = "=1.14.1", features = ["backend-winit", "renderer-winit-skia"] }
+app-contracts = { path = "crates/app-contracts" }
+slint-adapter = { path = "crates/slint-adapter" }
+slint = { version = "=1.14.1", features = ["renderer-skia"] }
 uniproc-protocol = { git = "https://github.com/Tam1SH/uniproc-protocol", branch = "master" }
 
 raw-window-handle = "0.6.2"

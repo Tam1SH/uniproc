@@ -1,0 +1,25 @@
+[package]
+name = "domain"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+slint = { workspace = true }
+anyhow = { workspace = true }
+windows = { workspace = true, features = ["Win32_System_SystemInformation", "Wdk_System_Threading", "Wdk_System_SystemInformation"] }
+sysinfo = { workspace = true }
+ttl_cache = { workspace = true }
+tracing = { workspace = true }
+smallvec = { workspace = true }
+app-core = { workspace = true }
+app-contracts = { workspace = true }
+tokio = { workspace = true }
+uniproc-protocol.workspace = true
+ogurpchik.workspace = true
+rkyv.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+async-trait.workspace = true
+
+
+

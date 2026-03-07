@@ -6,3 +6,9 @@ edition.workspace = true
 [dependencies]
 slint = { workspace = true }
 tokio = { workspace = true }
+tracing = { workspace = true }
+rust-i18n = { workspace = true }
+anyhow = { workspace = true }
+
+[build-dependencies]
+toml.workspace = true

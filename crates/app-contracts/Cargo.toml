@@ -1,0 +1,10 @@
+[package]
+name = "app-contracts"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+app-core = { workspace = true }
+ogurpchik = { workspace = true }
+uniproc-protocol = { workspace = true }
+slint = { workspace = true }
