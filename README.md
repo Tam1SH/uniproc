@@ -30,25 +30,11 @@ The project addresses three main pain points:
 
 ## Architecture
 
-```mermaid
-flowchart TB
-    WA["uniproc-windows-agent | ETW · Windows 11"]
-    LA["uniproc-linux-agent | eBPF · WSL2"]
+`uniproc` is built on top of several specialized components that work together:
 
-    subgraph CORE["Uniproc"]
-        direction LR
-        F1["Feature A"] --> A1["Actor A"]
-        F2["Feature B"] --> A2["Actor B"]
-        F3["Feature C"] --> A3["Actor C"]
-        A1 --- S1["Slint A"]
-        A2 --- S2["Slint B"]
-        A3 --- S3["Slint C"]
-        EB["Event Bus"]
-        A1 --- EB
-        A2 --- EB
-        A3 --- EB
-    end
+| Component                                                                | Description                                                                                 |
+|--------------------------------------------------------------------------|---------------------------------------------------------------------------------------------|
+| [oguRPChik](https://github.com/Tam1SH/oguRPChik)                         | Transport-agnostic RPC framework — the communication backbone that ties everything together |
+| [uniproc-linux-agent](https://github.com/Tam1SH/uniproc-linux-agent)     | eBPF-based telemetry agent running inside WSL2                                              |
+| [uniproc-windows-agent](https://github.com/Tam1SH/uniproc-windows-agent) | ETW-based telemetry agent running on Windows 11                                             |
 
-    WA ---|oguRPChik| CORE
-    LA ---|oguRPChik| CORE
-```
