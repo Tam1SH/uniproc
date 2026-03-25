@@ -1,1 +1,1 @@
-pub mod slint_bridge;
+pub mod bridge;

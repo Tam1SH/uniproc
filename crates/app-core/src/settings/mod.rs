@@ -1,14 +1,14 @@
-mod store;
+pub mod store;
 
 use arc_swap::ArcSwap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use crate::SharedState;
 use crate::app::Feature;
 use crate::reactor::Reactor;
-use serde::Serialize;
+use crate::SharedState;
 use serde::de::DeserializeOwned;
+use serde::Serialize;
 use slint::ComponentHandle;
 
 pub use store::SettingEvent;

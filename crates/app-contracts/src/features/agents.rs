@@ -15,9 +15,10 @@ pub struct RemoteScanResult {
 }
 impl Message for RemoteScanResult {}
 
-#[cfg(target_os = "windows")]
-#[derive(Clone)]
-pub struct WindowsReportMessage(pub WindowsReport);
-
-#[cfg(target_os = "windows")]
-impl Message for WindowsReportMessage {}
+cfg_if::cfg_if! {
+    if #[cfg(target_os = "windows")] {
+        #[derive(Clone)]
+        pub struct WindowsReportMessage(pub WindowsReport);
+        impl Message for WindowsReportMessage {}
+    }
+}

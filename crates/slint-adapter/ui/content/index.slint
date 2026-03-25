@@ -29,9 +29,13 @@ component PageHeader inherits Rectangle {
 }
 
 export component Content inherits Rectangle {
-    background: Theme.layer_background;
+    background: Theme.colorNeutralBackgroundAlpha;
+
+    border-width: 1px;
+    border-color: Theme.colorNeutralStrokeAlpha;
     border-top-left-radius: Theme.border_radius_m;
     clip: true;
+
     private property <int> current-page-id: Navigation.active_tab_index;
     private property <string> current-page-title: Dashboard.pages[root.current-page-id].text;
     private property <bool> is-entering: false;
@@ -57,7 +61,7 @@ export component Content inherits Rectangle {
                 height: 100%;
                 opacity: Navigation.content-visible ? 1 : 0;
                 y: Navigation.content-visible ? 0px : 30px;
- 
+
                 animate opacity {
                     duration: 150ms;
                     easing: ease-in-out;

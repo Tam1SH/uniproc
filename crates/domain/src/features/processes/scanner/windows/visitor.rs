@@ -104,7 +104,7 @@ fn visit_machine_stats(machine: &WindowsMachineStats, visitor: &mut dyn FnMut(Fi
         "{}/{}",
         FieldValue::format_value_with_params(
             used_memory_gb,
-            "GB",
+            "",
             &[FieldValueFormat::WithoutUnit, FieldValueFormat::WithoutSpaces]
         ),
         FieldValue::format_value_with_params(
@@ -120,7 +120,7 @@ fn visit_machine_stats(machine: &WindowsMachineStats, visitor: &mut dyn FnMut(Fi
         "{}/{}",
         FieldValue::format_value_with_params(
             cpu_current_ghz,
-            "GHz",
+            "",
             &[FieldValueFormat::WithoutUnit, FieldValueFormat::WithoutSpaces]
         ),
         FieldValue::format_value_with_params(

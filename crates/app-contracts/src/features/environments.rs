@@ -14,11 +14,13 @@ type RpcClient<C> = Client<
     >,
 >;
 
-#[cfg(target_os = "windows")]
-pub type AgentClient = RpcClient<WindowsCodec>;
-
-#[cfg(not(target_os = "windows"))]
-pub type AgentClient = RpcClient<LinuxCodec>;
+cfg_if::cfg_if! {
+    if #[cfg(target_os = "windows")] {
+        pub type AgentClient = RpcClient<WindowsCodec>;
+    } else {
+        pub type AgentClient = RpcClient<LinuxCodec>;
+    }
+}
 
 pub type WslClient = RpcClient<LinuxCodec>;
 
@@ -38,39 +40,33 @@ pub enum AgentConnectionState {
     WaitingRetry { delay_secs: u64 },
 }
 
-#[cfg(target_os = "windows")]
-pub type WslConnectionState = AgentConnectionState;
+cfg_if::cfg_if! {
+    if #[cfg(target_os = "windows")] {
+        pub type WslConnectionState = AgentConnectionState;
 
-#[cfg(target_os = "windows")]
-#[derive(Clone)]
-pub struct WslAgentRuntimeEvent {
-    pub state: AgentConnectionState,
-    pub latency_ms: Option<i32>,
+        #[derive(Clone)]
+        pub struct WslAgentRuntimeEvent {
+            pub state: AgentConnectionState,
+            pub latency_ms: Option<i32>,
+        }
+        impl Message for WslAgentRuntimeEvent {}
+
+        #[derive(Clone)]
+        pub struct WindowsAgentRuntimeEvent {
+            pub state: AgentConnectionState,
+            pub client: Option<AgentClient>,
+            pub latency_ms: Option<i32>,
+        }
+        impl Message for WindowsAgentRuntimeEvent {}
+    } else {
+        #[derive(Clone)]
+        pub struct LinuxAgentRuntimeEvent {
+            pub state: AgentConnectionState,
+            pub latency_ms: Option<i32>,
+        }
+        impl Message for LinuxAgentRuntimeEvent {}
+    }
 }
-
-#[cfg(target_os = "windows")]
-impl Message for WslAgentRuntimeEvent {}
-
-#[cfg(target_os = "windows")]
-#[derive(Clone)]
-pub struct WindowsAgentRuntimeEvent {
-    pub state: AgentConnectionState,
-    pub client: Option<AgentClient>,
-    pub latency_ms: Option<i32>,
-}
-
-#[cfg(target_os = "windows")]
-impl Message for WindowsAgentRuntimeEvent {}
-
-#[cfg(not(target_os = "windows"))]
-#[derive(Clone)]
-pub struct LinuxAgentRuntimeEvent {
-    pub state: AgentConnectionState,
-    pub latency_ms: Option<i32>,
-}
-
-#[cfg(not(target_os = "windows"))]
-impl Message for LinuxAgentRuntimeEvent {}
 
 pub trait EnvironmentsUiPort: 'static {
     fn set_host_name(&self, name: String);

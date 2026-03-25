@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+cfg-if = { workspace = true }
 app-core = { workspace = true }
 ogurpchik = { workspace = true }
 uniproc-protocol = { workspace = true }

@@ -19,4 +19,6 @@ tracing = { workspace = true }
 ttl_cache = { workspace = true }
 uniproc-protocol = { workspace = true }
 serde_json = { workspace = true }
+serde.workspace = true
+macros.workspace = true
 windows = { workspace = true, features = ["Win32_System_SystemInformation", "Wdk_System_Threading", "Wdk_System_SystemInformation"] }

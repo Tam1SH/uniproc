@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+cfg-if = { workspace = true }
 slint = { workspace = true }
 app-contracts = { workspace = true }
 app-core = { workspace = true }

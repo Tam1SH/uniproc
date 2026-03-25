@@ -15,7 +15,7 @@ export component NavItem inherits Rectangle {
 
     height: 40px;
     clip: true;
-    background: active ? Theme.fill_subtle_secondary : (touch.has-hover ? Theme.fill_subtle_hover : transparent);
+    background: active ? Theme.colorNeutralBackgroundAlpha2 : (touch.has-hover ? Theme.fill_subtle_hover : transparent);
     animate background { duration: Theme.primary_animation_time; }
     border-radius: 6px;
 

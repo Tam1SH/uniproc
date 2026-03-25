@@ -122,13 +122,12 @@ mod platform {
     use slint::ComponentHandle;
 
     #[cfg(target_os = "windows")]
-    use windows::Win32::Foundation::HWND;
-    #[cfg(target_os = "windows")]
-    use windows::Win32::Graphics::Dwm::{DWMWA_TRANSITIONS_FORCEDISABLED, DwmSetWindowAttribute};
-    #[cfg(target_os = "windows")]
-    use windows::Win32::UI::WindowsAndMessaging::*;
-    #[cfg(target_os = "windows")]
-    use windows::core::BOOL;
+    use {
+        windows::Win32::Foundation::HWND,
+        windows::Win32::Graphics::Dwm::{DWMWA_TRANSITIONS_FORCEDISABLED, DwmSetWindowAttribute},
+        windows::Win32::UI::WindowsAndMessaging::*,
+        windows::core::BOOL,
+    };
 
     pub fn configure_window_styles(menu: &ProcessContextMenu, main_hwnd: isize) {
         #[cfg(target_os = "windows")]

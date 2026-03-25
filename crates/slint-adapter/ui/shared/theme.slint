@@ -3,33 +3,149 @@ export global Theme {
 
     in-out property <bool> is_dark: true;
 
-    out property <color> background: is_dark ? #1c1c1c : #f3f3f3;
-    out property <color> surface: is_dark ? #1a1a1a : #ffffff;
-    out property <color> layer_background: is_dark ? rgba(255, 255, 255, 0.05) : rgba(0, 0, 0, 0.05);
-    out property <color> fill_row_subtle: is_dark ? rgba(255, 255, 255, 0.01) : rgba(0, 0, 0, 0.01);
+    out property <color> colorNeutralForeground1: is_dark ? #ffffff : #242424;
+    out property <color> colorNeutralForeground2: is_dark ? #d6d6d6 : #424242;
+    out property <color> colorNeutralForeground3: is_dark ? #adadad : #616161;
+    out property <color> colorNeutralForegroundDisabled: is_dark ? #5c5c5c : #bdbdbd;
+    out property <color> colorNeutralForegroundOnBrand: #ffffff;
 
-    out property <color> text_primary: is_dark ? #ffffff : #000000;
-    out property <color> text_secondary: is_dark ? #d1d1d1 : #616161;
-    out property <color> text_disabled: is_dark ? #858585 : #9e9e9e;
+    out property <color> colorNeutralBackground1: is_dark ? #292929 : #ffffff;
+    out property <color> colorNeutralBackground2: is_dark ? #1f1f1f : #fafafa;
+    out property <color> colorNeutralBackground3: is_dark ? #141414 : #f5f5f5;
+    out property <color> colorNeutralBackground4: is_dark ? #0a0a0a : #f0f0f0;
+    out property <color> colorNeutralBackground5: is_dark ? #000000 : #ebebeb;
+    out property <color> colorSubtleBackgroundHover: is_dark ? #383838 : #f5f5f5;
+    out property <color> colorSubtleBackgroundPressed: is_dark ? #2e2e2e : #e0e0e0;
+    out property <color> colorSubtleBackgroundSelected: is_dark ? #333333 : #ebebeb;
+    out property <color> colorSubtleBackgroundLightAlphaHover: is_dark ? rgba(36, 36, 36, 0.8) : rgba(255, 255, 255, 0.7);
+    out property <color> colorSubtleBackgroundLightAlphaPressed: is_dark ? rgba(36, 36, 36, 0.5) : rgba(255, 255, 255, 0.5);
+    out property <color> colorSubtleBackgroundLightAlphaSelected: transparent;
+    out property <color> colorTransparentBackground: transparent;
 
-    out property <color> fill_subtle_hover: is_dark ? rgba(255, 255, 255, 0.03) : rgba(0, 0, 0, 0.03);
-    out property <color> fill_subtle_secondary: is_dark ? rgba(255, 255, 255, 0.06) : rgba(0, 0, 0, 0.06);
-    out property <color> fill_transparent: transparent;
+    out property <color> colorNeutralBackgroundAlpha: is_dark ? rgba(255, 255, 255, 0.035) : rgba(255, 255, 255, 0.035);
+    out property <color> colorNeutralBackgroundAlpha2: is_dark ? rgba(255, 255, 255, 0.06) : rgba(255, 255, 255, 0.8);
+    out property <color> colorNeutralStencil1Alpha: is_dark ? rgba(0, 0, 0, 0.25) : rgba(0, 0, 0, 0.25);
+    out property <color> colorNeutralStencil2Alpha: is_dark ? rgba(255, 255, 255, 0.05) : rgba(0, 0, 0, 0.05);
+    out property <color> colorNeutralStrokeAlpha: is_dark ? rgba(0, 0, 0, 0.25) : rgba(0, 0, 0, 0.25);
+    out property <color> colorNeutralStrokeAlpha2: is_dark ? rgba(255, 255, 255, 0.2) : rgba(255, 255, 255, 0.2);
+    out property <color> colorBackgroundOverlay: is_dark ? rgba(0, 0, 0, 0.5) : rgba(0, 0, 0, 0.4);
+    out property <color> colorScrollbarOverlay: is_dark ? rgba(255, 255, 255, 0.6) : rgba(0, 0, 0, 0.5);
 
-    in-out property <color> accent: #0078d4;
-    out property <color> accent_hover: accent.darker(10%);
-    out property <color> accent_text: #ffffff;
+    out property <color> colorBrandBackground: is_dark ? #115ea3 : #0f6cbd;
+    out property <color> colorBrandBackgroundHover: is_dark ? #0f6cbd : #115ea3;
+    out property <color> colorBrandBackgroundPressed: is_dark ? #0c3b5e : #0c3b5e;
+    out property <color> colorBrandBackgroundSelected: is_dark ? #0f548c : #0f548c;
+    out property <color> colorBrandForeground1: is_dark ? #479ef5 : #0f6cbd;
+    out property <color> colorBrandForeground2: is_dark ? #62abf5 : #115ea3;
 
-    out property <color> border: is_dark ? #444444 : #e5e5e5;
-    out property <color> control_border: is_dark ? #3d3d3d : #d1d1d1;
+    out property <color> colorNeutralStroke1: is_dark ? #666666 : #d1d1d1;
+    out property <color> colorNeutralStroke2: is_dark ? #525252 : #e0e0e0;
+    out property <color> colorNeutralStrokeAccessible: is_dark ? #adadad : #616161;
+    out property <color> colorNeutralStrokeDisabled: is_dark ? #424242 : #e0e0e0;
 
-    out property <length> spacing_xs: 4px;
-    out property <length> spacing_s: 8px;
-    out property <length> spacing_m: 12px;
-    out property <length> spacing_l: 16px;
-    out property <length> border_radius_xs: 2px;
-    out property <length> border_radius_s: 4px;
-    out property <length> border_radius_m: 8px;
+    out property <color> colorPaletteGreenForeground1: is_dark ? #54b054 : #0e700e;
+    out property <color> colorPaletteGreenBackground2: is_dark ? #083b10 : #c6efc6;
+    out property <color> colorPaletteDarkOrangeForeground1: is_dark ? #f99245 : #a74109;
+    out property <color> colorPaletteDarkOrangeBackground2: is_dark ? #4a1e04 : #f9dcd1;
+
+    out property <length> spacingHorizontalNone: 0px;
+    out property <length> spacingHorizontalXXS: 2px;
+    out property <length> spacingHorizontalXS: 4px;
+    out property <length> spacingHorizontalSNudge: 6px;
+    out property <length> spacingHorizontalS: 8px;
+    out property <length> spacingHorizontalMNudge: 10px;
+    out property <length> spacingHorizontalM: 12px;
+    out property <length> spacingHorizontalL: 16px;
+    out property <length> spacingHorizontalXL: 20px;
+    out property <length> spacingHorizontalXXL: 24px;
+    out property <length> spacingHorizontalXXXL: 32px;
+
+    out property <length> spacingVerticalNone: 0px;
+    out property <length> spacingVerticalXXS: 2px;
+    out property <length> spacingVerticalXS: 4px;
+    out property <length> spacingVerticalSNudge: 6px;
+    out property <length> spacingVerticalS: 8px;
+    out property <length> spacingVerticalMNudge: 10px;
+    out property <length> spacingVerticalM: 12px;
+    out property <length> spacingVerticalL: 16px;
+    out property <length> spacingVerticalXL: 20px;
+    out property <length> spacingVerticalXXL: 24px;
+    out property <length> spacingVerticalXXXL: 32px;
+
+    out property <length> borderRadiusNone: 0px;
+    out property <length> borderRadiusSmall: 2px;
+    out property <length> borderRadiusMedium: 4px;
+    out property <length> borderRadiusLarge: 6px;
+    out property <length> borderRadiusXLarge: 8px;
+    out property <length> borderRadius2XLarge: 12px;
+    out property <length> borderRadius3XLarge: 16px;
+    out property <length> borderRadius4XLarge: 24px;
+    out property <length> borderRadius5XLarge: 32px;
+    out property <length> borderRadius6XLarge: 40px;
+    out property <length> borderRadiusCircular: 10000px;
+
+    out property <length> fontSizeBase100: 10px;
+    out property <length> fontSizeBase200: 12px;
+    out property <length> fontSizeBase300: 14px;
+    out property <length> fontSizeBase400: 16px;
+    out property <length> fontSizeBase500: 20px;
+    out property <length> fontSizeBase600: 24px;
+    out property <length> fontSizeHero700: 28px;
+    out property <length> fontSizeHero800: 32px;
+    out property <length> fontSizeHero900: 40px;
+    out property <length> fontSizeHero1000: 68px;
+
+    out property <duration> durationUltraFast: 50ms;
+    out property <duration> durationFaster: 100ms;
+    out property <duration> durationFast: 150ms;
+    out property <duration> durationNormal: 200ms;
+    out property <duration> durationGentle: 250ms;
+    out property <duration> durationSlow: 300ms;
+    out property <duration> durationSlower: 400ms;
+    out property <duration> durationUltraSlow: 500ms;
+
+    out property <length> strokeWidthThin: 1px;
+    out property <length> strokeWidthThick: 2px;
+    out property <length> strokeWidthThicker: 3px;
+    out property <length> strokeWidthThickest: 4px;
+
+    // Windows-oriented layout transparency aliases built from Fluent alpha tokens.
+    out property <color> layout_alpha_base: colorNeutralBackgroundAlpha;
+    out property <color> layout_alpha_elevated: colorNeutralBackgroundAlpha2;
+    out property <color> layout_alpha_hover: colorSubtleBackgroundLightAlphaHover;
+    out property <color> layout_alpha_pressed: colorSubtleBackgroundLightAlphaPressed;
+    out property <color> layout_alpha_overlay: colorBackgroundOverlay;
+    out property <color> layout_alpha_stencil_1: colorNeutralStencil1Alpha;
+    out property <color> layout_alpha_stencil_2: colorNeutralStencil2Alpha;
+
+    // Legacy aliases used across current Slint code.
+    out property <color> background: colorNeutralBackground1;
+    out property <color> surface: colorNeutralBackground2;
+    out property <color> layer_background: colorSubtleBackgroundHover;
+    out property <color> fill_row_subtle: colorTransparentBackground;
+
+    out property <color> text_primary: colorNeutralForeground1;
+    out property <color> text_secondary: colorNeutralForeground2;
+    out property <color> text_disabled: colorNeutralForegroundDisabled;
+
+    out property <color> fill_subtle_hover: colorSubtleBackgroundHover;
+    out property <color> fill_subtle_secondary: colorSubtleBackgroundSelected;
+    out property <color> fill_transparent: colorTransparentBackground;
+
+    in-out property <color> accent: colorBrandBackground;
+    out property <color> accent_hover: colorBrandBackgroundHover;
+    out property <color> accent_text: colorNeutralForegroundOnBrand;
+
+    out property <color> border: colorNeutralStroke2;
+    out property <color> control_border: colorNeutralStroke1;
+
+    out property <length> spacing_xs: spacingHorizontalXS;
+    out property <length> spacing_s: spacingHorizontalS;
+    out property <length> spacing_m: spacingHorizontalM;
+    out property <length> spacing_l: spacingHorizontalL;
+    out property <length> border_radius_xs: borderRadiusSmall;
+    out property <length> border_radius_s: borderRadiusMedium;
+    out property <length> border_radius_m: borderRadiusXLarge;
 
     out property <length> icon_size_s: 12px;
     out property <length> icon_size_m: 16px;
@@ -40,13 +156,13 @@ export global Theme {
     out property <length> selection_indicator_width: 3px;
     out property <length> selection_indicator_height: 16px;
 
-    out property <length> font_size_body: 14px;
-    out property <length> font_size_caption: 12px;
-    out property <length> font_size_title: 20px;
+    out property <length> font_size_body: fontSizeBase300;
+    out property <length> font_size_caption: fontSizeBase200;
+    out property <length> font_size_title: fontSizeBase500;
 
-    out property <color> success: #00cc6a;
-    out property <color> offline: is_dark ? #8a8a8a : #616161;
-    out property <color> warn: #c48705;
+    out property <color> success: colorPaletteGreenForeground1;
+    out property <color> offline: colorNeutralForeground3;
+    out property <color> warn: colorPaletteDarkOrangeForeground1;
     out property <color> disabled: is_dark ? rgba(255,255,255,0.15) : rgba(0,0,0,0.15);
     out property <color> item_active_background: accent.with_alpha(0.1);
 
@@ -56,7 +172,7 @@ export global Theme {
     out property <color> title_icon: is_dark ? rgba(255, 255, 255, 0.9) : rgba(0, 0, 0, 0.85);
     out property <color> title_icon_active: #ffffff;
 
-    out property <duration> fast_animation_time: 150ms;
-    out property <duration> primary_animation_time: 100ms;
-    out property <duration> slow_animation_time: 200ms;
+    out property <duration> fast_animation_time: durationFast;
+    out property <duration> primary_animation_time: durationFaster;
+    out property <duration> slow_animation_time: durationNormal;
 }

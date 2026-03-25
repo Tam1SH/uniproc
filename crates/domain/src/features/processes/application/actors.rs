@@ -1,7 +1,7 @@
 use crate::features::processes::domain::process_flow::ProcessFlowState;
 use crate::features::processes::services::metadata::ProcessMetadataService;
-use crate::features::processes::ui::slint_bridge::{
-    BridgeSnapshot, ColumnWidthConfig, VisitorSharedState, build_snapshot,
+use crate::features::processes::ui::bridge::{
+    build_snapshot, BridgeSnapshot, ColumnWidthConfig, VisitorSharedState,
 };
 use app_contracts::features::agents::RemoteScanResult;
 #[cfg(target_os = "windows")]
@@ -20,9 +20,9 @@ use std::collections::{HashMap, HashSet};
 use std::time::Duration;
 use sysinfo::{Pid, ProcessesToUpdate, System};
 
-use crate::features::processes::scanner::wsl::visitor::WslScanResult;
 #[cfg(target_os = "windows")]
 use crate::features::processes::scanner::windows::visitor::WindowsScanResult;
+use crate::features::processes::scanner::wsl::visitor::WslScanResult;
 
 messages! {
     Sort(String),
