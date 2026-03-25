@@ -1,0 +1,18 @@
+[package]
+name = "domain-agents"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+path = "lib.rs"
+
+[dependencies]
+anyhow = { workspace = true }
+app-core = { workspace = true }
+app-contracts = { workspace = true }
+ogurpchik = { workspace = true }
+rkyv = { workspace = true }
+slint = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+uniproc-protocol = { workspace = true }

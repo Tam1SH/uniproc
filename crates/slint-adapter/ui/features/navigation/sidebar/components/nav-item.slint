@@ -1,5 +1,5 @@
 import { Theme } from "theme.slint";
-import { SelectionIndicator } from "../../../../components/selection-indicator.slint";
+import { Icons } from "../../../../shared/icons.slint";
 
 export component NavItem inherits Rectangle {
     in-out property <image> icon;
@@ -7,10 +7,14 @@ export component NavItem inherits Rectangle {
     in-out property <bool> active;
     in-out property <bool> has-icon: true;
     in property <bool> colorize: true;
+    in property <bool> indicator-visible: false;
+    in property <length> indicator-height: Theme.selection_indicator_height;
+    in property <length> indicator-offset-y: (self.height - root.indicator-height) / 2;
 
     callback clicked;
 
     height: 40px;
+    clip: true;
     background: active ? Theme.fill_subtle_secondary : (touch.has-hover ? Theme.fill_subtle_hover : transparent);
     animate background { duration: Theme.primary_animation_time; }
     border-radius: 6px;
@@ -22,9 +26,14 @@ export component NavItem inherits Rectangle {
         }
     }
 
-    SelectionIndicator {
-        is-active: root.active;
-        y: (parent.height - self.height) / 2;
+    Rectangle {
+        x: 0;
+        y: root.indicator-offset-y;
+        width: Theme.selection_indicator_width;
+        height: root.indicator-height;
+        visible: root.indicator-visible;
+        background: Theme.accent;
+        border-radius: Theme.border_radius_xs;
     }
 
     HorizontalLayout {

@@ -1,71 +1,159 @@
+import { ScrollView } from "std-widgets.slint";
 import { Theme } from "theme.slint";
-import { AccordionHeader } from "../components/accordion-header.slint";
-import { SideBarItem } from "../components/side-bar-item.slint";
 import { EnvsLoading, EnvironmentsFeatureGlobal } from "../globals.slint";
 import { Icons } from "icons.slint";
 import { L10n } from "localization.slint";
 
-export component Environments inherits VerticalLayout {
-    spacing: 2px;
+component DropdownItem inherits Rectangle {
+    in property <string> text;
+    in property <image> icon;
+    in property <int> latency-ms: -1;
+    in property <bool> show-latency: false;
+    in property <bool> is-running;
+    height: 36px;
+    border-radius: 6px;
+    animate background { duration: Theme.primary_animation_time; }
 
-    Rectangle {
-        background: Theme.layer_background;
-        border-radius: 6px;
+    HorizontalLayout {
+        padding-left: 10px;
+        padding-right: 10px;
+        spacing: 10px;
+
         VerticalLayout {
-            spacing: 2px;
-            env_main := AccordionHeader {
-                text: L10n.environments;
-                icon: Icons.coin;
-                open: true;
-                is-loading: EnvsLoading.wsl-is-loading;
+            alignment: center;
+            if (text == EnvironmentsFeatureGlobal.host-name): Image {
+                source: root.icon;
+                width: 16px;
+                height: 16px;
+                image-fit: contain;
             }
+            if (text != EnvironmentsFeatureGlobal.host-name): Image {
+                source: root.icon;
+                width: 16px;
+                height: 16px;
+                colorize: is-running ? Theme.accent : Theme.text_secondary;
+                image-fit: contain;
+            }
+        }
 
-            if (env_main.open): VerticalLayout {
+        Text {
+            text: root.text;
+            color: Theme.text_secondary;
+            vertical-alignment: center;
+            font-size: Theme.font_size_body;
+            animate color { duration: Theme.primary_animation_time; }
+        }
+
+        Rectangle { }
+
+        if (root.show-latency): Rectangle {
+            width: 8px;
+            height: 8px;
+            border-radius: Theme.border_radius_s;
+            y: (parent.height - self.height) / 2;
+            background: latency-ms == -1 ? Theme.warn : Theme.success;
+        }
+    }
+}
+
+export component Environments inherits Rectangle {
+    height: 40px;
+    border-radius: 6px;
+    // background: Theme.layer_background;
+    
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            dropdown.show();
+        }
+    }
+
+    HorizontalLayout {
+        padding-left: 11px;
+        padding-right: 12px;
+        spacing: 12px;
+
+        VerticalLayout {
+            alignment: center;
+            Image {
+                source: Icons.layer-filled;
+                width: 20px;
+                height: 20px;
+            }
+        }
+
+        VerticalLayout {
+            alignment: center;
+
+            Text {
+                text: L10n.environments;
+                color: Theme.text_primary;
+                font-weight: 600;
+                font-size: Theme.font_size_body;
+                vertical-alignment: center;
+            }
+        }
+
+        Rectangle { }
+
+        VerticalLayout {
+            alignment: center;
+
+            Image {
+                source: Icons.arrow-up-regular;
+                image-fit: contain;
+                width: 12px;
+                height: 12px;
+                colorize: rgba(255, 255, 255, 0.5);
+                transform-origin: { x: 4.5px, y: 6px };
+                transform-rotation: 270deg;
+                animate transform-rotation {
+                    duration: Theme.primary_animation_time * 1.25;
+                    easing: ease-out;
+                }
+            }
+        }
+
+        if (EnvsLoading.wsl-is-loading || EnvsLoading.wsl-distros-is-loading): Rectangle {
+            width: 8px;
+            height: 8px;
+            border-radius: 4px;
+            background: Theme.warn;
+        }
+    }
+
+    dropdown := PopupWindow {
+        
+        width: root.width;
+        
+        Rectangle {
+            border-radius: 8px;
+            background: Theme.background;
+            border-width: 1px;
+            border-color: Theme.fill_subtle_secondary;
+
+            menu-layout := VerticalLayout {
+                padding: 4px;
                 spacing: 2px;
 
-                SideBarItem {
+                DropdownItem {
                     text: EnvironmentsFeatureGlobal.host-name;
                     icon: EnvironmentsFeatureGlobal.host-icon;
-                    active: EnvironmentsFeatureGlobal.selected-env == EnvironmentsFeatureGlobal.host-name;
-                    colorize: false;
-                    clicked => {
-                        EnvironmentsFeatureGlobal.selected-env = EnvironmentsFeatureGlobal.host-name;
-                    }
                 }
 
-                if (EnvironmentsFeatureGlobal.has-wsl): Rectangle {
+                if (EnvironmentsFeatureGlobal.has-wsl): ScrollView {
+                    height: min(180px, EnvironmentsFeatureGlobal.wsl-distros.length * 36px + 2px);
+                    vertical-scrollbar-policy: ScrollBarPolicy.as-needed;
+
                     VerticalLayout {
                         spacing: 2px;
-
-                        wsl_sub := AccordionHeader {
-                            text: "WSL";
-                            icon: Icons.wsl;
-                            open: true;
-                            is-loading: EnvsLoading.wsl-distros-is-loading;
-                        }
-
-                        if (wsl_sub.open): VerticalLayout {
-                            spacing: 2px;
-                            for distro in EnvironmentsFeatureGlobal.wsl-distros: SideBarItem {
-                                text: distro.name;
-                                icon: distro.icon;
-                                active: EnvironmentsFeatureGlobal.selected-env == distro.name;
-                                latency-ms: distro.latency-ms;
-
-                                clicked => {
-                                    EnvironmentsFeatureGlobal.selected-env = distro.name;
-                                }
-
-                                Rectangle {
-                                    width: 8px;
-                                    height: 8px;
-                                    border-radius: Theme.border_radius_s;
-                                    x: parent.width - 24px;
-                                    y: (parent.height - self.height) / 2;
-
-                                    background: !distro.is_running ? Theme.disabled : !distro.is_installed ? Theme.offline : distro.latency_ms == -1 ? Theme.warn : Theme.success;
-                                }
-                            }
+                        for distro in EnvironmentsFeatureGlobal.wsl-distros: DropdownItem {
+                            text: distro.name;
+                            icon: distro.icon;
+                            latency-ms: distro.latency-ms;
+                            is-running: distro.is_running;
+                            show-latency: true;
+                            
                         }
                     }
                 }

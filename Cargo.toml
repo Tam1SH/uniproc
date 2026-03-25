@@ -6,6 +6,9 @@ edition = "2024"
 [workspace]
 members = [
     "crates/*",
+    "crates/domain/src/features/agents",
+    "crates/domain/src/features/environments",
+    "crates/domain/src/features/processes",
 ]
 
 default-members = ["crates/desktop"]
@@ -13,7 +16,7 @@ default-members = ["crates/desktop"]
 resolver = "2"
 
 [workspace.dependencies]
-ogurpchik = { git = "https://github.com/Tam1SH/oguRPChik", branch = "master", features = ["rkyv-codec", "vsock"] }
+ogurpchik = { git = "https://github.com/Tam1SH/oguRPChik", branch = "master", features = ["rkyv-codec", "vsock", "uds"] }
 rust-i18n = "3"
 app-core = { path = "crates/app-core" }
 app-contracts = { path = "crates/app-contracts" }
@@ -64,5 +67,13 @@ lto = true
 codegen-units = 1
 strip = true
 opt-level = "s"
+
+[profile.dev]
+debug = 1
+incremental = true
+codegen-units = 256
+
+[profile.dev.package."*"]
+debug = 0
 
 

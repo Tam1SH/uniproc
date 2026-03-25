@@ -1,3 +1,4 @@
+pub mod agents;
 pub mod context_menu;
 pub mod cosmetics;
 pub mod environments;

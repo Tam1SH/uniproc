@@ -1,14 +1,13 @@
 mod actors;
 
 use crate::features::cosmetics::accent_from;
-use crate::features::settings::{SettingsStore, settings_from};
-use crate::shared::settings::{FeatureSettings, SettingsScope};
 use actors::{ContextMenuActor, HandleAction, Hide, Show};
 use app_contracts::features::context_menu::{ContextMenuUiBindings, ContextMenuUiPort};
 use app_core::SharedState;
 use app_core::actor::addr::Addr;
 use app_core::app::Feature;
 use app_core::reactor::Reactor;
+use app_core::settings::{FeatureSettings, SettingsScope, SettingsStore, settings_from};
 use slint::ComponentHandle;
 
 const REVEAL_DELAY_MS: &str = "reveal_delay_ms";

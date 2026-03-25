@@ -224,6 +224,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a23eb6b1614318a8071c9b2521f36b424b2c83db5eb3a0fead4a6c0809af6e61"
 
 [[package]]
+name = "anymap"
+version = "0.12.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "33954243bd79057c2de7338850b85983a44588021f8a5fee574a8888c6de4344"
+
+[[package]]
 name = "app-contracts"
 version = "0.1.0"
 dependencies = [
@@ -239,6 +245,8 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "rust-i18n",
+ "serde",
+ "serde_json",
  "slint",
  "tokio",
  "toml 0.9.11+spec-1.1.0",
@@ -1417,6 +1425,9 @@ dependencies = [
  "app-core",
  "dhat",
  "domain",
+ "domain-agents",
+ "domain-environments",
+ "domain-processes",
  "slint",
  "slint-adapter",
  "tokio",
@@ -1489,6 +1500,52 @@ dependencies = [
  "rkyv",
  "serde",
  "serde_json",
+ "slint",
+ "smallvec",
+ "sysinfo",
+ "tokio",
+ "tracing",
+ "ttl_cache",
+ "uniproc-protocol",
+ "windows 0.61.3",
+]
+
+[[package]]
+name = "domain-agents"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "app-contracts",
+ "app-core",
+ "ogurpchik",
+ "rkyv",
+ "slint",
+ "tokio",
+ "tracing",
+ "uniproc-protocol",
+]
+
+[[package]]
+name = "domain-environments"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "app-contracts",
+ "app-core",
+ "slint",
+ "sysinfo",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "domain-processes"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "app-contracts",
+ "app-core",
+ "async-trait",
  "slint",
  "smallvec",
  "sysinfo",
@@ -1676,9 +1733,6 @@ name = "fastrand"
 version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "37909eebbb50d72f9059c3b6d82c0463f2ff062c9e95845c43a6c9c0355411be"
-dependencies = [
- "getrandom 0.2.17",
-]
 
 [[package]]
 name = "fax"
@@ -1779,7 +1833,6 @@ version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5e139bc46ca777eb5efaf62df0ab8cc5fd400866427e56c68b22e414e53bd3be"
 dependencies = [
- "fastrand",
  "futures-core",
  "futures-sink",
  "spin",
@@ -2720,6 +2773,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "inotify"
+version = "0.11.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bd5b3eaf1a28b758ac0faa5a4254e8ab2705605496f1b1f3fbbc3988ad73d199"
+dependencies = [
+ "bitflags 2.10.0",
+ "futures-core",
+ "inotify-sys",
+ "libc 0.2.180",
+ "tokio",
+]
+
+[[package]]
+name = "inotify-sys"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e05c02b5e89bff3b946cedeca278abc628fe811e604f027c45a8aa3cf793d0eb"
+dependencies = [
+ "libc 0.2.180",
+]
+
+[[package]]
 name = "input"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2864,6 +2939,16 @@ checksum = "8c942ebf8e95485ca0d52d97da7c5a2c387d0e7f0ba4c35e93bfcaee045955b3"
 dependencies = [
  "once_cell",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "kanal"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9e3953adf0cd667798b396c2fa13552d6d9b3269d7dd1154c4c416442d1ff574"
+dependencies = [
+ "futures-core",
+ "lock_api",
 ]
 
 [[package]]
@@ -3800,24 +3885,36 @@ dependencies = [
 ]
 
 [[package]]
+name = "object-pool"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ceffa2e6ccecd71e60a0f06b655df2c66acd1c0c892dafefc96fd49d65f71d53"
+dependencies = [
+ "parking_lot",
+]
+
+[[package]]
 name = "ogurpchik"
-version = "0.2.0"
-source = "git+https://github.com/Tam1SH/oguRPChik?branch=master#83792c733726ba1d6864b5ed92ef14b1d630e012"
+version = "0.3.0"
+source = "git+https://github.com/Tam1SH/oguRPChik?branch=master#870c31490b9779454497affea042f8cf110d190b"
 dependencies = [
  "affinity",
  "anyhow",
- "async-trait",
+ "anymap",
  "bytes",
  "compio",
  "dashmap",
- "flume",
  "futures",
+ "inotify",
+ "kanal",
  "lazy_static",
  "libc 1.0.0-alpha.3",
  "local-sync",
  "num_cpus",
+ "object-pool",
  "oneshot",
  "rkyv",
+ "rustc-hash 2.1.1",
  "serde",
  "serde_json",
  "smallvec",
@@ -5759,7 +5856,7 @@ checksum = "ebc1c04c71510c7f702b52b7c350734c9ff1295c464a03335b00bb84fc54f853"
 [[package]]
 name = "uniproc-protocol"
 version = "0.1.0"
-source = "git+https://github.com/Tam1SH/uniproc-protocol?branch=master#5a0654d18c44477fed4579a77c30cb99a2fce1e7"
+source = "git+https://github.com/Tam1SH/uniproc-protocol?branch=master#f86b4ed571d1009026b7eaf59d0846a049b12325"
 dependencies = [
  "ogurpchik",
  "rkyv",
@@ -6159,7 +6256,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]

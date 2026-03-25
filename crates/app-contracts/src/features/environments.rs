@@ -1,7 +1,19 @@
 use app_core::actor::traits::Message;
-use ogurpchik::align_buffer::AlignedBuffer;
-use ogurpchik::client::Client;
+use ogurpchik::codecs::base::HasAllocator;
+use ogurpchik::high::client::Client;
+use ogurpchik::pool::buf_guard::BufGuard;
 use uniproc_protocol::HostCodec;
+
+pub type AgentClient = Client<
+    HostCodec,
+    <HostCodec as ogurpchik::codecs::base::MessageCodec>::Dest,
+    BufGuard<
+        <HostCodec as ogurpchik::codecs::base::MessageCodec>::Dest,
+        <<HostCodec as ogurpchik::codecs::base::MessageCodec>::Dest as HasAllocator>::SharedAlloc,
+    >,
+>;
+
+pub type WslClient = AgentClient;
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct WslDistroDto {
@@ -11,23 +23,47 @@ pub struct WslDistroDto {
     pub latency_ms: i32,
 }
 
-pub type WslClient = Client<HostCodec, AlignedBuffer>;
-
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum WslConnectionState {
+pub enum AgentConnectionState {
     Disconnected,
     Connecting,
     Connected,
     WaitingRetry { delay_secs: u64 },
 }
 
+#[cfg(target_os = "windows")]
+pub type WslConnectionState = AgentConnectionState;
+
+#[cfg(target_os = "windows")]
 #[derive(Clone)]
 pub struct WslAgentRuntimeEvent {
-    pub state: WslConnectionState,
-    pub client: Option<WslClient>,
+    pub state: AgentConnectionState,
+    pub latency_ms: Option<i32>,
 }
 
+#[cfg(target_os = "windows")]
 impl Message for WslAgentRuntimeEvent {}
+
+#[cfg(target_os = "windows")]
+#[derive(Clone)]
+pub struct WindowsAgentRuntimeEvent {
+    pub state: AgentConnectionState,
+    pub client: Option<AgentClient>,
+    pub latency_ms: Option<i32>,
+}
+
+#[cfg(target_os = "windows")]
+impl Message for WindowsAgentRuntimeEvent {}
+
+#[cfg(not(target_os = "windows"))]
+#[derive(Clone)]
+pub struct LinuxAgentRuntimeEvent {
+    pub state: AgentConnectionState,
+    pub latency_ms: Option<i32>,
+}
+
+#[cfg(not(target_os = "windows"))]
+impl Message for LinuxAgentRuntimeEvent {}
 
 pub trait EnvironmentsUiPort: 'static {
     fn set_host_name(&self, name: String);

@@ -86,7 +86,6 @@ impl ConnectionMachine {
         };
 
         self.state = to;
-
         Ok(Transition {
             from,
             event,

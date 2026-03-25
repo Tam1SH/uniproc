@@ -10,11 +10,89 @@ pub enum FieldValue {
     Duration(std::time::Duration),
 }
 
+pub enum FieldValueFormat {
+    WithoutSpaces,
+    WithoutDecimals,
+    WithoutUnit,
+    RoundUp,
+}
+
+impl FieldValue {
+    pub fn format_bytes(b: u64) -> String {
+        const KB: u64 = 1024;
+        const MB: u64 = 1024 * KB;
+        const GB: u64 = 1024 * MB;
+        match b {
+            b if b >= GB => format!("{:.1} GB", b as f64 / GB as f64),
+            b if b >= MB => format!("{:.1} MB", b as f64 / MB as f64),
+            b if b >= KB => format!("{:.1} KB", b as f64 / KB as f64),
+            b => format!("{} B", b),
+        }
+    }
+
+    pub fn format_bytes_with_params(b: u64, formats: &[FieldValueFormat]) -> String {
+        const KB: u64 = 1024;
+        const MB: u64 = 1024 * KB;
+        const GB: u64 = 1024 * MB;
+
+        let no_spaces = formats
+            .iter()
+            .any(|f| matches!(f, FieldValueFormat::WithoutSpaces));
+        let no_decimals = formats
+            .iter()
+            .any(|f| matches!(f, FieldValueFormat::WithoutDecimals));
+        let no_unit = formats
+            .iter()
+            .any(|f| matches!(f, FieldValueFormat::WithoutUnit));
+        let round_up = formats
+            .iter()
+            .any(|f| matches!(f, FieldValueFormat::RoundUp));
+
+        let space = if no_spaces || no_unit { "" } else { " " };
+
+        let apply_round = |val: f64| -> f64 { if round_up { val.round() } else { val } };
+        macro_rules! fmt_val {
+            ($val:expr, $unit:expr) => {{
+                let val = apply_round($val);
+                let unit = if no_unit { "" } else { $unit };
+                if no_decimals {
+                    format!("{:.0}{space}{unit}", val, space = space)
+                } else {
+                    format!("{:.1}{space}{unit}", val, space = space)
+                }
+            }};
+        }
+
+        match b {
+            b if b >= GB => fmt_val!(b as f64 / GB as f64, "GB"),
+            b if b >= MB => fmt_val!(b as f64 / MB as f64, "MB"),
+            b if b >= KB => fmt_val!(b as f64 / KB as f64, "KB"),
+            b => {
+                let unit = if no_unit { "" } else { "B" };
+                format!("{b}{space}{unit}", space = space)
+            }
+        }
+    }
+
+    pub fn to_text(&self) -> String {
+        match self {
+            FieldValue::Bytes(b) => Self::format_bytes(*b),
+            FieldValue::Percent(p) => format!("{:.1}%", p),
+            FieldValue::U64(v) => v.to_string(),
+            FieldValue::F32(v) => format!("{:.1}", v),
+            FieldValue::Str(s) => s.clone(),
+            FieldValue::Duration(d) => format!("{}ms", d.as_millis()),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Field {
     pub id: &'static str,
     pub label: &'static str,
     pub value: FieldValue,
+    pub stat_detail: Option<String>,
+    pub show_indicator: bool,
     pub numeric: f32,
     pub threshold: f32,
 }
@@ -31,7 +109,7 @@ pub trait ProcessVisitor {
     fn visit(&self, ctx: &dyn VisitorContext, visitor: &mut dyn FnMut(Field));
 }
 
-pub trait ScanResult: Send {
+pub trait ScanResult: Send + Sync {
     fn context(&self) -> Box<dyn VisitorContext>;
     fn visit_processes(&self, visitor: &mut dyn FnMut(&dyn ProcessVisitor));
     fn visit_stats(&self, visitor: &mut dyn FnMut(Field));

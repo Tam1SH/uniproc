@@ -1,0 +1,16 @@
+[package]
+name = "domain-environments"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+path = "lib.rs"
+
+[dependencies]
+anyhow = { workspace = true }
+app-core = { workspace = true }
+app-contracts = { workspace = true }
+slint = { workspace = true }
+sysinfo = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }

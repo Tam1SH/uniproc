@@ -54,6 +54,19 @@ impl NavigationUiPort for NavigationUiAdapter {
     fn set_active_tab_index(&self, index: i32) {
         self.with_ui(|ui| ui.global::<Navigation>().set_active_tab_index(index));
     }
+
+    fn set_switch_transition(&self, from_index: i32, to_index: i32, progress: f32) {
+        self.with_ui(|ui| {
+            let nav = ui.global::<Navigation>();
+            nav.set_switch_from_index(from_index);
+            nav.set_switch_to_index(to_index);
+            nav.set_switch_progress(progress);
+        });
+    }
+
+    fn set_switch_progress(&self, progress: f32) {
+        self.with_ui(|ui| ui.global::<Navigation>().set_switch_progress(progress));
+    }
 }
 
 impl NavigationUiBindings for NavigationUiAdapter {

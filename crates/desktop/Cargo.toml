@@ -5,6 +5,9 @@ edition.workspace = true
 
 [dependencies]
 anyhow = { workspace = true }
+domain-agents = { path = "../domain/src/features/agents" }
+domain-environments = { path = "../domain/src/features/environments" }
+domain-processes = { path = "../domain/src/features/processes" }
 domain = { path = "../domain" }
 app-core = { workspace = true }
 slint-adapter = { workspace = true }

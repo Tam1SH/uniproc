@@ -1,22 +1,36 @@
-use crate::{
-    AppWindow, MainBodyState, ProcessEntry, ProcessField, ProcessGroup, ProcessesFeatureGlobal,
-};
+use crate::{AppWindow, MainBodyState, ProcessEntry, ProcessField, ProcessesFeatureGlobal};
 use app_contracts::features::processes::{
-    FieldDefDto, ProcessEntryVm, ProcessFieldDto, ProcessGroupVm, ProcessesUiBindings,
-    ProcessesUiPort,
+    FieldDefDto, ProcessEntryVm, ProcessFieldDto, ProcessesUiBindings, ProcessesUiPort,
 };
 use app_core::app::FromUiWeak;
-use slint::{ComponentHandle, ModelRc, VecModel};
+use slint::{ComponentHandle, Model, ModelRc, VecModel};
 use std::rc::Rc;
+
+struct AdapterModels {
+    rows: Rc<VecModel<ProcessEntry>>,
+    columns: Rc<VecModel<crate::FieldDef>>,
+}
 
 #[derive(Clone)]
 pub struct ProcessesUiAdapter {
     ui: slint::Weak<AppWindow>,
+    models: Rc<AdapterModels>,
 }
 
 impl ProcessesUiAdapter {
     pub fn new(ui: slint::Weak<AppWindow>) -> Self {
-        Self { ui }
+        let models = Rc::new(AdapterModels {
+            rows: Rc::new(VecModel::from(Vec::<ProcessEntry>::new())),
+            columns: Rc::new(VecModel::from(Vec::<crate::FieldDef>::new())),
+        });
+
+        if let Some(window) = ui.upgrade() {
+            let bridge = window.global::<ProcessesFeatureGlobal>();
+            bridge.set_process_rows(models.rows.clone().into());
+            bridge.set_column_defs(models.columns.clone().into());
+        }
+
+        Self { ui, models }
     }
 
     fn with_ui<F>(&self, f: F)
@@ -65,31 +79,30 @@ fn to_entry_vm(entry: ProcessEntryVm) -> ProcessEntry {
 }
 
 impl ProcessesUiPort for ProcessesUiAdapter {
-    fn set_process_groups(&self, groups: Vec<ProcessGroupVm>) {
-        self.with_ui(|ui| {
-            let groups = groups
-                .into_iter()
-                .map(|g| ProcessGroup {
-                    parent: to_entry_vm(g.parent),
-                    children: ModelRc::new(VecModel::from(
-                        g.children.into_iter().map(to_entry_vm).collect::<Vec<_>>(),
-                    )),
-                })
-                .collect::<Vec<_>>();
-            ui.global::<ProcessesFeatureGlobal>()
-                .set_process_groups(ModelRc::new(VecModel::from(groups)));
-        });
+    fn set_process_rows_window(&self, total_rows: usize, start: usize, rows: Vec<ProcessEntryVm>) {
+        if self.models.rows.row_count() != total_rows {
+            let mut placeholders = Vec::with_capacity(total_rows);
+            for _ in 0..total_rows {
+                placeholders.push(ProcessEntry::default());
+            }
+            self.models.rows.set_vec(placeholders);
+        }
+
+        for (offset, row) in rows.into_iter().enumerate() {
+            let idx = start + offset;
+            if idx >= total_rows {
+                break;
+            }
+            self.models.rows.set_row_data(idx, to_entry_vm(row));
+        }
     }
 
     fn set_column_defs(&self, defs: Vec<FieldDefDto>) {
-        self.with_ui(|ui| {
-            let bridge = ui.global::<ProcessesFeatureGlobal>();
-            let defs = defs
-                .into_iter()
-                .map(crate::FieldDef::from)
-                .collect::<Vec<_>>();
-            bridge.set_column_defs(Rc::new(VecModel::from(defs)).into());
-        });
+        let defs = defs
+            .into_iter()
+            .map(crate::FieldDef::from)
+            .collect::<Vec<_>>();
+        self.models.columns.set_vec(defs);
     }
 
     fn set_loading(&self, loading: bool) {
@@ -120,6 +133,13 @@ impl ProcessesUiPort for ProcessesUiAdapter {
             bridge.set_current_sort(field.into());
             bridge.set_current_sort_descending(descending);
         });
+    }
+
+    fn set_total_processes_count(&self, count: usize) {
+        self.with_ui(|ui| {
+            let bridge = ui.global::<ProcessesFeatureGlobal>();
+            bridge.set_total_processes_count(count as i32);
+        })
     }
 }
 
@@ -158,6 +178,16 @@ impl ProcessesUiBindings for ProcessesUiAdapter {
         self.with_ui(move |ui| {
             ui.global::<ProcessesFeatureGlobal>()
                 .on_select_process(move |pid, idx| handler(pid, idx));
+        });
+    }
+
+    fn on_rows_viewport_changed<F>(&self, handler: F)
+    where
+        F: Fn(i32, i32) + 'static,
+    {
+        self.with_ui(move |ui| {
+            ui.global::<ProcessesFeatureGlobal>()
+                .on_rows_viewport_changed(move |start, count| handler(start, count));
         });
     }
 }

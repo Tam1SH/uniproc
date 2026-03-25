@@ -1,3 +1,5 @@
+// AUTO-GENERATED — do not edit manually
+
 use slint::Image;
 
 pub struct Icons;
@@ -6,6 +8,7 @@ impl Icons {
     pub fn get(name: &str) -> Image {
         let bytes: &[u8] = match name {
             "app" => include_bytes!("../../slint-adapter/ui/assets/app.svg"),
+            "apps-list" => include_bytes!("../../slint-adapter/ui/assets/apps-list.svg"),
             "arrow-up-filled" => {
                 include_bytes!("../../slint-adapter/ui/assets/arrow-up-filled.svg")
             }

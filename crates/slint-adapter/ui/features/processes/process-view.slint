@@ -2,7 +2,6 @@ import { ListView } from "std-widgets.slint";
 import {
     ProcessesFeatureGlobal,
     ProcessEntry,
-    ProcessGroup,
     ProcessField,
     FieldDef,
 } from "globals.slint";
@@ -75,6 +74,7 @@ component DataCell inherits Rectangle {
                 value: field.numeric;
                 threshold: 1.0;
                 accent-color: Theme.accent;
+                bar-width: 60px;
             }
         }
 
@@ -119,7 +119,7 @@ component ColumnHeader inherits Rectangle {
         padding-right: 10px;
         VerticalLayout {
             alignment: center;
-            spacing: 4px;
+            spacing: 2px;
             Text {
                 text: def.stat-text;
                 horizontal-alignment: right;
@@ -127,18 +127,34 @@ component ColumnHeader inherits Rectangle {
                 font-size: 16px;
             }
 
-            Text {
-                text: def.label;
-                horizontal-alignment: right;
-                color: Theme.text_secondary;
-                font-size: 12px;
-            }
+            HorizontalLayout {
+            
+                Text {
+                    text: def.stat-detail;
+                    horizontal-alignment: right;
+                    color: Theme.text_disabled;
+                    font-size: 12px;
+                    
+                }
+                Rectangle { horizontal-stretch: 1; }
 
-            MetricSplitBar {
+                Text {
+                    text: def.label;
+                    horizontal-alignment: right;
+                    color: Theme.text_secondary;
+                    font-size: 12px;
+                }
+            }
+            Rectangle { height: 2px; }
+            
+            if(def.show-indicator): MetricSplitBar {
                 value: def.stat-numeric;
                 threshold: 100.0;
                 bar-width: root.cell-width;
                 accent-color: Theme.accent;
+            }
+            if(!def.show-indicator): Rectangle {
+                height: 3px;
             }
         }
     }
@@ -158,7 +174,7 @@ component ProcessItem inherits Rectangle {
     in property <bool> is-child;
 
     height: 32px;
-    background: entry.pid == ProcessesFeatureGlobal.selected-pid ? Theme.accent.with-alpha(0.1) : (row-touch.has-hover ? rgba(255,255,255,0.05) : ((Math.mod(idx, 2) == 0) ? transparent : Theme.layer_background2));
+    background: entry.pid == ProcessesFeatureGlobal.selected-pid ? Theme.accent.with-alpha(0.1) : (row-touch.has-hover ? rgba(255,255,255,0.05) : ((Math.mod(idx, 2) == 0) ? transparent : Theme.fill_row_subtle));
 
     if (entry.pid == ProcessesFeatureGlobal.selected-pid): Rectangle {
         x: 0;
@@ -261,31 +277,6 @@ component ProcessItem inherits Rectangle {
     }
 }
 
-component ProcessGroupView inherits Rectangle {
-    in-out property <ProcessEntry> parent-process;
-    in property <[ProcessEntry]> child-processes;
-    in property <length> col-name-width;
-    in property <int> parent-idx;
-
-    VerticalLayout {
-        ProcessItem {
-            entry: parent-process;
-            col-name-width: root.col-name-width;
-            is-child: false;
-            idx: parent-idx;
-        }
-
-        if (parent-process.is-expanded && child-processes.length > 0): VerticalLayout {
-            for child[child_idx] in child-processes: ProcessItem {
-                entry: child;
-                is-child: true;
-                col-name-width: root.col-name-width;
-                idx: parent-idx + child_idx + 1;
-            }
-        }
-    }
-}
-
 component HeaderButton inherits Rectangle {
     in property <string> text: "Run new task";
     in property <image> icon: Icons.new-task;
@@ -325,56 +316,57 @@ component HeaderButton inherits Rectangle {
     }
 }
 
-component EnvSegmentSwitch inherits Rectangle {
-    in-out property <int> selected-index: 0;
 
-    width: 210px;
-    height: 34px;
-    border-radius: 7px;
-    background: Theme.fill_subtle_secondary;
+export struct EnvironmentCount {
+    name: string,
+    count: int,
+}
 
-    property <length> segment-width: (root.width / 3);
+export component ProcessStatusBar inherits Rectangle {
+    in property <int> total-count;
+    in property <[EnvironmentCount]> env-counts;
+    
+    height: 32px;
+    background: Theme.background;
 
     Rectangle {
-        y: 2px;
-        x: 2px + (root.selected-index * root.segment-width);
-        width: root.segment-width - 4px;
-        height: root.height - 4px;
-        border-radius: 6px;
-        background: Theme.accent.with-alpha(0.2);
-        border-color: Theme.accent.with-alpha(0.45);
-        border-width: 1px;
-        animate x {
-            duration: 120ms;
-            easing: ease-in-out;
-        }
+        width: 100%;
+        height: 1px;
+        background: Theme.layer_background;
+        y: 0;
     }
 
-    HorizontalLayout {
-        spacing: 0;
-
-        for item[idx] in ["All", "Windows", "WSL"]: Rectangle {
-            width: root.segment-width;
-            height: root.height;
-            background: transparent;
+    VerticalLayout {
+        alignment: center;
+        HorizontalLayout {
+            padding-left: 8px;
+            spacing: 6px;
 
             Text {
-                text: item;
-                color: root.selected-index == idx ? Theme.text_primary : Theme.text_secondary;
-                horizontal-alignment: center;
-                vertical-alignment: center;
-                font-size: 14px;
+                text: "Processes: \{root.total-count}";
+                color: Theme.text_secondary;
+                font-size: 12px;
             }
 
-            TouchArea {
-                mouse-cursor: pointer;
-                clicked => {
-                    root.selected-index = idx;
+            for env[idx] in root.env-counts: HorizontalLayout {
+                spacing: 6px;
+                Text {
+                    text: "|";
+                    color: Theme.text_disabled;
+                    font-size: 12px;
+                }
+                Text {
+                    text: "\{env.name}: \{env.count}";
+                    color: Theme.text_secondary;
+                    font-size: 12px;
                 }
             }
         }
     }
+
+
 }
+
 
 component Header inherits Rectangle {
     property <bool> has-selection: ProcessesFeatureGlobal.selected-pid != -1;
@@ -499,38 +491,30 @@ component Header inherits Rectangle {
 }
 
 component ProcessBodyInternal inherits Rectangle {
-    in property <length> col-name-width: 220px;
+    in property <length> col-name-width: 190px;
     in-out property <int> env-filter-index: 0;
+    private property <int> row-height-px: 32;
+    private property <int> overscan-rows: 14;
+
+    function emit_rows_viewport() {
+        let total = ProcessesFeatureGlobal.process-rows.length;
+        if (total <= 0) {
+            ProcessesFeatureGlobal.rows-viewport-changed(0, 0);
+            return;
+        }
+
+        let row-height = root.row-height-px * 1px;
+        let first = Math.max(0, Math.floor((-process-list.viewport-y / row-height)) - root.overscan-rows);
+        let visible = Math.ceil(process-list.visible-height / row-height) + root.overscan-rows * 2;
+        let start = Math.min(first, total - 1);
+        let count = Math.max(0, Math.min(visible, total - start));
+
+        ProcessesFeatureGlobal.rows-viewport-changed(start, count);
+    }
 
     VerticalLayout {
-        HorizontalLayout {
-            padding-top: 8px;
-            padding-bottom: 8px;
-            Rectangle {
-                height: 1px;
-                width: 100%;
-                background: Theme.layer_background;
-            }
-        }
-
 
         HorizontalLayout {
-            alignment: start;
-            padding-left: 12px;
-            spacing: 12px;
-            Text {
-                text: "Show";
-                vertical-alignment: center;
-                color: Theme.text_secondary;
-            }
-
-            EnvSegmentSwitch {
-                selected-index <=> root.env-filter-index;
-            }
-        }
-
-        HorizontalLayout {
-            padding-top: 8px;
             padding-bottom: 8px;
             Rectangle {
                 height: 1px;
@@ -581,29 +565,26 @@ component ProcessBodyInternal inherits Rectangle {
             }
         }
 
-        ListView {
-            for group[idx] in ProcessesFeatureGlobal.process-groups: ProcessGroupView {
-                parent-process: group.parent;
-                child-processes: group.children;
-                parent-idx: idx;
+        process-list := ListView {
+            changed viewport-y => { root.emit_rows_viewport(); }
+            changed visible-height => { root.emit_rows_viewport(); }
+            for entry[idx] in ProcessesFeatureGlobal.process-rows: ProcessItem {
+                entry: entry;
+                is-child: entry.depth > 0;
+                idx: idx;
                 col-name-width: root.col-name-width;
             }
         }
+
+        ProcessStatusBar {
+            width: 100%;
+            total-count: ProcessesFeatureGlobal.total-processes-count;
+        }
     }
+        
+
 }
 
 export component ProcessViewHeader inherits Header {}
 export component ProcessViewBody inherits ProcessBodyInternal {}
 
-export component ProcessView inherits Rectangle {
-    property <length> col-name-width: 220px;
-    property <int> env-filter-index: 0;
-
-    VerticalLayout {
-        Header { }
-        ProcessBodyInternal {
-            col-name-width: root.col-name-width;
-            env-filter-index: root.env-filter-index;
-        }
-    }
-}

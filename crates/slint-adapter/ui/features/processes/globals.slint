@@ -5,6 +5,8 @@ export struct FieldDef {
     stat-numeric: float,
     threshold: float,
     width-px: int,
+    stat-detail: string,
+    show-indicator: bool,
 }
 
 export struct ProcessField {
@@ -33,52 +35,50 @@ export struct ProcessGroup {
 
 export global ProcessesFeatureGlobal {
     in property <[FieldDef]> column-defs: [
-        { id: "cpu", label: "CPU", stat-text: "46%", stat-numeric: 46.0, threshold: 50.0, width-px: 70 },
-        { id: "memory", label: "Memory", stat-text: "71%", stat-numeric: 71.0, threshold: 80.0, width-px: 120 },
-        { id: "disk_read", label: "Disk", stat-text: "0%", stat-numeric: 0.0, threshold: 70.0, width-px: 70 },
-        { id: "net", label: "Network", stat-text: "5%", stat-numeric: 5.0, threshold: 70.0, width-px: 70 },
+        { id: "cpu", label: "CPU", stat-text: "46%", stat-numeric: 46.0, threshold: 50.0, width-px: 85, stat-detail: "1,4 GHz", show-indicator: true },
+        { id: "memory", label: "Memory", stat-text: "71%", stat-numeric: 71.0, threshold: 80.0, width-px: 120, stat-detail: "32,5/64GB", show-indicator: true },
+        { id: "disk_read", label: "Disk", stat-text: "125 b/s", stat-numeric: 0.0, threshold: 70.0, width-px: 70, show-indicator: false },
+        { id: "net", label: "Network", stat-text: "55 kb/s", stat-numeric: 5.0, threshold: 70.0, width-px: 70, show-indicator: false },
     ];
-    in property <[ProcessGroup]> process-groups: [
+    in property <[ProcessGroup]> process-groups: [];
+    in property <[ProcessEntry]> process-rows: [
         {
-            parent: {
-                pid: 1,
-                name: "Taskmgr sucks",
-                is_dead: false,
-                is_expanded: true,
-                depth: 0,
-                has_children: true,
-                fields: [
-                    { id: "cpu",        text: "12.5%",      width-px: 70, numeric: 12.5, threshold: 50.0  },
-                    { id: "memory",     text: "1.4 GiB",    width-px: 120, numeric: 1.4, threshold: 1.0  },
-                    { id: "disk_read",  text: "500 KiB/s",  width-px: 70, numeric: 75.0, threshold: 70.0  },
-                    { id: "net",        text: "100 KB/s",   width-px: 70, numeric: 100.0, threshold: 70.0  },
-                ]
-            },
-            children: [
-                {
-                    pid: 2,
-                    name: "Taskmgr sucks",
-                    is_dead: false,
-                    is_expanded: false,
-                    depth: 1,
-                    has_children: false,
-                    fields: [
-                        { id: "cpu",        text: "4.2%",      width-px: 70, numeric: 4.2, threshold: 50.0  },
-                        { id: "memory",     text: "300 MiB",   width-px: 120, numeric: 0.3, threshold: 1.0  },
-                        { id: "disk_read",  text: "0 KiB/s",   width-px: 70, numeric: 0.0, threshold: 70.0  },
-                        { id: "net",        text: "20 KB/s",   width-px: 70, numeric: 2.0, threshold: 70.0  },
-                    ]
-                }
+            pid: 1,
+            name: "Taskmgr sucks",
+            is-dead: false,
+            is-expanded: true,
+            depth: 0,
+            has-children: true,
+            fields: [
+                { id: "cpu",        text: "12.5%",      width-px: 85,  numeric: 12.5,  threshold: 50.0 },
+                { id: "memory",     text: "1.4 GiB",    width-px: 120, numeric: 1.4,   threshold: 1.0  },
+                { id: "disk_read",  text: "500 KiB/s",  width-px: 70,  numeric: 75.0,  threshold: 70.0 },
+                { id: "net",        text: "100 KB/s",   width-px: 70,  numeric: 100.0, threshold: 70.0 },
             ]
-        }
+        },
+        {
+            pid: 2,
+            name: "Taskmgr sucks",
+            is-dead: false,
+            is-expanded: false,
+            depth: 1,
+            has-children: false,
+            fields: [
+                { id: "cpu",        text: "4.2%",     width-px: 85,  numeric: 4.2, threshold: 50.0 },
+                { id: "memory",     text: "300 MiB",  width-px: 120, numeric: 0.3, threshold: 1.0  },
+                { id: "disk_read",  text: "0 KiB/s",  width-px: 70,  numeric: 0.0, threshold: 70.0 },
+                { id: "net",        text: "20 KB/s",  width-px: 70,  numeric: 2.0, threshold: 70.0 },
+            ]
+        },
     ];
     in-out property <int> selected-pid: -1;
     in property <string> selected-name;
     in property <string> current-sort;
     in property <bool> current-sort-descending;
-
+    in property <int> total-processes-count;
     callback sort-by(string);
     callback toggle-expand-group(string);
     callback select-process(int, int);
+    callback rows-viewport-changed(int, int);
     callback terminate();
 }

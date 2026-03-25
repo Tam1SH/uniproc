@@ -1,0 +1,21 @@
+[package]
+name = "domain-processes"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+path = "lib.rs"
+
+[dependencies]
+anyhow = { workspace = true }
+app-core = { workspace = true }
+app-contracts = { workspace = true }
+async-trait = { workspace = true }
+slint = { workspace = true }
+smallvec = { workspace = true }
+sysinfo = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+ttl_cache = { workspace = true }
+uniproc-protocol = { workspace = true }
+windows = { workspace = true, features = ["Win32_System_SystemInformation", "Wdk_System_Threading", "Wdk_System_SystemInformation"] }

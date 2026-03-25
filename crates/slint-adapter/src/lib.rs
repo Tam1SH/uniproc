@@ -13,6 +13,8 @@ impl From<FieldDefDto> for FieldDef {
             stat_numeric: value.stat_numeric,
             threshold: value.threshold,
             width_px: value.width_px,
+            stat_detail: value.stat_detail.map(Into::into).unwrap_or_default(),
+            show_indicator: value.show_indicator,
         }
     }
 }

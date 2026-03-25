@@ -1,12 +1,41 @@
 import { Environments } from "../../environments/views/environments.slint";
+import { ScrollView } from "std-widgets.slint";
 import { Navigation } from "../globals/tabs-navigation.slint";
 import { Dashboard } from "../globals/dashboard.slint";
 import { WindowClickHandler } from "../../../title/title-bar.slint";
 import { NavItem } from "components/nav-item.slint";
+import { Theme } from "theme.slint";
+import { Icons } from "icons.slint";
 
 export component SideBar inherits Rectangle {
     accessible-role: AccessibleRole.button;
     width: 260px;
+    private property <length> nav-item-height: 40px;
+    private property <length> nav-item-spacing: 4px;
+    private property <int> active-sidebar-index: Dashboard.pages.length > 0 ? min(max(Navigation.active_tab_index, 0), Dashboard.pages.length - 1) : 0;
+    private property <float> indicator-progress: Navigation.switch_progress;
+    private property <float> indicator-eased-progress: root.indicator-progress * root.indicator-progress * (3.0 - 2.0 * root.indicator-progress) - 0.35;
+    private property <bool> indicator-transition-active: Navigation.switch_from_index >= 0 && Navigation.switch_to_index >= 0 && Navigation.switch_from_index != Navigation.switch_to_index && root.indicator-progress > 0.001 && root.indicator-progress < 0.999;
+    private property <float> indicator-direction: Navigation.switch_to_index >= Navigation.switch_from_index ? 1.0 : -1.0;
+    private property <length> indicator-center-y: (root.nav-item-height - Theme.selection_indicator_height) / 2;
+    private property <length> indicator-max-height: Theme.selection_indicator_height + 12px;
+    
+    private property <float> from-phase: min(root.indicator-eased-progress / 0.5, 1.0);
+    private property <float> to-phase: min(max(root.indicator-eased-progress / 0.5, 0.0), 1.0);
+
+    private property <length> from-indicator-height: Theme.selection_indicator_height * (1.0 - root.from-phase);
+    private property <length> to-indicator-height: root.indicator-eased-progress < 0.3
+        ? 0px 
+        : (root.indicator-eased-progress < 0.6
+            ? (root.indicator-max-height * root.to-phase) 
+            : (root.indicator-max-height - (root.indicator-max-height - Theme.selection_indicator_height) * root.to-phase));
+    
+    private property <length> from-indicator-y: root.indicator-direction > 0.0 ? (root.nav-item-height - root.from-indicator-height) : 0px;
+    
+    private property <length> to-max-anchor-y: root.indicator-direction > 0.0 ? 0px : (root.nav-item-height - root.indicator-max-height);
+    private property <length> to-grow-y: root.indicator-direction > 0.0 ? 0px : (root.nav-item-height - root.to-indicator-height);
+    private property <length> to-indicator-y: root.indicator-eased-progress < 0.6 ? root.to-grow-y : (root.to-max-anchor-y + (root.indicator-center-y - root.to-max-anchor-y) * root.to-phase);
+    
 
     unfocus := TouchArea {
         pointer-event(evt) => {
@@ -19,21 +48,56 @@ export component SideBar inherits Rectangle {
     VerticalLayout {
         padding: 6px;
         spacing: 4px;
-        alignment: start;
 
-        Environments { }
+        ScrollView {
+            vertical-stretch: 1;
+            horizontal-stretch: 1;
 
-        Rectangle {
-            height: 16px;
+            Rectangle {
+                width: parent.width - 6px;
+
+                VerticalLayout {
+                    spacing: 4px;
+                    alignment: start;
+
+                    Environments { }
+
+                    nav-pages := VerticalLayout {
+                        spacing: root.nav-item-spacing;
+
+                        for page[idx] in Dashboard.pages: NavItem {
+                            icon: page.icon;
+                            text: page.text;
+                            active: Navigation.active_tab_index == page.id;
+                            colorize: false;
+                            indicator-visible: root.indicator-transition-active ? ((idx == Navigation.switch_from_index && root.from-indicator-height > 0.2px) || (idx == Navigation.switch_to_index && root.to-indicator-height > 0.2px)) : (idx == root.active-sidebar-index);
+                            indicator-height: root.indicator-transition-active ? (idx == Navigation.switch_from_index ? root.from-indicator-height : (idx == Navigation.switch_to_index ? root.to-indicator-height : Theme.selection_indicator_height)) : Theme.selection_indicator_height;
+                            indicator-offset-y: root.indicator-transition-active ? (idx == Navigation.switch_from_index ? root.from-indicator-y : (idx == Navigation.switch_to_index ? root.to-indicator-y : root.indicator-center-y)) : root.indicator-center-y;
+                            clicked => {
+                                Navigation.request_tab_switch(page.id);
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        height: 6px;
+                    }
+                }
+            }
         }
 
-        for page in Dashboard.pages: NavItem {
-            icon: page.icon;
-            text: page.text;
-            active: Dashboard.active_page == page.id;
+        Rectangle {
+            height: 1px;
+            background: Theme.layer_background;
+        }
+
+        NavItem {
+            icon: Icons.settings;
+            text: "Settings";
+            active: false;
             colorize: false;
             clicked => {
-                Navigation.request_tab_switch(page.id);
+                Dashboard.request_page_switch(100);
             }
         }
     }

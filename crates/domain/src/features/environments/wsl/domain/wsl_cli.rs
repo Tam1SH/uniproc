@@ -4,8 +4,18 @@ use std::process::Stdio;
 use tokio::io::AsyncWriteExt;
 use tokio::process::Command;
 
+#[cfg(windows)]
+const CREATE_NO_WINDOW: u32 = 0x08000000;
+
+fn wsl_cmd() -> Command {
+    let mut cmd = Command::new("wsl");
+    #[cfg(windows)]
+    cmd.creation_flags(CREATE_NO_WINDOW);
+    cmd
+}
+
 pub async fn fetch_distros_data() -> Vec<RawDistroData> {
-    let Ok(out) = Command::new("wsl").args(["-l", "-v"]).output().await else {
+    let Ok(out) = wsl_cmd().args(["-l", "-v"]).output().await else {
         return Vec::new();
     };
 
@@ -26,7 +36,7 @@ pub async fn fetch_distros_data() -> Vec<RawDistroData> {
 }
 
 pub async fn check_wsl_availability_async() -> anyhow::Result<bool> {
-    Ok(Command::new("wsl")
+    Ok(wsl_cmd()
         .arg("--status")
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -36,7 +46,7 @@ pub async fn check_wsl_availability_async() -> anyhow::Result<bool> {
 }
 
 pub async fn check_agent_installed_async(distro: &str) -> bool {
-    Command::new("wsl")
+    wsl_cmd()
         .args(["-d", distro, "test", "-f", "/tmp/wsl_agent"])
         .status()
         .await
@@ -47,7 +57,7 @@ pub async fn check_agent_installed_async(distro: &str) -> bool {
 pub async fn inject_agent_async(distro: &str) -> anyhow::Result<()> {
     const AGENT_BIN: &[u8] = "".as_bytes();
 
-    let mut child = Command::new("wsl")
+    let mut child = wsl_cmd()
         .args([
             "-d",
             distro,

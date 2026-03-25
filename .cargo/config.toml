@@ -1,0 +1,13 @@
+[build]
+rustc-wrapper = "sccache"
+
+[alias]
+# Usage:
+#   cargo cdev          (stable check with sccache)
+#   cargo bdev          (stable build with sccache)
+#   cargo +nightly cclif
+#   cargo +nightly bclif
+cdev = "check"
+bdev = "build"
+cclif = "check -Zcodegen-backend --config .cargo/config.clif.toml"
+bclif = "build -Zcodegen-backend --config .cargo/config.clif.toml"

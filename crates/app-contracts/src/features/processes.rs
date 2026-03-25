@@ -5,6 +5,8 @@ pub struct FieldDefDto {
     pub id: String,
     pub label: String,
     pub stat_text: String,
+    pub stat_detail: Option<String>,
+    pub show_indicator: bool,
     pub stat_numeric: f32,
     pub threshold: f32,
     pub width_px: i32,
@@ -47,13 +49,14 @@ pub struct ProcessGroupVm {
 }
 
 pub trait ProcessesUiPort: 'static {
-    fn set_process_groups(&self, groups: Vec<ProcessGroupVm>);
+    fn set_process_rows_window(&self, total_rows: usize, start: usize, rows: Vec<ProcessEntryVm>);
     fn set_column_defs(&self, defs: Vec<FieldDefDto>);
     fn set_loading(&self, loading: bool);
     fn get_selected_pid(&self) -> i32;
     fn set_selected_pid(&self, pid: i32);
     fn set_selected_name(&self, name: String);
     fn set_sort_state(&self, field: String, descending: bool);
+    fn set_total_processes_count(&self, count: usize);
 }
 
 pub trait ProcessesUiBindings: 'static {
@@ -70,6 +73,10 @@ pub trait ProcessesUiBindings: 'static {
         F: Fn() + 'static;
 
     fn on_select_process<F>(&self, handler: F)
+    where
+        F: Fn(i32, i32) + 'static;
+
+    fn on_rows_viewport_changed<F>(&self, handler: F)
     where
         F: Fn(i32, i32) + 'static;
 }

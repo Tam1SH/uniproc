@@ -1,4 +1,4 @@
-use crate::features::processes::scanner::base::{FieldValue, ScanResult};
+use crate::features::processes::scanner::base::ScanResult;
 use app_contracts::features::processes::{FieldDefDto, ProcessFieldDto, ProcessNodeDto};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
@@ -14,9 +14,11 @@ impl Default for ColumnWidthConfig {
     fn default() -> Self {
         let mut widths_px = HashMap::new();
         widths_px.insert("memory", 120);
+        widths_px.insert("cpu", 85);
 
         let mut min_widths_px = HashMap::new();
         min_widths_px.insert("memory", 120);
+        min_widths_px.insert("cpu", 85);
 
         Self {
             widths_px,
@@ -75,29 +77,7 @@ impl VisitorSharedState {
     }
 }
 
-fn format_bytes(b: u64) -> String {
-    const KB: u64 = 1024;
-    const MB: u64 = 1024 * KB;
-    const GB: u64 = 1024 * MB;
-    match b {
-        b if b >= GB => format!("{:.1} GB", b as f64 / GB as f64),
-        b if b >= MB => format!("{:.1} MB", b as f64 / MB as f64),
-        b if b >= KB => format!("{:.1} KB", b as f64 / KB as f64),
-        b => format!("{} B", b),
-    }
-}
-
-fn field_to_text(value: &FieldValue) -> String {
-    match value {
-        FieldValue::Bytes(b) => format_bytes(*b),
-        FieldValue::Percent(p) => format!("{:.1}%", p),
-        FieldValue::U64(v) => v.to_string(),
-        FieldValue::F32(v) => format!("{:.1}", v),
-        FieldValue::Str(s) => s.clone(),
-        FieldValue::Duration(d) => format!("{}ms", d.as_millis()),
-    }
-}
-
+#[derive(Clone)]
 pub struct BridgeSnapshot {
     pub column_defs: Vec<FieldDefDto>,
     pub processes: Vec<ProcessNodeDto>,
@@ -110,9 +90,11 @@ pub fn build_snapshot(result: &dyn ScanResult, shared: &VisitorSharedState) -> B
         column_defs.push(FieldDefDto {
             id: field.id.to_string(),
             label: field.label.to_string(),
-            stat_text: field_to_text(&field.value),
+            stat_text: field.value.to_text(),
             stat_numeric: field.numeric,
             threshold: field.threshold,
+            stat_detail: field.stat_detail,
+            show_indicator: field.show_indicator,
             width_px: shared.get_width_px(field.id) as i32,
         });
     });
@@ -125,7 +107,7 @@ pub fn build_snapshot(result: &dyn ScanResult, shared: &VisitorSharedState) -> B
         proc.visit(&*ctx, &mut |field| {
             fields.push(ProcessFieldDto {
                 id: field.id.to_string(),
-                text: field_to_text(&field.value),
+                text: field.value.to_text(),
                 width_px: shared.get_width_px(field.id) as i32,
                 numeric: field.numeric,
                 threshold: field.threshold,

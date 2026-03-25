@@ -1,5 +1,5 @@
 use crate::features::processes::scanner::base::{
-    Field, FieldValue, ProcessVisitor, ScanResult, VisitorContext,
+    Field, FieldValue, FieldValueFormat, ProcessVisitor, ScanResult, VisitorContext,
 };
 use crate::features::processes::scanner::windows::types::{
     WindowsProcessStat, WindowsScanResult, WindowsStats,
@@ -53,6 +53,8 @@ impl ProcessVisitor for WindowsProcessStat {
             value: FieldValue::Percent(self.cpu_usage),
             numeric: self.cpu_usage,
             threshold: 50.0,
+            stat_detail: None,
+            show_indicator: false,
         });
 
         visitor(Field {
@@ -61,6 +63,8 @@ impl ProcessVisitor for WindowsProcessStat {
             value: FieldValue::Bytes(self.memory_usage),
             numeric: self.memory_usage as f32 / (1024.0 * 1024.0 * 1024.0),
             threshold: 1.0,
+            stat_detail: None,
+            show_indicator: false,
         });
 
         if let Some(net) = self.net_usage {
@@ -70,6 +74,8 @@ impl ProcessVisitor for WindowsProcessStat {
                 value: FieldValue::Bytes(net),
                 numeric: (net as f32 / net_bw) * 100.0,
                 threshold: 70.0,
+                stat_detail: None,
+                show_indicator: false,
             });
         }
 
@@ -85,6 +91,8 @@ impl ProcessVisitor for WindowsProcessStat {
                 value: FieldValue::Bytes(disk_total),
                 numeric: (disk_total as f32 / disk_thr) * 100.0,
                 threshold: 70.0,
+                stat_detail: None,
+                show_indicator: false,
             });
         }
     }
@@ -108,7 +116,30 @@ impl ScanResult for WindowsScanResult {
             value: FieldValue::Percent(self.stats.cpu_percent),
             numeric: self.stats.cpu_percent,
             threshold: 50.0,
+            stat_detail: None,
+            show_indicator: true,
         });
+
+        let total_memory = self.stats.total_memory as f64;
+        let used_memory = total_memory * (self.stats.ram_percent as f64) / 100.0;
+        let format_memory = format!(
+            "{used}/{total}",
+            used = FieldValue::format_bytes_with_params(
+                used_memory as u64,
+                &[
+                    FieldValueFormat::WithoutUnit,
+                    FieldValueFormat::WithoutSpaces
+                ]
+            ),
+            total = FieldValue::format_bytes_with_params(
+                total_memory as u64,
+                &[
+                    FieldValueFormat::WithoutSpaces,
+                    FieldValueFormat::RoundUp,
+                    FieldValueFormat::WithoutDecimals
+                ]
+            )
+        );
 
         visitor(Field {
             id: "memory",
@@ -116,6 +147,8 @@ impl ScanResult for WindowsScanResult {
             value: FieldValue::Percent(self.stats.ram_percent),
             numeric: self.stats.ram_percent,
             threshold: 80.0,
+            stat_detail: Some(format_memory),
+            show_indicator: true,
         });
 
         visitor(Field {
@@ -124,6 +157,8 @@ impl ScanResult for WindowsScanResult {
             value: FieldValue::Percent(self.stats.disk_percent),
             numeric: self.stats.disk_percent,
             threshold: 70.0,
+            show_indicator: false,
+            stat_detail: None,
         });
 
         visitor(Field {
@@ -132,6 +167,8 @@ impl ScanResult for WindowsScanResult {
             value: FieldValue::Percent(self.stats.net_percent),
             numeric: self.stats.net_percent,
             threshold: 70.0,
+            show_indicator: false,
+            stat_detail: None,
         });
     }
 }

@@ -23,6 +23,7 @@ pub struct WindowsStats {
     pub total_memory: u64,
 }
 
+#[derive(Clone)]
 pub struct WindowsScanResult {
     pub processes: Vec<WindowsProcessStat>,
     pub stats: WindowsStats,

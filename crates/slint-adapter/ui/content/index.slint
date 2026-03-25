@@ -32,8 +32,9 @@ export component Content inherits Rectangle {
     background: Theme.background;
     border-top-left-radius: Theme.border_radius_m;
     clip: true;
-    private property <int> current-page-id: Navigation.tabs.length > Navigation.active_tab_index ? Navigation.tabs[Navigation.active_tab_index].active_page : 0;
-    private property <string> current-page-title: Dashboard.pages.length > root.current-page-id ? Dashboard.pages[root.current-page-id].text : "";
+    private property <int> current-page-id: Navigation.active_tab_index;
+    private property <string> current-page-title: Dashboard.pages[root.current-page-id].text;
+    private property <bool> is-entering: false;
 
     init => {
         Navigation.request-tab-switch(0);
@@ -56,13 +57,13 @@ export component Content inherits Rectangle {
                 height: 100%;
                 opacity: Navigation.content-visible ? 1 : 0;
                 y: Navigation.content-visible ? 0px : 30px;
-
+ 
                 animate opacity {
                     duration: 150ms;
                     easing: ease-in-out;
                 }
                 animate y {
-                    duration: 400ms;
+                    duration: Navigation.content-visible ? 400ms : 0ms;
                     easing: cubic-bezier(0.1, 0.9, 0.2, 1.0);
                 }
 

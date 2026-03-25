@@ -3,13 +3,14 @@
 use app_core::app::App;
 use domain::features::context_menu::ContextMenuFeature;
 use domain::features::cosmetics::CosmeticsFeature;
-use domain::features::environments::EnvironmentsFeature;
 use domain::features::l10n::L10nFeature;
 use domain::features::navigation::NavigationFeature;
-use domain::features::processes::ProcessFeature;
 use domain::features::run_task::RunTaskFeature;
 use domain::features::settings::SettingsFeature;
 use domain::features::window_actions::WindowActionsFeature;
+use domain_agents::features::agents::AgentsFeature;
+use domain_environments::features::environments::EnvironmentsFeature;
+use domain_processes::features::processes::ProcessFeature;
 use slint::ComponentHandle;
 use slint_adapter::AppWindow;
 use slint_adapter::adapters::context_menu::ContextMenuUiAdapter;
@@ -58,6 +59,7 @@ fn main() -> anyhow::Result<()> {
         .feature(with_adapter!(WindowActionsFeature => WindowActionsAdapter))?
         .feature(with_adapter!(RunTaskFeature => RunTaskAdapter))?
         .feature(with_adapter!(ContextMenuFeature => ContextMenuUiAdapter))?
+        .feature(AgentsFeature)?
         .feature(with_adapter!(EnvironmentsFeature => EnvironmentsUiAdapter))?
         .feature(with_adapter!(NavigationFeature => NavigationUiAdapter))?
         .feature(with_adapter!(L10nFeature => SlintL10nPort))?

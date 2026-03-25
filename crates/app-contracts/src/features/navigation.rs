@@ -32,6 +32,8 @@ pub trait NavigationUiPort: 'static {
     fn get_active_tab_index(&self) -> i32;
     fn set_content_visible(&self, visible: bool);
     fn set_active_tab_index(&self, index: i32);
+    fn set_switch_transition(&self, from_index: i32, to_index: i32, progress: f32);
+    fn set_switch_progress(&self, progress: f32);
 }
 
 pub trait NavigationUiBindings: 'static {
