@@ -19,6 +19,11 @@ impl ProcessMetadataService {
             icon_provider: IconProvider::new(icon_ttl),
         }
     }
+
+    pub fn set_ttls(&mut self, name_ttl: Duration, icon_ttl: Duration) {
+        self.name_provider.set_ttl(name_ttl);
+        self.icon_provider.set_ttl(icon_ttl);
+    }
 }
 
 impl ProcessMetadata for ProcessMetadataService {

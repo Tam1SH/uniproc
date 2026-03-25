@@ -9,23 +9,15 @@ impl Icons {
         let bytes: &[u8] = match name {
             "app" => include_bytes!("../../slint-adapter/ui/assets/app.svg"),
             "apps-list" => include_bytes!("../../slint-adapter/ui/assets/apps-list.svg"),
-            "arrow-up-filled" => {
-                include_bytes!("../../slint-adapter/ui/assets/arrow-up-filled.svg")
-            }
-            "arrow-up-regular" => {
-                include_bytes!("../../slint-adapter/ui/assets/arrow-up-regular.svg")
-            }
+            "arrow-up-filled" => include_bytes!("../../slint-adapter/ui/assets/arrow-up-filled.svg"),
+            "arrow-up-regular" => include_bytes!("../../slint-adapter/ui/assets/arrow-up-regular.svg"),
             "coin" => include_bytes!("../../slint-adapter/ui/assets/coin.svg"),
-            "dashed-settings" => {
-                include_bytes!("../../slint-adapter/ui/assets/dashed-settings.svg")
-            }
+            "dashed-settings" => include_bytes!("../../slint-adapter/ui/assets/dashed-settings.svg"),
             "data-area" => include_bytes!("../../slint-adapter/ui/assets/data-area.svg"),
             "database" => include_bytes!("../../slint-adapter/ui/assets/database.svg"),
             "dismiss" => include_bytes!("../../slint-adapter/ui/assets/dismiss.svg"),
             "docker" => include_bytes!("../../slint-adapter/ui/assets/docker.svg"),
-            "download-regular" => {
-                include_bytes!("../../slint-adapter/ui/assets/download-regular.svg")
-            }
+            "download-regular" => include_bytes!("../../slint-adapter/ui/assets/download-regular.svg"),
             "extension" => include_bytes!("../../slint-adapter/ui/assets/extension.svg"),
             "folder" => include_bytes!("../../slint-adapter/ui/assets/folder.svg"),
             "info" => include_bytes!("../../slint-adapter/ui/assets/info.svg"),
@@ -44,12 +36,8 @@ impl Icons {
             "puzzle" => include_bytes!("../../slint-adapter/ui/assets/puzzle.svg"),
             "restore" => include_bytes!("../../slint-adapter/ui/assets/restore.svg"),
             "search" => include_bytes!("../../slint-adapter/ui/assets/search.svg"),
-            "settings-filled" => {
-                include_bytes!("../../slint-adapter/ui/assets/settings-filled.svg")
-            }
-            "settings-regular" => {
-                include_bytes!("../../slint-adapter/ui/assets/settings-regular.svg")
-            }
+            "settings-filled" => include_bytes!("../../slint-adapter/ui/assets/settings-filled.svg"),
+            "settings-regular" => include_bytes!("../../slint-adapter/ui/assets/settings-regular.svg"),
             "settings" => include_bytes!("../../slint-adapter/ui/assets/settings.svg"),
             "spinner" => include_bytes!("../../slint-adapter/ui/assets/spinner.svg"),
             "statistics" => include_bytes!("../../slint-adapter/ui/assets/statistics.svg"),

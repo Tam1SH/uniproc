@@ -5,20 +5,20 @@ use std::sync::{Arc, RwLock};
 
 #[derive(Clone, Debug)]
 pub struct ColumnWidthConfig {
-    pub widths_px: HashMap<&'static str, u32>,
-    pub min_widths_px: HashMap<&'static str, u32>,
+    pub widths_px: HashMap<String, u32>,
+    pub min_widths_px: HashMap<String, u32>,
     pub default_width_px: u32,
 }
 
 impl Default for ColumnWidthConfig {
     fn default() -> Self {
         let mut widths_px = HashMap::new();
-        widths_px.insert("memory", 120);
-        widths_px.insert("cpu", 85);
+        widths_px.insert("memory".to_string(), 120);
+        widths_px.insert("cpu".to_string(), 85);
 
         let mut min_widths_px = HashMap::new();
-        min_widths_px.insert("memory", 120);
-        min_widths_px.insert("cpu", 85);
+        min_widths_px.insert("memory".to_string(), 120);
+        min_widths_px.insert("cpu".to_string(), 85);
 
         Self {
             widths_px,
@@ -30,8 +30,8 @@ impl Default for ColumnWidthConfig {
 
 #[derive(Clone, Debug)]
 pub struct VisitorSharedState {
-    widths_px: Arc<RwLock<HashMap<&'static str, u32>>>,
-    min_widths_px: Arc<RwLock<HashMap<&'static str, u32>>>,
+    widths_px: Arc<RwLock<HashMap<String, u32>>>,
+    min_widths_px: Arc<RwLock<HashMap<String, u32>>>,
     default_width_px: u32,
 }
 
@@ -48,12 +48,15 @@ impl VisitorSharedState {
         }
     }
 
-    pub fn set_width_px(&self, key: &'static str, width: u32) {
-        self.widths_px.write().unwrap().insert(key, width);
+    pub fn set_width_px(&self, key: &str, width: u32) {
+        self.widths_px.write().unwrap().insert(key.to_string(), width);
     }
 
-    pub fn set_min_width_px(&self, key: &'static str, min: u32) {
-        self.min_widths_px.write().unwrap().insert(key, min);
+    pub fn set_min_width_px(&self, key: &str, min: u32) {
+        self.min_widths_px
+            .write()
+            .unwrap()
+            .insert(key.to_string(), min);
     }
 
     pub fn get_width_px(&self, key: &str) -> u32 {

@@ -1,5 +1,6 @@
 mod store;
 
+use arc_swap::ArcSwap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -18,6 +19,44 @@ pub use store::SubscriptionId;
 pub use store::SubscriptionKind;
 
 const SAVE_DEBOUNCE_MS: &str = "save_debounce_ms";
+const WATCH_INTERVAL_MS: &str = "watch_interval_ms";
+
+struct SettingSubscription {
+    settings: Arc<SettingsStore>,
+    id: SubscriptionId,
+}
+
+impl Drop for SettingSubscription {
+    fn drop(&mut self) {
+        self.settings.unsubscribe(self.id);
+    }
+}
+
+pub struct ReactiveSetting<TValue> {
+    value: Arc<ArcSwap<TValue>>,
+    _subscription: Arc<SettingSubscription>,
+}
+
+impl<TValue> Clone for ReactiveSetting<TValue> {
+    fn clone(&self) -> Self {
+        Self {
+            value: Arc::clone(&self.value),
+            _subscription: Arc::clone(&self._subscription),
+        }
+    }
+}
+
+impl<TValue> ReactiveSetting<TValue> {
+    pub fn get_arc(&self) -> Arc<TValue> {
+        self.value.load_full()
+    }
+}
+
+impl<TValue: Clone> ReactiveSetting<TValue> {
+    pub fn get(&self) -> TValue {
+        self.value.load().as_ref().clone()
+    }
+}
 
 pub trait SettingsScope {
     const PREFIX: &'static str;
@@ -38,12 +77,16 @@ pub trait FeatureSettings: SettingsScope {
         ensure_default::<Self, TValue>(settings, key, value)
     }
 
-    fn get_or<TValue>(settings: &SettingsStore, key: &str, default: TValue) -> TValue
+    fn setting_or<TValue>(
+        settings: &Arc<SettingsStore>,
+        key: &str,
+        default: TValue,
+    ) -> anyhow::Result<ReactiveSetting<TValue>>
     where
         Self: Sized,
-        TValue: Serialize + DeserializeOwned,
+        TValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     {
-        get_or::<Self, TValue>(settings, key, default)
+        setting_or::<Self, TValue>(settings, key, default)
     }
 }
 
@@ -77,17 +120,47 @@ where
     Ok(())
 }
 
-pub fn get_or<TScope, TValue>(settings: &SettingsStore, key: &str, default: TValue) -> TValue
+fn read_value_or_default<TValue>(settings: &SettingsStore, path: &str, default: &TValue) -> TValue
+where
+    TValue: DeserializeOwned + Clone,
+{
+    settings
+        .get(path)
+        .and_then(|value| serde_json::from_value::<TValue>(value).ok())
+        .unwrap_or_else(|| default.clone())
+}
+
+pub fn setting_or<TScope, TValue>(
+    settings: &Arc<SettingsStore>,
+    key: &str,
+    default: TValue,
+) -> anyhow::Result<ReactiveSetting<TValue>>
 where
     TScope: SettingsScope,
-    TValue: Serialize + DeserializeOwned,
+    TValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
+    ensure_default::<TScope, TValue>(settings, key, default.clone())?;
     let path = scoped_path::<TScope>(key);
+    let current = read_value_or_default(settings, &path, &default);
 
-    settings
-        .get(&path)
-        .and_then(|value| serde_json::from_value::<TValue>(value).ok())
-        .unwrap_or(default)
+    let value = Arc::new(ArcSwap::from_pointee(current));
+    let watched = Arc::clone(&value);
+    let watched_path = path.clone();
+    let watched_default = default.clone();
+    let watched_settings = Arc::clone(settings);
+
+    let id = settings.on_state_changed(Arc::new(move |_| {
+        let next = read_value_or_default(&watched_settings, &watched_path, &watched_default);
+        watched.store(Arc::new(next));
+    }));
+
+    Ok(ReactiveSetting {
+        value,
+        _subscription: Arc::new(SettingSubscription {
+            settings: Arc::clone(settings),
+            id,
+        }),
+    })
 }
 
 struct SettingsPersistenceSettings;
@@ -98,7 +171,9 @@ impl SettingsScope for SettingsPersistenceSettings {
 
 impl FeatureSettings for SettingsPersistenceSettings {
     fn ensure_defaults(settings: &SettingsStore) -> anyhow::Result<()> {
-        Self::ensure_default(settings, SAVE_DEBOUNCE_MS, 300u64)
+        Self::ensure_default(settings, SAVE_DEBOUNCE_MS, 300u64)?;
+        Self::ensure_default(settings, WATCH_INTERVAL_MS, 500u64)?;
+        Ok(())
     }
 }
 

@@ -3,8 +3,10 @@ mod agent;
 
 pub use actor::{Init, Ping, WindowsAgentActor};
 
+use app_contracts::features::agents::ScanTick;
 use app_core::SharedState;
 use app_core::actor::addr::Addr;
+use app_core::actor::event_bus::EVENT_BUS;
 use app_core::app::Feature;
 use app_core::reactor::Reactor;
 use app_core::settings::{FeatureSettings, SettingsScope, SettingsStore, settings_from};
@@ -41,15 +43,19 @@ impl<TWindow: ComponentHandle + 'static> Feature<TWindow> for WindowsAgentFeatur
         WindowsAgentSettings::ensure_defaults(&settings)?;
 
         let connect_timeout_secs =
-            WindowsAgentSettings::get_or(&settings, CONNECT_TIMEOUT_SECS, 8u64).max(1);
-        let ping_interval_ms =
-            WindowsAgentSettings::get_or(&settings, PING_INTERVAL_MS, 500u64).max(1);
+            WindowsAgentSettings::setting_or(&settings, CONNECT_TIMEOUT_SECS, 8u64)?;
+        let ping_interval_ms = WindowsAgentSettings::setting_or(&settings, PING_INTERVAL_MS, 500u64)?;
 
         let addr = Addr::new(WindowsAgentActor::new(connect_timeout_secs), ui.as_weak());
 
         let a = addr.clone();
-        reactor.add_loop(Duration::from_millis(ping_interval_ms), move || {
-            a.send(Ping)
+        reactor.add_dynamic_loop(
+            move || Duration::from_millis(ping_interval_ms.get().max(1)),
+            move || a.send(Ping),
+        );
+
+        EVENT_BUS.with(|bus| {
+            bus.subscribe::<WindowsAgentActor, ScanTick, TWindow>(addr.clone());
         });
 
         addr.send(Init);

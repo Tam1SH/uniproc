@@ -1,19 +1,26 @@
 use app_core::actor::traits::Message;
 use ogurpchik::codecs::base::HasAllocator;
+use ogurpchik::codecs::base::MessageCodec;
 use ogurpchik::high::client::Client;
 use ogurpchik::pool::buf_guard::BufGuard;
-use uniproc_protocol::HostCodec;
+use uniproc_protocol::{LinuxCodec, WindowsCodec};
 
-pub type AgentClient = Client<
-    HostCodec,
-    <HostCodec as ogurpchik::codecs::base::MessageCodec>::Dest,
+type RpcClient<C> = Client<
+    C,
+    <C as MessageCodec>::Dest,
     BufGuard<
-        <HostCodec as ogurpchik::codecs::base::MessageCodec>::Dest,
-        <<HostCodec as ogurpchik::codecs::base::MessageCodec>::Dest as HasAllocator>::SharedAlloc,
+        <C as MessageCodec>::Dest,
+        <<C as MessageCodec>::Dest as HasAllocator>::SharedAlloc,
     >,
 >;
 
-pub type WslClient = AgentClient;
+#[cfg(target_os = "windows")]
+pub type AgentClient = RpcClient<WindowsCodec>;
+
+#[cfg(not(target_os = "windows"))]
+pub type AgentClient = RpcClient<LinuxCodec>;
+
+pub type WslClient = RpcClient<LinuxCodec>;
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct WslDistroDto {

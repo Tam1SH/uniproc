@@ -4,21 +4,25 @@ use crate::features::processes::ui::slint_bridge::{
     BridgeSnapshot, ColumnWidthConfig, VisitorSharedState, build_snapshot,
 };
 use app_contracts::features::agents::RemoteScanResult;
+#[cfg(target_os = "windows")]
+use app_contracts::features::agents::WindowsReportMessage;
 use app_contracts::features::navigation::TabChanged;
 use app_contracts::features::processes::{
     ProcessEntryVm, ProcessFieldDto, ProcessGroupVm, ProcessesUiPort,
 };
 use app_core::actor::traits::{Context, Handler, Message, NoOp};
 use app_core::messages;
+use app_core::settings::ReactiveSetting;
 use app_core::windowed_rows::WindowedRows;
+use serde_json::Value;
 use slint::ComponentHandle;
 use std::collections::{HashMap, HashSet};
+use std::time::Duration;
 use sysinfo::{Pid, ProcessesToUpdate, System};
 
-#[cfg(target_os = "windows")]
-use crate::features::processes::scanner::windows::WindowsReport;
-
 use crate::features::processes::scanner::wsl::visitor::WslScanResult;
+#[cfg(target_os = "windows")]
+use crate::features::processes::scanner::windows::visitor::WindowsScanResult;
 
 messages! {
     Sort(String),
@@ -33,6 +37,11 @@ pub struct ProcessActor<P: ProcessesUiPort> {
     pub metadata: ProcessMetadataService,
     pub widths_by_schema: HashMap<&'static str, VisitorSharedState>,
     pub width_config: ColumnWidthConfig,
+    pub name_cache_ttl_secs: ReactiveSetting<u64>,
+    pub icon_cache_ttl_secs: ReactiveSetting<u64>,
+    pub default_width_px: ReactiveSetting<u64>,
+    pub widths_px: ReactiveSetting<Value>,
+    pub min_widths_px: ReactiveSetting<Value>,
     pub is_active: bool,
     pub ui_port: P,
     pub rows_window: WindowedRows<ProcessEntryVm>,
@@ -40,6 +49,46 @@ pub struct ProcessActor<P: ProcessesUiPort> {
 }
 
 impl<P: ProcessesUiPort> ProcessActor<P> {
+    fn parse_width_map(value: &Value) -> HashMap<String, u32> {
+        let mut out = HashMap::new();
+        let Some(obj) = value.as_object() else {
+            return out;
+        };
+
+        for (key, value) in obj {
+            let Some(raw) = value.as_u64() else {
+                continue;
+            };
+            out.insert(key.clone(), raw.clamp(40, 1000) as u32);
+        }
+
+        out
+    }
+
+    fn effective_width_config(&self) -> ColumnWidthConfig {
+        let mut cfg = ColumnWidthConfig::default();
+        let default_width = self.default_width_px.get().clamp(40, 1000) as u32;
+        cfg.default_width_px = default_width;
+        cfg.widths_px = Self::parse_width_map(&self.widths_px.get());
+        cfg.min_widths_px = Self::parse_width_map(&self.min_widths_px.get());
+        cfg
+    }
+
+    fn refresh_runtime_settings(&mut self) {
+        let next_name_ttl = Duration::from_secs(self.name_cache_ttl_secs.get().max(1));
+        let next_icon_ttl = Duration::from_secs(self.icon_cache_ttl_secs.get().max(1));
+        self.metadata.set_ttls(next_name_ttl, next_icon_ttl);
+
+        let next_width_config = self.effective_width_config();
+        if self.width_config.default_width_px != next_width_config.default_width_px
+            || self.width_config.widths_px != next_width_config.widths_px
+            || self.width_config.min_widths_px != next_width_config.min_widths_px
+        {
+            self.width_config = next_width_config;
+            self.widths_by_schema.clear();
+        }
+    }
+
     fn push_rows_window(&self) {
         let batch = self.rows_window.batch();
         self.ui_port
@@ -139,6 +188,7 @@ where
         if !self.is_active {
             return;
         }
+        self.refresh_runtime_settings();
         let result = WslScanResult {
             processes: msg.processes,
             machine: msg.machine,
@@ -150,17 +200,20 @@ where
 }
 
 #[cfg(target_os = "windows")]
-impl<P, TWindow> Handler<WindowsReport, TWindow> for ProcessActor<P>
+impl<P, TWindow> Handler<WindowsReportMessage, TWindow> for ProcessActor<P>
 where
     P: ProcessesUiPort,
     TWindow: ComponentHandle + 'static,
 {
-    fn handle(&mut self, msg: WindowsReport, _ctx: &Context<Self, TWindow>) {
+    fn handle(&mut self, msg: WindowsReportMessage, _ctx: &Context<Self, TWindow>) {
         if !self.is_active {
             return;
         }
+
+        self.refresh_runtime_settings();
+        let result = WindowsScanResult { report: msg.0 };
         let shared = self.shared_state_for("windows");
-        let snapshot = build_snapshot(&msg.0, &shared);
+        let snapshot = build_snapshot(&result, &shared);
         self.apply_snapshot("windows", snapshot);
     }
 }

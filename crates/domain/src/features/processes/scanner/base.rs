@@ -31,9 +31,22 @@ impl FieldValue {
     }
 
     pub fn format_bytes_with_params(b: u64, formats: &[FieldValueFormat]) -> String {
-        const KB: u64 = 1024;
-        const MB: u64 = 1024 * KB;
-        const GB: u64 = 1024 * MB;
+        Self::format_units_with_params(
+            b,
+            1024,
+            &["B", "KB", "MB", "GB", "TB", "PB"],
+            formats,
+        )
+    }
+
+    pub fn format_units_with_params(
+        value: u64,
+        step: u64,
+        units: &[&str],
+        formats: &[FieldValueFormat],
+    ) -> String {
+        let units = if units.is_empty() { &[""][..] } else { units };
+        let step = step.max(2) as f64;
 
         let no_spaces = formats
             .iter()
@@ -48,29 +61,53 @@ impl FieldValue {
             .iter()
             .any(|f| matches!(f, FieldValueFormat::RoundUp));
 
-        let space = if no_spaces || no_unit { "" } else { " " };
-
-        let apply_round = |val: f64| -> f64 { if round_up { val.round() } else { val } };
-        macro_rules! fmt_val {
-            ($val:expr, $unit:expr) => {{
-                let val = apply_round($val);
-                let unit = if no_unit { "" } else { $unit };
-                if no_decimals {
-                    format!("{:.0}{space}{unit}", val, space = space)
-                } else {
-                    format!("{:.1}{space}{unit}", val, space = space)
-                }
-            }};
+        let mut scaled = value as f64;
+        let mut unit_idx = 0usize;
+        while unit_idx + 1 < units.len() && scaled >= step {
+            scaled /= step;
+            unit_idx += 1;
         }
 
-        match b {
-            b if b >= GB => fmt_val!(b as f64 / GB as f64, "GB"),
-            b if b >= MB => fmt_val!(b as f64 / MB as f64, "MB"),
-            b if b >= KB => fmt_val!(b as f64 / KB as f64, "KB"),
-            b => {
-                let unit = if no_unit { "" } else { "B" };
-                format!("{b}{space}{unit}", space = space)
-            }
+        if round_up {
+            scaled = scaled.round();
+        }
+
+        let unit = if no_unit { "" } else { units[unit_idx] };
+        let space = if no_spaces || no_unit { "" } else { " " };
+
+        if unit_idx == 0 || no_decimals {
+            format!("{:.0}{space}{unit}", scaled, space = space)
+        } else {
+            format!("{:.1}{space}{unit}", scaled, space = space)
+        }
+    }
+
+    pub fn format_value_with_params(
+        value: f64,
+        unit: &str,
+        formats: &[FieldValueFormat],
+    ) -> String {
+        let no_spaces = formats
+            .iter()
+            .any(|f| matches!(f, FieldValueFormat::WithoutSpaces));
+        let no_decimals = formats
+            .iter()
+            .any(|f| matches!(f, FieldValueFormat::WithoutDecimals));
+        let no_unit = formats
+            .iter()
+            .any(|f| matches!(f, FieldValueFormat::WithoutUnit));
+        let round_up = formats
+            .iter()
+            .any(|f| matches!(f, FieldValueFormat::RoundUp));
+
+        let value = if round_up { value.round() } else { value };
+        let unit = if no_unit { "" } else { unit };
+        let space = if no_spaces || no_unit { "" } else { " " };
+
+        if no_decimals {
+            format!("{:.0}{space}{unit}", value, space = space)
+        } else {
+            format!("{:.1}{space}{unit}", value, space = space)
         }
     }
 

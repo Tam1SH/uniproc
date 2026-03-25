@@ -87,10 +87,8 @@ where
         let settings = settings_from(shared);
         NavigationSettings::ensure_defaults(&settings)?;
 
-        let hide_delay_ms =
-            NavigationSettings::get_or(&settings, SWITCH_HIDE_DELAY_MS, 60u64).max(1);
-        let show_delay_ms =
-            NavigationSettings::get_or(&settings, SWITCH_SHOW_DELAY_MS, 20u64).max(1);
+        let hide_delay_ms = NavigationSettings::setting_or(&settings, SWITCH_HIDE_DELAY_MS, 60u64)?;
+        let show_delay_ms = NavigationSettings::setting_or(&settings, SWITCH_SHOW_DELAY_MS, 20u64)?;
 
         let ui_port = (self.make_ui_port)(ui);
         ui_port.set_pages(vec![
@@ -156,12 +154,14 @@ where
                 switch_anim_duration,
             );
 
+            let hide_delay_ms = hide_delay_ms.clone();
+            let show_delay_ms = show_delay_ms.clone();
             ui_for_switch.set_content_visible(false);
             let ui_after_hide = ui_for_switch.clone();
-            slint::Timer::single_shot(Duration::from_millis(hide_delay_ms), move || {
+            slint::Timer::single_shot(Duration::from_millis(hide_delay_ms.get().max(1)), move || {
                 ui_after_hide.set_active_tab_index(new_index);
                 let ui_after_show = ui_after_hide.clone();
-                slint::Timer::single_shot(Duration::from_millis(show_delay_ms), move || {
+                slint::Timer::single_shot(Duration::from_millis(show_delay_ms.get().max(1)), move || {
                     ui_after_show.set_content_visible(true);
                 });
             });

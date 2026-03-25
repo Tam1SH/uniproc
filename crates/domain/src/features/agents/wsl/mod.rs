@@ -41,17 +41,18 @@ impl<TWindow: ComponentHandle + 'static> Feature<TWindow> for WslAgentFeature {
         let settings = settings_from(shared);
         WslAgentSettings::ensure_defaults(&settings)?;
 
-        let connect_timeout_secs =
-            WslAgentSettings::get_or(&settings, CONNECT_TIMEOUT_SECS, 8u64).max(1);
-        let ping_interval_ms =
-            WslAgentSettings::get_or(&settings, PING_INTERVAL_MS, 2000u64).max(1);
+        let connect_timeout_secs = WslAgentSettings::setting_or(&settings, CONNECT_TIMEOUT_SECS, 8u64)?;
+        let ping_interval_ms = WslAgentSettings::setting_or(&settings, PING_INTERVAL_MS, 2000u64)?;
 
         let addr = Addr::new(WslAgentActor::new(connect_timeout_secs), ui.as_weak());
 
         let a = addr.clone();
-        reactor.add_loop(Duration::from_millis(ping_interval_ms), move || {
+        reactor.add_dynamic_loop(
+            move || Duration::from_millis(ping_interval_ms.get().max(1)),
+            move || {
             a.send(Ping)
-        });
+            },
+        );
 
         EVENT_BUS.with(|bus| {
             bus.subscribe::<WslAgentActor, ScanTick, TWindow>(addr.clone());

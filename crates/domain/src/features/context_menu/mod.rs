@@ -48,7 +48,7 @@ where
     ) -> anyhow::Result<()> {
         let settings = settings_from(shared);
         ContextMenuSettings::ensure_defaults(&settings)?;
-        let reveal_delay_ms = ContextMenuSettings::get_or(&settings, REVEAL_DELAY_MS, 20u64);
+        let reveal_delay_ms = ContextMenuSettings::setting_or(&settings, REVEAL_DELAY_MS, 20u64)?;
 
         let port = (self.make_port)(ui)?;
         if let Some(accent) = accent_from(shared) {

@@ -3,6 +3,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
+use std::{collections::BTreeSet, thread};
 
 use anyhow::{Context, anyhow, bail};
 use serde_json::{Map, Value};
@@ -48,6 +49,7 @@ pub struct SettingsStore {
 
 impl SettingsStore {
     const DEFAULT_SAVE_DEBOUNCE_MS: u64 = 300;
+    const DEFAULT_WATCH_INTERVAL_MS: u64 = 500;
 
     pub fn default_settings_path() -> PathBuf {
         if cfg!(target_os = "windows") {
@@ -210,6 +212,9 @@ impl SettingsStore {
         let save_debounce_ms = get_u64_from_map(&initial, "settings.persistence.save_debounce_ms")
             .unwrap_or(Self::DEFAULT_SAVE_DEBOUNCE_MS);
         let save_debounce = Duration::from_millis(save_debounce_ms.max(1));
+        let watch_interval_ms = get_u64_from_map(&initial, "settings.persistence.watch_interval_ms")
+            .unwrap_or(Self::DEFAULT_WATCH_INTERVAL_MS);
+        let watch_interval = Duration::from_millis(watch_interval_ms.max(50));
 
         let inner = Arc::new(RwLock::new(initial));
         let subscriptions = Arc::new(RwLock::new(Vec::<SubscriptionEntry>::new()));
@@ -230,6 +235,47 @@ impl SettingsStore {
                 if let Err(err) = persist_atomic(&persist_path, &snapshot) {
                     tracing::warn!("settings save failed: {err:#}");
                 }
+            }
+        });
+
+        let watch_path = path.clone();
+        let watch_inner = Arc::clone(&inner);
+        let watch_subs = Arc::clone(&subscriptions);
+        thread::spawn(move || loop {
+            thread::sleep(watch_interval);
+
+            let on_disk = if watch_path.exists() {
+                match Self::load_map(&watch_path) {
+                    Ok(map) => map,
+                    Err(err) => {
+                        tracing::warn!("settings watch reload failed: {err:#}");
+                        continue;
+                    }
+                }
+            } else {
+                Map::new()
+            };
+
+            let events = {
+                let mut guard = match watch_inner.write() {
+                    Ok(guard) => guard,
+                    Err(_) => {
+                        tracing::warn!("settings watch skipped: lock poisoned");
+                        continue;
+                    }
+                };
+
+                if *guard == on_disk {
+                    Vec::new()
+                } else {
+                    let old = guard.clone();
+                    *guard = on_disk.clone();
+                    diff_settings_maps(&old, &on_disk)
+                }
+            };
+
+            if !events.is_empty() {
+                emit_events(&watch_subs, events);
             }
         });
 
@@ -260,6 +306,79 @@ impl SettingsStore {
     fn emit(&self, event: SettingEvent) {
         let callbacks = self
             .subscriptions
+            .read()
+            .map(|subs| {
+                subs.iter()
+                    .filter(|sub| matches_subscription(&sub.kind, &event.path))
+                    .map(|sub| Arc::clone(&sub.callback))
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
+
+        for cb in callbacks {
+            cb(&event);
+        }
+    }
+}
+
+fn diff_settings_maps(old: &Map<String, Value>, new: &Map<String, Value>) -> Vec<SettingEvent> {
+    let mut events = Vec::new();
+    let keys = old
+        .keys()
+        .chain(new.keys())
+        .cloned()
+        .collect::<BTreeSet<_>>();
+
+    for key in keys {
+        collect_value_diff(old.get(&key), new.get(&key), key.as_str(), &mut events);
+    }
+
+    events
+}
+
+fn collect_value_diff(old: Option<&Value>, new: Option<&Value>, path: &str, events: &mut Vec<SettingEvent>) {
+    match (old, new) {
+        (None, None) => {}
+        (Some(ov), Some(nv)) if ov == nv => {}
+        (Some(Value::Object(om)), Some(Value::Object(nm))) => {
+            let keys = om.keys().chain(nm.keys()).cloned().collect::<BTreeSet<_>>();
+            for key in keys {
+                let child = join_path(path, &key);
+                collect_value_diff(om.get(&key), nm.get(&key), &child, events);
+            }
+        }
+        (None, Some(nv)) => events.push(SettingEvent {
+            path: path.to_string(),
+            op: SettingOp::Set,
+            old: None,
+            new: Some(nv.clone()),
+        }),
+        (Some(ov), None) => events.push(SettingEvent {
+            path: path.to_string(),
+            op: SettingOp::Delete,
+            old: Some(ov.clone()),
+            new: None,
+        }),
+        (Some(ov), Some(nv)) => events.push(SettingEvent {
+            path: path.to_string(),
+            op: SettingOp::Set,
+            old: Some(ov.clone()),
+            new: Some(nv.clone()),
+        }),
+    }
+}
+
+fn join_path(prefix: &str, key: &str) -> String {
+    if prefix.is_empty() {
+        key.to_string()
+    } else {
+        format!("{prefix}.{key}")
+    }
+}
+
+fn emit_events(subscriptions: &Arc<RwLock<Vec<SubscriptionEntry>>>, events: Vec<SettingEvent>) {
+    for event in events {
+        let callbacks = subscriptions
             .read()
             .map(|subs| {
                 subs.iter()
@@ -453,6 +572,15 @@ fn persist_atomic(path: &Path, map: &Map<String, Value>) -> anyhow::Result<()> {
 mod tests {
     use super::*;
     use std::sync::Mutex;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn unique_test_path(suffix: &str) -> PathBuf {
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system time should be after epoch")
+            .as_nanos();
+        std::env::temp_dir().join(format!("uniproc-settings-{suffix}-{nanos}.json"))
+    }
 
     #[test]
     fn set_get_delete_roundtrip() {
@@ -588,5 +716,89 @@ mod tests {
             .expect("set should succeed");
 
         assert_eq!(*hit_count.lock().expect("mutex should not be poisoned"), 1);
+    }
+
+    #[test]
+    fn file_watch_emits_set_for_external_change() {
+        let path = unique_test_path("watch-set");
+        std::fs::write(
+            &path,
+            serde_json::to_vec_pretty(&serde_json::json!({
+                "settings": { "persistence": { "watch_interval_ms": 50 } },
+                "ui": { "theme": { "dark": false } }
+            }))
+            .expect("json serialization should succeed"),
+        )
+        .expect("seed settings file should be written");
+
+        let store = SettingsStore::load_or_default(path.clone()).expect("store should load");
+        let (tx, rx) = mpsc::channel::<SettingEvent>();
+
+        store.on_field_changed(
+            "ui.theme.dark",
+            Arc::new(move |evt| {
+                let _ = tx.send(evt.clone());
+            }),
+        );
+
+        std::fs::write(
+            &path,
+            serde_json::to_vec_pretty(&serde_json::json!({
+                "settings": { "persistence": { "watch_interval_ms": 50 } },
+                "ui": { "theme": { "dark": true } }
+            }))
+            .expect("json serialization should succeed"),
+        )
+        .expect("updated settings file should be written");
+
+        let event = rx
+            .recv_timeout(Duration::from_secs(3))
+            .expect("watcher should emit set event");
+        assert_eq!(event.path, "ui.theme.dark");
+        assert_eq!(event.op, SettingOp::Set);
+        assert_eq!(event.old, Some(Value::Bool(false)));
+        assert_eq!(event.new, Some(Value::Bool(true)));
+    }
+
+    #[test]
+    fn file_watch_emits_delete_for_external_removal() {
+        let path = unique_test_path("watch-delete");
+        std::fs::write(
+            &path,
+            serde_json::to_vec_pretty(&serde_json::json!({
+                "settings": { "persistence": { "watch_interval_ms": 50 } },
+                "ui": { "theme": { "dark": true } }
+            }))
+            .expect("json serialization should succeed"),
+        )
+        .expect("seed settings file should be written");
+
+        let store = SettingsStore::load_or_default(path.clone()).expect("store should load");
+        let (tx, rx) = mpsc::channel::<SettingEvent>();
+
+        store.on_field_changed(
+            "ui.theme.dark",
+            Arc::new(move |evt| {
+                let _ = tx.send(evt.clone());
+            }),
+        );
+
+        std::fs::write(
+            &path,
+            serde_json::to_vec_pretty(&serde_json::json!({
+                "settings": { "persistence": { "watch_interval_ms": 50 } },
+                "ui": { "theme": {} }
+            }))
+            .expect("json serialization should succeed"),
+        )
+        .expect("updated settings file should be written");
+
+        let event = rx
+            .recv_timeout(Duration::from_secs(3))
+            .expect("watcher should emit delete event");
+        assert_eq!(event.path, "ui.theme.dark");
+        assert_eq!(event.op, SettingOp::Delete);
+        assert_eq!(event.old, Some(Value::Bool(true)));
+        assert_eq!(event.new, None);
     }
 }

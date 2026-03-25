@@ -9,20 +9,21 @@ use app_contracts::features::environments::{
 use app_core::actor::event_bus::EVENT_BUS;
 use app_core::actor::traits::{Context, Handler, Message};
 use app_core::messages;
+use app_core::settings::ReactiveSetting;
 use slint::ComponentHandle;
 use std::ops::Deref;
 use tracing::{info, warn};
-use uniproc_protocol::{HostRequest, HostResponse};
+use uniproc_protocol::{LinuxMachineStats, LinuxProcessStats, LinuxRequest, LinuxResponse};
 
 pub struct LinuxAgentActor {
     client: Option<AgentClient>,
     connection: ConnectionMachine,
     ping_in_flight: bool,
-    connect_timeout_secs: u64,
+    connect_timeout_secs: ReactiveSetting<u64>,
 }
 
 impl LinuxAgentActor {
-    pub fn new(connect_timeout_secs: u64) -> Self {
+    pub fn new(connect_timeout_secs: ReactiveSetting<u64>) -> Self {
         Self {
             client: None,
             connection: ConnectionMachine::new(),
@@ -42,7 +43,7 @@ impl LinuxAgentActor {
     }
 
     fn spawn_connect<TWindow: ComponentHandle + 'static>(&self, ctx: &Context<Self, TWindow>) {
-        let timeout_secs = self.connect_timeout_secs;
+        let timeout_secs = self.connect_timeout_secs.get().max(1);
         ctx.spawn_bg(async move {
             match connect_linux_agent(timeout_secs).await {
                 Ok(c) => ConnectResult(Some(c)),
@@ -86,8 +87,8 @@ impl Message for ConnectResult {}
 
 struct ReportResult(
     Option<(
-        Vec<uniproc_protocol::ProcessStats>,
-        uniproc_protocol::MachineStats,
+        Vec<LinuxProcessStats>,
+        LinuxMachineStats,
     )>,
 );
 impl Message for ReportResult {}
@@ -109,15 +110,15 @@ impl<TWindow: ComponentHandle + 'static> Handler<ScanTick, TWindow> for LinuxAge
             return;
         };
         ctx.spawn_bg(async move {
-            let response = match client.call(HostRequest::GetReport).await {
+            let response = match client.call(LinuxRequest::GetReport).await {
                 Ok(r) => r,
                 Err(err) => {
                     warn!("Linux GetReport failed: {err}");
                     return ReportResult(None);
                 }
             };
-            match rkyv::deserialize::<HostResponse, rkyv::rancor::Error>(*response.deref()) {
-                Ok(HostResponse::Report(report)) => {
+            match rkyv::deserialize::<LinuxResponse, rkyv::rancor::Error>(*response.deref()) {
+                Ok(LinuxResponse::Report(report)) => {
                     ReportResult(Some((report.processes, report.machine)))
                 }
                 _ => ReportResult(None),

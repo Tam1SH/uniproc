@@ -1,6 +1,7 @@
 use app_contracts::features::context_menu::ContextMenuUiPort;
 use app_core::actor::traits::{Context, Handler, Message};
 use app_core::messages;
+use app_core::settings::ReactiveSetting;
 use slint::ComponentHandle;
 
 messages! {
@@ -10,7 +11,7 @@ messages! {
 }
 
 pub struct ContextMenuActor<P> {
-    pub reveal_delay_ms: u64,
+    pub reveal_delay_ms: ReactiveSetting<u64>,
     pub port: P,
 }
 
@@ -20,7 +21,8 @@ where
     P: ContextMenuUiPort,
 {
     fn handle(&mut self, msg: Show, _ctx: &Context<Self, TWindow>) {
-        self.port.show_menu(msg.x, msg.y, self.reveal_delay_ms);
+        self.port
+            .show_menu(msg.x, msg.y, self.reveal_delay_ms.get().max(1));
         self.port.set_menu_open(true);
     }
 }

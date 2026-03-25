@@ -33,6 +33,10 @@ impl NameProvider {
             .insert(clean.to_string(), shared.clone(), self.ttl);
         shared
     }
+
+    pub fn set_ttl(&mut self, ttl: Duration) {
+        self.ttl = ttl;
+    }
 }
 pub struct IconProvider {
     cache: TtlCache<String, Image>,
@@ -62,5 +66,9 @@ impl IconProvider {
 
         self.cache.insert(path.to_string(), icon.clone(), self.ttl);
         icon
+    }
+
+    pub fn set_ttl(&mut self, ttl: Duration) {
+        self.ttl = ttl;
     }
 }

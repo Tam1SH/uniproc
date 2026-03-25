@@ -29,7 +29,7 @@ component PageHeader inherits Rectangle {
 }
 
 export component Content inherits Rectangle {
-    background: Theme.background;
+    background: Theme.layer_background;
     border-top-left-radius: Theme.border_radius_m;
     clip: true;
     private property <int> current-page-id: Navigation.active_tab_index;

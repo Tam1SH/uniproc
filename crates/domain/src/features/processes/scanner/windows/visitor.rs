@@ -1,38 +1,28 @@
 use crate::features::processes::scanner::base::{
     Field, FieldValue, FieldValueFormat, ProcessVisitor, ScanResult, VisitorContext,
 };
-use crate::features::processes::scanner::windows::types::{
-    WindowsProcessStat, WindowsScanResult, WindowsStats,
-};
-use std::collections::HashMap;
+use uniproc_protocol::{WindowsMachineStats, WindowsProcessStats, WindowsReport};
 
-pub struct WindowsVisitorContext {
-    values: HashMap<&'static str, f32>,
+pub struct WindowsScanResult {
+    pub report: WindowsReport,
 }
 
-impl WindowsVisitorContext {
-    pub fn new(stats: &WindowsStats) -> Self {
-        let mut values = HashMap::new();
-        values.insert("total_memory", stats.total_memory as f32);
-        values.insert("net_total_bandwidth", stats.net_total_bandwidth as f32);
-        values.insert("disk_threshold", 5.0 * 1024.0 * 1024.0);
-        Self { values }
-    }
-}
+struct WindowsVisitorContext;
 
 impl VisitorContext for WindowsVisitorContext {
-    fn get(&self, key: &str) -> Option<f32> {
-        self.values.get(key).copied()
+    fn get(&self, _key: &str) -> Option<f32> {
+        None
     }
 }
 
-impl ProcessVisitor for WindowsProcessStat {
+impl ProcessVisitor for WindowsProcessStats {
     fn pid(&self) -> u32 {
         self.pid
     }
 
     fn name(&self) -> &str {
-        &self.name
+        let end = self.name.iter().position(|&b| b == 0).unwrap_or(self.name.len());
+        std::str::from_utf8(&self.name[..end]).unwrap_or("<invalid>")
     }
 
     fn parent_pid(&self) -> u32 {
@@ -40,135 +30,145 @@ impl ProcessVisitor for WindowsProcessStat {
     }
 
     fn exe_path(&self) -> Option<&str> {
-        self.exe_path.as_deref()
+        None
     }
 
-    fn visit(&self, ctx: &dyn VisitorContext, visitor: &mut dyn FnMut(Field)) {
-        let net_bw = ctx.get("net_total_bandwidth").unwrap_or(1.0);
-        let disk_thr = ctx.get("disk_threshold").unwrap_or(1.0);
-
+    fn visit(&self, _ctx: &dyn VisitorContext, visitor: &mut dyn FnMut(Field)) {
         visitor(Field {
             id: "cpu",
             label: "CPU",
-            value: FieldValue::Percent(self.cpu_usage),
-            numeric: self.cpu_usage,
-            threshold: 50.0,
+            value: FieldValue::Percent(self.cpu_percent),
             stat_detail: None,
-            show_indicator: false,
+            show_indicator: true,
+            numeric: self.cpu_percent,
+            threshold: 50.0,
         });
 
         visitor(Field {
             id: "memory",
             label: "Memory",
-            value: FieldValue::Bytes(self.memory_usage),
-            numeric: self.memory_usage as f32 / (1024.0 * 1024.0 * 1024.0),
-            threshold: 1.0,
+            value: FieldValue::Bytes(self.working_set_kb * 1024),
             stat_detail: None,
-            show_indicator: false,
+            show_indicator: true,
+            numeric: self.working_set_kb as f32 / (1024.0 * 1024.0),
+            threshold: 1.0,
         });
 
-        if let Some(net) = self.net_usage {
-            visitor(Field {
-                id: "net",
-                label: "Network",
-                value: FieldValue::Bytes(net),
-                numeric: (net as f32 / net_bw) * 100.0,
-                threshold: 70.0,
-                stat_detail: None,
-                show_indicator: false,
-            });
-        }
+        let disk_total = self.disk_read_bytes.saturating_add(self.disk_write_bytes);
+        visitor(Field {
+            id: "disk_read",
+            label: "Disk",
+            value: FieldValue::Bytes(disk_total),
+            stat_detail: None,
+            show_indicator: false,
+            numeric: disk_total as f32,
+            threshold: 0.1,
+        });
 
-        let disk_total = self
-            .disk_read
-            .unwrap_or(0)
-            .saturating_add(self.disk_write.unwrap_or(0));
-
-        if disk_total > 0 {
-            visitor(Field {
-                id: "disk_read",
-                label: "Disk",
-                value: FieldValue::Bytes(disk_total),
-                numeric: (disk_total as f32 / disk_thr) * 100.0,
-                threshold: 70.0,
-                stat_detail: None,
-                show_indicator: false,
-            });
-        }
+        let net_total = self.net_rx_bytes + self.net_tx_bytes;
+        visitor(Field {
+            id: "net",
+            label: "Net",
+            value: FieldValue::Bytes(net_total),
+            stat_detail: None,
+            show_indicator: false,
+            numeric: net_total as f32,
+            threshold: 0.1,
+        });
     }
 }
 
 impl ScanResult for WindowsScanResult {
     fn context(&self) -> Box<dyn VisitorContext> {
-        Box::new(WindowsVisitorContext::new(&self.stats))
+        Box::new(WindowsVisitorContext)
     }
 
     fn visit_processes(&self, visitor: &mut dyn FnMut(&dyn ProcessVisitor)) {
-        for p in &self.processes {
-            visitor(p);
+        for process in &self.report.processes {
+            visitor(process);
         }
     }
 
     fn visit_stats(&self, visitor: &mut dyn FnMut(Field)) {
-        visitor(Field {
-            id: "cpu",
-            label: "CPU",
-            value: FieldValue::Percent(self.stats.cpu_percent),
-            numeric: self.stats.cpu_percent,
-            threshold: 50.0,
-            stat_detail: None,
-            show_indicator: true,
-        });
-
-        let total_memory = self.stats.total_memory as f64;
-        let used_memory = total_memory * (self.stats.ram_percent as f64) / 100.0;
-        let format_memory = format!(
-            "{used}/{total}",
-            used = FieldValue::format_bytes_with_params(
-                used_memory as u64,
-                &[
-                    FieldValueFormat::WithoutUnit,
-                    FieldValueFormat::WithoutSpaces
-                ]
-            ),
-            total = FieldValue::format_bytes_with_params(
-                total_memory as u64,
-                &[
-                    FieldValueFormat::WithoutSpaces,
-                    FieldValueFormat::RoundUp,
-                    FieldValueFormat::WithoutDecimals
-                ]
-            )
-        );
-
-        visitor(Field {
-            id: "memory",
-            label: "Memory",
-            value: FieldValue::Percent(self.stats.ram_percent),
-            numeric: self.stats.ram_percent,
-            threshold: 80.0,
-            stat_detail: Some(format_memory),
-            show_indicator: true,
-        });
-
-        visitor(Field {
-            id: "disk_read",
-            label: "Disk",
-            value: FieldValue::Percent(self.stats.disk_percent),
-            numeric: self.stats.disk_percent,
-            threshold: 70.0,
-            show_indicator: false,
-            stat_detail: None,
-        });
-
-        visitor(Field {
-            id: "net",
-            label: "Network",
-            value: FieldValue::Percent(self.stats.net_percent),
-            numeric: self.stats.net_percent,
-            threshold: 70.0,
-            show_indicator: false,
-            stat_detail: None,
-        });
+        visit_machine_stats(&self.report.machine, visitor);
     }
+}
+
+fn visit_machine_stats(machine: &WindowsMachineStats, visitor: &mut dyn FnMut(Field)) {
+    let total = machine.total_physical_kb.max(1);
+    let ram_pct = (machine.used_physical_kb as f32 / total as f32) * 100.0;
+    let total_memory_gb = machine.total_physical_kb as f64 / (1024.0 * 1024.0);
+    let used_memory_gb = machine.used_physical_kb as f64 / (1024.0 * 1024.0);
+
+    let memory_detail = format!(
+        "{}/{}",
+        FieldValue::format_value_with_params(
+            used_memory_gb,
+            "GB",
+            &[FieldValueFormat::WithoutUnit, FieldValueFormat::WithoutSpaces]
+        ),
+        FieldValue::format_value_with_params(
+            total_memory_gb,
+            "GB",
+            &[FieldValueFormat::WithoutSpaces, FieldValueFormat::RoundUp, FieldValueFormat::WithoutDecimals]
+        )
+    );
+    let cpu_current_ghz = machine.cpu_current_mhz as f64 / 1000.0;
+    let cpu_max_ghz = machine.cpu_max_mhz as f64 / 1000.0;
+
+    let cpu_clock_detail = format!(
+        "{}/{}",
+        FieldValue::format_value_with_params(
+            cpu_current_ghz,
+            "GHz",
+            &[FieldValueFormat::WithoutUnit, FieldValueFormat::WithoutSpaces]
+        ),
+        FieldValue::format_value_with_params(
+            cpu_max_ghz,
+            "GHz",
+            &[FieldValueFormat::WithoutSpaces]
+        )
+    );
+
+    visitor(Field {
+        id: "cpu",
+        label: "CPU",
+        value: FieldValue::Percent(machine.cpu_percent),
+        stat_detail: Some(cpu_clock_detail),
+        show_indicator: true,
+        numeric: machine.cpu_percent,
+        threshold: 50.0,
+    });
+
+    visitor(Field {
+        id: "memory",
+        label: "Memory",
+        value: FieldValue::Percent(ram_pct),
+        stat_detail: Some(memory_detail),
+        show_indicator: true,
+        numeric: ram_pct,
+        threshold: 1.0,
+    });
+
+    let net_total = machine.net_rx_bytes + machine.net_tx_bytes;
+    visitor(Field {
+        id: "net",
+        label: "Net",
+        value: FieldValue::Bytes(net_total),
+        stat_detail: None,
+        show_indicator: false,
+        numeric: net_total as f32,
+        threshold: 0.1,
+    });
+
+    let disk_total = machine.disk_read_bytes.saturating_add(machine.disk_write_bytes);
+    visitor(Field {
+        id: "disk_read",
+        label: "Disk",
+        value: FieldValue::Bytes(disk_total),
+        stat_detail: None,
+        show_indicator: false,
+        numeric: disk_total as f32,
+        threshold: 0.1,
+    });
 }

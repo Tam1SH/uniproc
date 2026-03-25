@@ -3,11 +3,21 @@ rustc-wrapper = "sccache"
 
 [alias]
 # Usage:
-#   cargo cdev          (stable check with sccache)
-#   cargo bdev          (stable build with sccache)
-#   cargo +nightly cclif
-#   cargo +nightly bclif
-cdev = "check"
+#   cargo cdev          (dev check with Cranelift + sccache)
+#   cargo bdev          (dev build on default LLVM + sccache)
+#   cargo rdev          (dev run on default LLVM + sccache)
+#   cargo bdesk         (desktop build on default LLVM)
+#   cargo rdesk         (desktop run on default LLVM)
+#   cargo rslint        (desktop run + slint live-preview on LLVM; requires SLINT_LIVE_PREVIEW=1)
+#   cargo cclif         (explicit Cranelift check)
+#   cargo bclif         (explicit Cranelift build)
+#   cargo rclif         (explicit Cranelift run)
+cdev = "check -Zcodegen-backend --config .cargo/config.clif.toml"
 bdev = "build"
+rdev = "run"
+bdesk = "build --package desktop --bin desktop"
+rdesk = "run --package desktop --bin desktop"
+rslint = "run --bin desktop --features slint/live-preview"
 cclif = "check -Zcodegen-backend --config .cargo/config.clif.toml"
 bclif = "build -Zcodegen-backend --config .cargo/config.clif.toml"
+rclif = "run -Zcodegen-backend --config .cargo/config.clif.toml"

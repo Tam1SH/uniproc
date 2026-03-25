@@ -3,20 +3,24 @@ use crate::features::agents::connection::{
 };
 use crate::features::agents::windows::agent::{connect_windows_agent, ping_windows_agent};
 use crate::messages;
+use app_contracts::features::agents::{ScanTick, WindowsReportMessage};
 use app_contracts::features::environments::{
     AgentClient, AgentConnectionState, WindowsAgentRuntimeEvent,
 };
 use app_core::actor::event_bus::EVENT_BUS;
 use app_core::actor::traits::{Context, Handler, Message};
+use app_core::settings::ReactiveSetting;
 use slint::ComponentHandle;
 use std::fmt::Debug;
+use std::ops::Deref;
 use tracing::{info, warn};
+use uniproc_protocol::{WindowsReport, WindowsRequest, WindowsResponse};
 
 pub struct WindowsAgentActor {
     client: Option<AgentClient>,
     connection: ConnectionMachine,
     ping_in_flight: bool,
-    connect_timeout_secs: u64,
+    connect_timeout_secs: ReactiveSetting<u64>,
 }
 
 impl Debug for WindowsAgentActor {
@@ -28,7 +32,7 @@ impl Debug for WindowsAgentActor {
 }
 
 impl WindowsAgentActor {
-    pub fn new(connect_timeout_secs: u64) -> Self {
+    pub fn new(connect_timeout_secs: ReactiveSetting<u64>) -> Self {
         Self {
             client: None,
             connection: ConnectionMachine::new(),
@@ -51,7 +55,7 @@ impl WindowsAgentActor {
     }
 
     fn spawn_connect<TWindow: ComponentHandle + 'static>(&self, ctx: &Context<Self, TWindow>) {
-        let timeout_secs = self.connect_timeout_secs;
+        let timeout_secs = self.connect_timeout_secs.get().max(1);
         ctx.spawn_bg(async move {
             match connect_windows_agent(timeout_secs).await {
                 Ok(c) => ConnectResult(Some(c)),
@@ -89,11 +93,51 @@ messages! {
 pub struct ConnectResult(pub Option<AgentClient>);
 impl Message for ConnectResult {}
 
+struct ReportResult(
+    Option<WindowsReport>,
+);
+impl Message for ReportResult {}
+
 impl<TWindow: ComponentHandle + 'static> Handler<Init, TWindow> for WindowsAgentActor {
     fn handle(&mut self, _: Init, ctx: &Context<Self, TWindow>) {
         info!("WindowsAgentActor init");
         self.publish(None);
         ctx.addr().send(StartConnect);
+    }
+}
+
+impl<TWindow: ComponentHandle + 'static> Handler<ScanTick, TWindow> for WindowsAgentActor {
+    fn handle(&mut self, _: ScanTick, ctx: &Context<Self, TWindow>) {
+        if !matches!(self.connection.state(), ConnectionState::Connected) {
+            return;
+        }
+        let Some(client) = self.client.clone() else {
+            return;
+        };
+
+        ctx.spawn_bg(async move {
+            let response = match client.call(WindowsRequest::GetReport).await {
+                Ok(r) => r,
+                Err(err) => {
+                    warn!("Windows GetReport failed: {err}");
+                    return ReportResult(None);
+                }
+            };
+
+            match rkyv::deserialize::<WindowsResponse, rkyv::rancor::Error>(*response.deref()) {
+                Ok(WindowsResponse::Report(report)) => ReportResult(Some(report)),
+                _ => ReportResult(None),
+            }
+        });
+    }
+}
+
+impl<TWindow: ComponentHandle + 'static> Handler<ReportResult, TWindow> for WindowsAgentActor {
+    fn handle(&mut self, msg: ReportResult, ctx: &Context<Self, TWindow>) {
+        match msg.0 {
+            Some(report) => EVENT_BUS.with(|bus| bus.publish(WindowsReportMessage(report))),
+            None => ctx.addr().send(ConnectionLost),
+        }
     }
 }
 
