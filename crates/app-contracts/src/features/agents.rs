@@ -1,7 +1,7 @@
 use app_core::actor::traits::Message;
-use uniproc_protocol::{LinuxMachineStats, LinuxProcessStats};
 #[cfg(target_os = "windows")]
 use uniproc_protocol::WindowsReport;
+use uniproc_protocol::{LinuxMachineStats, LinuxProcessStats};
 
 #[derive(Debug, Clone)]
 pub struct ScanTick;

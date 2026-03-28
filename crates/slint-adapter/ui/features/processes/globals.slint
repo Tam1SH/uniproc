@@ -1,18 +1,8 @@
-export struct FieldDef {
-    id: string,
-    label: string,
-    stat-text: string,
-    stat-numeric: float,
-    threshold: float,
-    width-px: int,
-    stat-detail: string,
-    show-indicator: bool,
-}
+import { TableColDef, TableColWidth, TableColMetadata } from "table-view.slint";
 
 export struct ProcessField {
     id: string,
     text: string,
-    width-px: int,
     numeric: float,
     threshold: float,
 }
@@ -34,12 +24,63 @@ export struct ProcessGroup {
 }
 
 export global ProcessesFeatureGlobal {
-    in property <[FieldDef]> column-defs: [
-        { id: "cpu", label: "CPU", stat-text: "46%", stat-numeric: 46.0, threshold: 50.0, width-px: 85, stat-detail: "1,4 GHz", show-indicator: true },
-        { id: "memory", label: "Memory", stat-text: "71%", stat-numeric: 71.0, threshold: 80.0, width-px: 120, stat-detail: "32,5/64GB", show-indicator: true },
-        { id: "disk_read", label: "Disk", stat-text: "125 b/s", stat-numeric: 0.0, threshold: 70.0, width-px: 70, show-indicator: false },
-        { id: "net", label: "Network", stat-text: "55 kb/s", stat-numeric: 5.0, threshold: 70.0, width-px: 70, show-indicator: false },
+    in property <[TableColDef]> column-defs: [
+        {
+            id: "name",
+            label: "Name",
+            is-text: true,
+        },
+        {
+            id: "cpu",
+            label: "CPU",
+            stat-text: "46%",
+            stat-numeric: 46.0,
+            threshold: 50.0,
+            stat-detail: "1,4 GHz",
+            show-indicator: true
+        },
+        {
+            id: "memory",
+            label: "Memory",
+            stat-text: "71%",
+            stat-numeric: 71.0,
+            threshold: 80.0,
+            stat-detail: "32,5/64GB",
+            show-indicator: true
+        },
+        {
+            id: "disk",
+            label: "Disk",
+            stat-text: "125 b/s",
+            stat-numeric: 0.0,
+            threshold: 70.0,
+            show-indicator: false
+        },
+        {
+            id: "net",
+            label: "Network",
+            stat-text: "55 kb/s",
+            stat-numeric: 5.0,
+            threshold: 70.0,
+            show-indicator: false
+        },
     ];
+    in-out property <[TableColMetadata]> column-metadatas: [
+        { is-text: true },
+        { is-metric: true },
+        { is-metric: true },
+        { is-metric: true },
+        { is-metric: true }
+    ];
+    in-out property <[TableColWidth]> column-widths: [
+        { id: "name", width-px: 190 },
+        { id: "cpu", width-px: 85 },
+        { id: "memory", width-px: 120 },
+        { id: "disk", width-px: 70 },
+        { id: "net", width-px: 70 },
+    ];
+    callback column-resized(string, float);
+
     in property <[ProcessGroup]> process-groups: [];
     in property <[ProcessEntry]> process-rows: [
         {
@@ -50,10 +91,10 @@ export global ProcessesFeatureGlobal {
             depth: 0,
             has-children: true,
             fields: [
-                { id: "cpu",        text: "12.5%",      width-px: 85,  numeric: 12.5,  threshold: 50.0 },
-                { id: "memory",     text: "1.4 GiB",    width-px: 120, numeric: 1.4,   threshold: 1.0  },
-                { id: "disk_read",  text: "500 KiB/s",  width-px: 70,  numeric: 75.0,  threshold: 70.0 },
-                { id: "net",        text: "100 KB/s",   width-px: 70,  numeric: 100.0, threshold: 70.0 },
+                { id: "cpu", text: "12.5%", numeric: 12.5, threshold: 50.0 },
+                { id: "memory", text: "1.4 GiB", numeric: 1.4, threshold: 1.0 },
+                { id: "disk", text: "500 KiB/s", numeric: 75.0, threshold: 70.0 },
+                { id: "net", text: "100 KB/s", numeric: 100.0, threshold: 70.0 },
             ]
         },
         {
@@ -64,10 +105,10 @@ export global ProcessesFeatureGlobal {
             depth: 1,
             has-children: false,
             fields: [
-                { id: "cpu",        text: "4.2%",     width-px: 85,  numeric: 4.2, threshold: 50.0 },
-                { id: "memory",     text: "300 MiB",  width-px: 120, numeric: 0.3, threshold: 1.0  },
-                { id: "disk_read",  text: "0 KiB/s",  width-px: 70,  numeric: 0.0, threshold: 70.0 },
-                { id: "net",        text: "20 KB/s",  width-px: 70,  numeric: 2.0, threshold: 70.0 },
+                { id: "cpu", text: "4.2%", numeric: 4.2, threshold: 50.0 },
+                { id: "memory", text: "300 MiB", numeric: 0.3, threshold: 1.0 },
+                { id: "disk", text: "0 KiB/s", numeric: 0.0, threshold: 70.0 },
+                { id: "net", text: "20 KB/s", numeric: 2.0, threshold: 70.0 },
             ]
         },
     ];

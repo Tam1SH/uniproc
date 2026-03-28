@@ -17,3 +17,6 @@ slint = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 uniproc-protocol = { workspace = true }
+macros.workspace = true
+serde.workspace = true
+async-trait.workspace = true

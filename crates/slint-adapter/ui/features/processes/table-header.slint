@@ -1,0 +1,172 @@
+import { ResizableHeaderCell, TableColDef, TableColWidth } from "../table.slint";
+import { ProcessesFeatureGlobal } from "../globals.slint";
+import { Theme } from "theme.slint";
+import { Icons } from "icons.slint";
+
+component MetricSplitBar inherits Rectangle {
+    in property <float> value;
+    in property <float> threshold: 100;
+    in property <color> accent-color: Theme.accent;
+    in property <length> bar-width: 50px;
+
+    width: bar-width;
+    height: 3px;
+    border-radius: 3px;
+
+    public pure function ratio() -> float {
+        if (threshold <= 0) { return 0; }
+        return Math.min(value / threshold, 1);
+    }
+
+    HorizontalLayout {
+        spacing: 0;
+        Rectangle {
+            width: root.width * root.ratio();
+            height: parent.height;
+            background: root.accent-color;
+            border-radius: 3px;
+        }
+        Rectangle {
+            width: root.width * (1 - root.ratio());
+            height: parent.height;
+            background: Theme.layer_background;
+            border-radius: 3px;
+        }
+    }
+}
+
+component MetricHeaderCell inherits Rectangle {
+    in property <TableColDef> def;
+    in property <bool> is-sorted;
+    in property <bool> sort-descending;
+    callback clicked();
+
+    TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+
+    if (root.is-sorted): HorizontalLayout {
+        padding: 8px;
+        Image {
+            source: Icons.arrow-up-regular;
+            transform-rotation: root.sort-descending ? -90deg : 90deg;
+            transform-origin: { x: 2.5px, y: 5px };
+            colorize: white;
+            width: 10px;
+            height: 10px;
+        }
+    }
+
+    HorizontalLayout {
+        alignment: end;
+        padding-right: 10px;
+        VerticalLayout {
+            alignment: center;
+            spacing: 2px;
+            Text {
+                text: def.stat-text;
+                horizontal-alignment: right;
+                color: Theme.text_secondary;
+                font-size: 16px;
+            }
+            HorizontalLayout {
+                Text {
+                    text: def.stat-detail;
+                    horizontal-alignment: right;
+                    color: Theme.text_disabled;
+                    font-size: 12px;
+                }
+                Rectangle { horizontal-stretch: 1; }
+                Text {
+                    text: def.label;
+                    horizontal-alignment: right;
+                    color: Theme.text_secondary;
+                    font-size: 12px;
+                }
+            }
+            Rectangle { height: 2px; }
+            if (def.show-indicator): MetricSplitBar {
+                value: def.stat-numeric;
+                threshold: 100.0;
+                bar-width: root.width;
+                accent-color: Theme.accent;
+            }
+            if (!def.show-indicator): Rectangle { height: 3px; }
+        }
+    }
+}
+
+component TextHeaderCell inherits Rectangle {
+    in property <TableColDef> def;
+    in property <bool> is-sorted;
+    in property <bool> sort-descending;
+    callback clicked();
+
+    TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+
+    if (root.is-sorted): HorizontalLayout {
+        padding: 8px;
+        Image {
+            source: Icons.arrow-up-regular;
+            transform-rotation: root.sort-descending ? -90deg : 90deg;
+            transform-origin: { x: 2.5px, y: 5px };
+            colorize: white;
+            width: 10px;
+            height: 10px;
+        }
+    }
+
+    HorizontalLayout {
+        alignment: start;
+        VerticalLayout {
+            alignment: center;
+            padding-left: 12px;
+            Text {
+                text: def.label;
+                color: Theme.text_primary;
+                font-size: Theme.font_size_body;
+            }
+        }
+    }
+}
+
+export component ProcessTableHeader inherits Rectangle {
+    in property <[TableColDef]> column-defs;
+    in property <[TableColWidth]> column-widths;
+    in property <string> current-sort;
+    in property <bool> current-sort-descending;
+    callback resized(string, float);
+    callback sort-by(string);
+
+    height: 50px;
+
+    HorizontalLayout {
+        alignment: start;
+
+        for def[i] in root.column-widths: ResizableHeaderCell {
+            column-id: def.id;
+            column-width: def.width-px * 1px;
+            min-width: 40px;
+            resized(id, w) => { root.resized(id, w); }
+
+            if (def.id == "name"): TextHeaderCell {
+                def: { id: "name", label: "Name" };
+                is-sorted: root.current-sort == "name";
+                sort-descending: root.current-sort-descending;
+                clicked => { root.sort-by("name"); }
+            }
+
+            if (def.id != "name"): MetricHeaderCell {
+
+                def: root.column-defs[i - 1];
+                is-sorted: root.current-sort == def.id;
+                sort-descending: root.current-sort-descending;
+                clicked => { root.sort-by(def.id); }
+            }
+        }
+    }
+}

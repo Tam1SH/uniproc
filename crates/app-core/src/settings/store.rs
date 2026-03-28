@@ -1,12 +1,12 @@
+use anyhow::{Context, anyhow, bail};
+use serde_json::{Map, Value};
+use std::fmt::Debug;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
 use std::{collections::BTreeSet, thread};
-
-use anyhow::{Context, anyhow, bail};
-use serde_json::{Map, Value};
 
 pub type SubscriptionId = u64;
 pub type SettingsCallback = Arc<dyn Fn(&SettingEvent) + Send + Sync + 'static>;
@@ -29,8 +29,8 @@ pub struct SettingEvent {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SubscriptionKind {
     Any,
-    ExactPath(String),
-    Prefix(String),
+    ExactPath(Arc<str>),
+    Prefix(Arc<str>),
 }
 
 struct SubscriptionEntry {
@@ -45,6 +45,14 @@ pub struct SettingsStore {
     subscriptions: Arc<RwLock<Vec<SubscriptionEntry>>>,
     next_subscription_id: AtomicU64,
     save_tx: mpsc::Sender<()>,
+}
+
+impl Debug for SettingsStore {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SettingsStore")
+            .field("path", &self.path)
+            .finish()
+    }
 }
 
 impl SettingsStore {
@@ -192,28 +200,25 @@ impl SettingsStore {
         self.subscribe(SubscriptionKind::Any, callback)
     }
 
-    pub fn on_field_changed(
-        &self,
-        path: impl Into<String>,
-        callback: SettingsCallback,
-    ) -> SubscriptionId {
-        self.subscribe(SubscriptionKind::ExactPath(path.into()), callback)
+    pub fn on_field_changed(&self, path: Arc<str>, callback: SettingsCallback) -> SubscriptionId {
+        self.subscribe(SubscriptionKind::ExactPath(path), callback)
     }
 
     pub fn on_subfield_changed(
         &self,
-        path: impl Into<String>,
+        path: Arc<str>,
         callback: SettingsCallback,
     ) -> SubscriptionId {
         self.subscribe(SubscriptionKind::Prefix(path.into()), callback)
     }
 
-    fn new(path: PathBuf, initial: Map<String, Value>) -> Self {
+    pub(crate) fn new(path: PathBuf, initial: Map<String, Value>) -> Self {
         let save_debounce_ms = get_u64_from_map(&initial, "settings.persistence.save_debounce_ms")
             .unwrap_or(Self::DEFAULT_SAVE_DEBOUNCE_MS);
         let save_debounce = Duration::from_millis(save_debounce_ms.max(1));
-        let watch_interval_ms = get_u64_from_map(&initial, "settings.persistence.watch_interval_ms")
-            .unwrap_or(Self::DEFAULT_WATCH_INTERVAL_MS);
+        let watch_interval_ms =
+            get_u64_from_map(&initial, "settings.persistence.watch_interval_ms")
+                .unwrap_or(Self::DEFAULT_WATCH_INTERVAL_MS);
         let watch_interval = Duration::from_millis(watch_interval_ms.max(50));
 
         let inner = Arc::new(RwLock::new(initial));
@@ -241,41 +246,43 @@ impl SettingsStore {
         let watch_path = path.clone();
         let watch_inner = Arc::clone(&inner);
         let watch_subs = Arc::clone(&subscriptions);
-        thread::spawn(move || loop {
-            thread::sleep(watch_interval);
+        thread::spawn(move || {
+            loop {
+                thread::sleep(watch_interval);
 
-            let on_disk = if watch_path.exists() {
-                match Self::load_map(&watch_path) {
-                    Ok(map) => map,
-                    Err(err) => {
-                        tracing::warn!("settings watch reload failed: {err:#}");
-                        continue;
+                let on_disk = if watch_path.exists() {
+                    match Self::load_map(&watch_path) {
+                        Ok(map) => map,
+                        Err(err) => {
+                            tracing::warn!("settings watch reload failed: {err:#}");
+                            continue;
+                        }
                     }
-                }
-            } else {
-                Map::new()
-            };
+                } else {
+                    Map::new()
+                };
 
-            let events = {
-                let mut guard = match watch_inner.write() {
-                    Ok(guard) => guard,
-                    Err(_) => {
-                        tracing::warn!("settings watch skipped: lock poisoned");
-                        continue;
+                let events = {
+                    let mut guard = match watch_inner.write() {
+                        Ok(guard) => guard,
+                        Err(_) => {
+                            tracing::warn!("settings watch skipped: lock poisoned");
+                            continue;
+                        }
+                    };
+
+                    if *guard == on_disk {
+                        Vec::new()
+                    } else {
+                        let old = guard.clone();
+                        *guard = on_disk.clone();
+                        diff_settings_maps(&old, &on_disk)
                     }
                 };
 
-                if *guard == on_disk {
-                    Vec::new()
-                } else {
-                    let old = guard.clone();
-                    *guard = on_disk.clone();
-                    diff_settings_maps(&old, &on_disk)
+                if !events.is_empty() {
+                    emit_events(&watch_subs, events);
                 }
-            };
-
-            if !events.is_empty() {
-                emit_events(&watch_subs, events);
             }
         });
 
@@ -336,7 +343,12 @@ fn diff_settings_maps(old: &Map<String, Value>, new: &Map<String, Value>) -> Vec
     events
 }
 
-fn collect_value_diff(old: Option<&Value>, new: Option<&Value>, path: &str, events: &mut Vec<SettingEvent>) {
+fn collect_value_diff(
+    old: Option<&Value>,
+    new: Option<&Value>,
+    path: &str,
+    events: &mut Vec<SettingEvent>,
+) {
     match (old, new) {
         (None, None) => {}
         (Some(ov), Some(nv)) if ov == nv => {}
@@ -413,11 +425,11 @@ fn split_path(path: &str) -> Vec<&str> {
 fn matches_subscription(kind: &SubscriptionKind, changed_path: &str) -> bool {
     match kind {
         SubscriptionKind::Any => true,
-        SubscriptionKind::ExactPath(path) => path == changed_path,
+        SubscriptionKind::ExactPath(path) => **path == *changed_path,
         SubscriptionKind::Prefix(prefix) => {
-            changed_path == prefix
+            *changed_path == **prefix
                 || changed_path
-                    .strip_prefix(prefix)
+                    .strip_prefix(&**prefix)
                     .is_some_and(|tail| tail.starts_with('.'))
         }
     }
@@ -646,7 +658,7 @@ mod tests {
 
         let exact_capture = Arc::clone(&exact_hits);
         store.on_field_changed(
-            "ui.theme.dark",
+            Arc::from("ui.theme.dark"),
             Arc::new(move |evt| {
                 exact_capture
                     .lock()
@@ -657,7 +669,7 @@ mod tests {
 
         let prefix_capture = Arc::clone(&prefix_hits);
         store.on_subfield_changed(
-            "ui.theme",
+            Arc::from("ui.theme"),
             Arc::new(move |evt| {
                 prefix_capture
                     .lock()
@@ -735,7 +747,7 @@ mod tests {
         let (tx, rx) = mpsc::channel::<SettingEvent>();
 
         store.on_field_changed(
-            "ui.theme.dark",
+            Arc::from("ui.theme.dark"),
             Arc::new(move |evt| {
                 let _ = tx.send(evt.clone());
             }),
@@ -777,7 +789,7 @@ mod tests {
         let (tx, rx) = mpsc::channel::<SettingEvent>();
 
         store.on_field_changed(
-            "ui.theme.dark",
+            Arc::from("ui.theme.dark"),
             Arc::new(move |evt| {
                 let _ = tx.send(evt.clone());
             }),

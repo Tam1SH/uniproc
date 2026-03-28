@@ -10,15 +10,20 @@ path = "lib.rs"
 anyhow = { workspace = true }
 app-core = { workspace = true }
 app-contracts = { workspace = true }
+app-table.workspace = true
 async-trait = { workspace = true }
 slint = { workspace = true }
 smallvec = { workspace = true }
 sysinfo = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
-ttl_cache = { workspace = true }
 uniproc-protocol = { workspace = true }
+foundation-services.workspace = true
 serde_json = { workspace = true }
 serde.workspace = true
 macros.workspace = true
+lazy_static.workspace = true
+dashmap = { workspace = true, features = ["serde"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
 windows = { workspace = true, features = ["Win32_System_SystemInformation", "Wdk_System_Threading", "Wdk_System_SystemInformation"] }

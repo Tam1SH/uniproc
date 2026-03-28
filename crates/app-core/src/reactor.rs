@@ -1,5 +1,4 @@
-use std::cell::RefCell;
-use std::rc::Rc;
+use crate::settings::reactive::ReactiveSetting;
 use std::time::Duration;
 
 pub struct Reactor {
@@ -19,26 +18,20 @@ impl Reactor {
         self._anchors.push(timer);
     }
 
-    pub fn add_dynamic_loop<I>(&mut self, interval: I, f: impl FnMut() + 'static)
-    where
-        I: Fn() -> Duration + 'static,
-    {
-        fn schedule_next(
-            interval: Rc<dyn Fn() -> Duration>,
-            action: Rc<RefCell<dyn FnMut()>>,
-        ) {
-            let delay = (interval)().max(Duration::from_millis(1));
-            let interval_next = Rc::clone(&interval);
-            let action_next = Rc::clone(&action);
+    pub fn add_dynamic_loop(
+        &mut self,
+        interval_ms_setting: &ReactiveSetting<u64>,
+        f: impl FnMut() + 'static,
+    ) {
+        fn schedule_next(interval_ms_setting: ReactiveSetting<u64>, mut f: impl FnMut() + 'static) {
+            let delay = Duration::from_millis(interval_ms_setting.get());
 
             slint::Timer::single_shot(delay, move || {
-                (action_next.borrow_mut())();
-                schedule_next(interval_next, action_next);
+                f();
+                schedule_next(interval_ms_setting, f);
             });
         }
 
-        let interval: Rc<dyn Fn() -> Duration> = Rc::new(interval);
-        let action: Rc<RefCell<dyn FnMut()>> = Rc::new(RefCell::new(f));
-        schedule_next(interval, action);
+        schedule_next(interval_ms_setting.clone(), f);
     }
 }

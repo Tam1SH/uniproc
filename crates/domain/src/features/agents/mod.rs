@@ -1,17 +1,13 @@
+pub mod actor;
+pub mod backend;
 pub mod connection;
+pub mod providers;
+pub mod settings;
 
-cfg_if::cfg_if! {
-    if #[cfg(target_os = "windows")] {
-        pub mod wsl;
-        pub mod windows;
-    } else {
-        pub mod linux;
-    }
-}
-
-use app_core::SharedState;
+use crate::agents_impl::providers::{windows, wsl};
 use app_core::app::Feature;
 use app_core::reactor::Reactor;
+use app_core::SharedState;
 use slint::ComponentHandle;
 
 pub struct AgentsFeature;

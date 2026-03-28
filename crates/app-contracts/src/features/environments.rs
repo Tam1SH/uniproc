@@ -8,10 +8,7 @@ use uniproc_protocol::{LinuxCodec, WindowsCodec};
 type RpcClient<C> = Client<
     C,
     <C as MessageCodec>::Dest,
-    BufGuard<
-        <C as MessageCodec>::Dest,
-        <<C as MessageCodec>::Dest as HasAllocator>::SharedAlloc,
-    >,
+    BufGuard<<C as MessageCodec>::Dest, <<C as MessageCodec>::Dest as HasAllocator>::SharedAlloc>,
 >;
 
 cfg_if::cfg_if! {

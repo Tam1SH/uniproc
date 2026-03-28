@@ -1,0 +1,13 @@
+[package]
+name = "foundation-services"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+slint.workspace = true
+ttl_cache = { workspace = true }
+app-core = { workspace = true }
+
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows.workspace = true

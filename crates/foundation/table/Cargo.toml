@@ -1,0 +1,10 @@
+[package]
+name = "app-table"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+app-core.workspace = true
+anyhow.workspace = true
+slint.workspace = true
+dashmap.workspace = true

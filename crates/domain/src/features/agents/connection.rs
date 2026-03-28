@@ -1,10 +1,4 @@
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum ConnectionState {
-    Disconnected,
-    Connecting,
-    Connected,
-    WaitingRetry { delay_secs: u64 },
-}
+use app_contracts::features::environments::AgentConnectionState;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ConnectionEvent {
@@ -23,21 +17,21 @@ pub enum TransitionEffect {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Transition {
-    pub from: ConnectionState,
+    pub from: AgentConnectionState,
     pub event: ConnectionEvent,
-    pub to: ConnectionState,
+    pub to: AgentConnectionState,
     pub effect: TransitionEffect,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct InvalidTransition {
-    pub state: ConnectionState,
+    pub state: AgentConnectionState,
     pub event: ConnectionEvent,
 }
 
 #[derive(Debug)]
 pub struct ConnectionMachine {
-    state: ConnectionState,
+    state: AgentConnectionState,
     next_retry_delay_secs: u64,
     max_retry_delay_secs: u64,
 }
@@ -45,7 +39,7 @@ pub struct ConnectionMachine {
 impl ConnectionMachine {
     pub fn new() -> Self {
         Self {
-            state: ConnectionState::Disconnected,
+            state: AgentConnectionState::Disconnected,
             next_retry_delay_secs: 1,
             max_retry_delay_secs: 15,
         }
@@ -55,27 +49,27 @@ impl ConnectionMachine {
         let from = self.state;
 
         let (to, effect) = match (self.state, event) {
-            (ConnectionState::Disconnected, ConnectionEvent::BeginConnect) => {
-                (ConnectionState::Connecting, TransitionEffect::None)
+            (AgentConnectionState::Disconnected, ConnectionEvent::BeginConnect) => {
+                (AgentConnectionState::Connecting, TransitionEffect::None)
             }
-            (ConnectionState::Connecting, ConnectionEvent::ConnectSucceeded) => {
+            (AgentConnectionState::Connecting, ConnectionEvent::ConnectSucceeded) => {
                 self.next_retry_delay_secs = 1;
-                (ConnectionState::Connected, TransitionEffect::None)
+                (AgentConnectionState::Connected, TransitionEffect::None)
             }
-            (ConnectionState::Connecting, ConnectionEvent::ConnectFailed) => {
+            (AgentConnectionState::Connecting, ConnectionEvent::ConnectFailed) => {
                 let delay_secs = self.next_retry_delay_secs;
                 self.next_retry_delay_secs =
                     (delay_secs.saturating_mul(2)).min(self.max_retry_delay_secs);
                 (
-                    ConnectionState::WaitingRetry { delay_secs },
+                    AgentConnectionState::WaitingRetry { delay_secs },
                     TransitionEffect::ScheduleRetry { delay_secs },
                 )
             }
-            (ConnectionState::WaitingRetry { .. }, ConnectionEvent::RetryDelayElapsed) => {
-                (ConnectionState::Connecting, TransitionEffect::None)
+            (AgentConnectionState::WaitingRetry { .. }, ConnectionEvent::RetryDelayElapsed) => {
+                (AgentConnectionState::Connecting, TransitionEffect::None)
             }
-            (ConnectionState::Connected, ConnectionEvent::ConnectionLost) => {
-                (ConnectionState::Disconnected, TransitionEffect::None)
+            (AgentConnectionState::Connected, ConnectionEvent::ConnectionLost) => {
+                (AgentConnectionState::Disconnected, TransitionEffect::None)
             }
             _ => {
                 return Err(InvalidTransition {
@@ -94,7 +88,7 @@ impl ConnectionMachine {
         })
     }
 
-    pub fn state(&self) -> ConnectionState {
+    pub fn state(&self) -> AgentConnectionState {
         self.state
     }
 }

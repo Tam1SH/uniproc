@@ -1,21 +1,21 @@
-use std::path::PathBuf;
-
 use app_core::SharedState;
 use app_core::app::Feature;
 use app_core::reactor::Reactor;
 use slint::ComponentHandle;
+use std::path::PathBuf;
+use std::sync::Arc;
 
 pub use app_core::settings::*;
 
 #[derive(Default)]
 pub struct SettingsFeature {
-    inner: app_core::settings::SettingsFeature,
+    path_override: Option<PathBuf>,
 }
 
 impl SettingsFeature {
     pub fn with_path(path: PathBuf) -> Self {
         Self {
-            inner: app_core::settings::SettingsFeature::with_path(path),
+            path_override: Some(path),
         }
     }
 }
@@ -26,10 +26,18 @@ where
 {
     fn install(
         self,
-        reactor: &mut Reactor,
-        ui: &TWindow,
+        _reactor: &mut Reactor,
+        _ui: &TWindow,
         shared: &SharedState,
     ) -> anyhow::Result<()> {
-        self.inner.install(reactor, ui, shared)
+        let path = self
+            .path_override
+            .unwrap_or_else(SettingsStore::default_settings_path);
+        let store = Arc::new(SettingsStore::load_or_default(path)?);
+
+        SettingsPersistenceSettings::ensure_defaults(&store)?;
+        shared.insert_arc(Arc::clone(&store));
+
+        Ok(())
     }
 }

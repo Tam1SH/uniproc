@@ -20,7 +20,6 @@ import {
     ProcessEntry,
     ProcessesFeatureGlobal,
     ProcessGroup,
-    FieldDef,
     ProcessField,
 } from "features/processes/globals.slint";
 
@@ -39,6 +38,7 @@ import {
     RunTaskProxy,
 } from "features/processes/run-task-dialog.slint";
 
+import { TableColDef, TableColWidth } from "components/table-view.slint";
 
 import { Theme } from "theme.slint";
 
@@ -46,7 +46,7 @@ import { L10n } from "localization.slint";
 
 export { 
     MainBodyState, EnvironmentsFeatureGlobal, EnvsLoading,
-    WslDistro, Navigation, TabData, 
+    WslDistro, Navigation, TabData, TableColDef, TableColWidth,
     ProcessEntry, ProcessesFeatureGlobal, ProcessGroup,
     ContextMenuProxy, Theme, L10n, ProcessContextMenu,
     PageEntry, TitleBarActions, WindowClickHandler,

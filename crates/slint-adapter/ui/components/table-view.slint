@@ -1,0 +1,218 @@
+import { ListView } from "std-widgets.slint";
+import { Theme } from "theme.slint";
+import { Icons } from "icons.slint";
+
+
+export struct TableColMetadata {
+    id: string,
+    is-text: bool,
+    is-metric: bool
+}
+
+export struct TableColDef {
+    id: string,
+    label: string,
+    stat-text: string,
+    stat-detail: string,
+    stat-numeric: float,
+    threshold: float,
+    show-indicator: bool,
+}
+
+export struct TableColWidth {
+    id: string,
+    width-px: int,
+}
+
+component MetricSplitBar inherits Rectangle {
+    in property <float> value;
+    in property <float> threshold: 100;
+    in property <color> accent-color: Theme.accent;
+    in property <length> bar-width: 50px;
+
+    width: bar-width;
+    height: 3px;
+    border-radius: 3px;
+
+    public pure function ratio() -> float {
+        if (threshold <= 0) { return 0; }
+        return Math.min(value / threshold, 1);
+    }
+
+    HorizontalLayout {
+        spacing: 0;
+        Rectangle {
+            width: root.width * root.ratio();
+            height: parent.height;
+            background: root.accent-color;
+            border-radius: 3px;
+        }
+        Rectangle {
+            width: root.width * (1 - root.ratio());
+            height: parent.height;
+            background: Theme.layer_background;
+            border-radius: 3px;
+        }
+    }
+}
+
+component SortArrow inherits Image {
+    in property <bool> descending;
+    source: Icons.arrow-up-regular;
+    transform-rotation: descending ? -90deg : 90deg;
+    transform-origin: { x: 2.5px, y: 5px };
+    colorize: white;
+    width: 10px;
+    height: 10px;
+}
+
+
+export component ResizableHeaderCell inherits Rectangle {
+    in-out property <length> column-width;
+    in property <length> prop-min-width: 40px;
+    in property <string> column-id;
+    callback resized(string, float);
+
+    width: column-width;
+    clip: true;
+
+    HorizontalLayout {
+        @children
+
+        Rectangle {
+            width: 4px;
+            touch := TouchArea {
+                width: 12px;
+                mouse-cursor: ew-resize;
+                moved => {
+                    if (self.pressed) {
+                        let delta = (self.mouse-x - self.pressed-x) / 1px;
+                        let new-w = (root.column-width / 1px) + delta;
+                        if (new-w > (root.min-width / 1px)) {
+                            root.resized(root.column-id, new-w);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+export component TableHeaderCell inherits Rectangle {
+    in property <TableColDef> def;
+    in property <bool> is-sorted;
+    in property <bool> sort-descending;
+    in property <bool> is-text: false;
+    in property <bool> is-metric: false;
+    in property <bool> is-custom: false;
+    callback clicked();
+
+    TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+
+    if (root.is-sorted): HorizontalLayout {
+        padding: 8px;
+        SortArrow { descending: root.sort-descending; }
+    }
+
+//    if (root.is-custom): Rectangle { @children }
+
+    if (!root.is-custom && root.is-text): HorizontalLayout {
+        alignment: start;
+        VerticalLayout {
+            alignment: center;
+            padding-left: 12px;
+            Text {
+                text: def.label;
+                color: Theme.text_primary;
+                font-size: Theme.font_size_body;
+            }
+        }
+    }
+
+    if (!root.is-custom && root.is-metric): HorizontalLayout {
+        alignment: end;
+        padding-right: 10px;
+        VerticalLayout {
+            alignment: center;
+            spacing: 2px;
+            Text {
+                text: def.stat-text;
+                horizontal-alignment: right;
+                color: Theme.text_secondary;
+                font-size: 16px;
+            }
+            HorizontalLayout {
+                Text {
+                    text: def.stat-detail;
+                    horizontal-alignment: right;
+                    color: Theme.text_disabled;
+                    font-size: 12px;
+                }
+                Rectangle { horizontal-stretch: 1; }
+                Text {
+                    text: def.label;
+                    horizontal-alignment: right;
+                    color: Theme.text_secondary;
+                    font-size: 12px;
+                }
+            }
+            Rectangle { height: 2px; }
+            if (def.show-indicator): MetricSplitBar {
+                value: def.stat-numeric;
+                threshold: 100.0;
+                bar-width: root.width;
+                accent-color: Theme.accent;
+            }
+            if (!def.show-indicator): Rectangle { height: 3px; }
+        }
+    }
+
+    if (!root.is-custom && !root.is-text && !root.is-metric): HorizontalLayout {
+        alignment: end;
+        padding-right: 10px;
+        VerticalLayout {
+            alignment: center;
+            Text {
+                text: def.label;
+                horizontal-alignment: right;
+                color: Theme.text_secondary;
+                font-size: 12px;
+            }
+        }
+    }
+}
+
+export component TableHeader inherits Rectangle {
+    in property <[TableColDef]> column-defs;
+    in property <[TableColWidth]> column-widths;
+    in property <[TableColMetadata]> column-metadatas;
+    in property <string> current-sort;
+    in property <bool> current-sort-descending;
+    callback resized(string, float);
+    callback sort-by(string);
+
+    height: 50px;
+
+    HorizontalLayout {
+        alignment: start;
+
+        for def[i] in root.column-defs: ResizableHeaderCell {
+            column-id: def.id;
+            column-width: root.column-widths[i].width-px * 1px;
+            prop-min-width: 40px;
+            resized(id, w) => { root.resized(id, w); }
+
+            TableHeaderCell {
+                def: def;
+                is-text: root.column-metadatas[i].is-text;
+                is-metric: root.column-metadatas[i].is-metric;
+                is-sorted: root.current-sort == def.id;
+                sort-descending: root.current-sort-descending;
+                clicked => { root.sort-by(def.id); }
+            }
+        }
+    }
+}

@@ -8,10 +8,12 @@ cfg-if = { workspace = true }
 slint = { workspace = true }
 app-contracts = { workspace = true }
 app-core = { workspace = true }
+app-table.workspace = true
 anyhow = { workspace = true }
 i-slint-backend-winit = { workspace = true }
 winit = { workspace = true }
 raw-window-handle = { workspace = true }
+tracing.workspace = true
 
 [target.'cfg(target_os = "windows")'.dependencies]
 window-vibrancy = { workspace = true }

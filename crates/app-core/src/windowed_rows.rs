@@ -1,7 +1,7 @@
-pub struct WindowBatch<T> {
+pub struct WindowBatch<'a, T> {
     pub total_rows: usize,
     pub start: usize,
-    pub rows: Vec<T>,
+    pub rows: &'a [T],
 }
 
 pub struct WindowedRows<T> {
@@ -19,8 +19,12 @@ impl<T> WindowedRows<T> {
         }
     }
 
-    pub fn set_items(&mut self, items: Vec<T>) {
-        self.items = items;
+    pub fn set_items(&mut self, items: &[T])
+    where
+        T: Clone,
+    {
+        self.items.clear();
+        self.items.extend_from_slice(items);
     }
 
     pub fn set_viewport(&mut self, start: usize, count: usize) {
@@ -35,21 +39,13 @@ impl<T> WindowedRows<T> {
     pub fn range(&self) -> (usize, usize) {
         clamp_window(self.start, self.count, self.items.len())
     }
-}
 
-impl<T: Clone> WindowedRows<T> {
-    pub fn batch(&self) -> WindowBatch<T> {
-        let total_rows = self.items.len();
+    pub fn batch(&self) -> WindowBatch<'_, T> {
         let (start, count) = self.range();
-        let rows = if count == 0 {
-            Vec::new()
-        } else {
-            self.items[start..start + count].to_vec()
-        };
         WindowBatch {
-            total_rows,
+            total_rows: self.items.len(),
             start,
-            rows,
+            rows: &self.items[start..start + count],
         }
     }
 }
@@ -70,7 +66,7 @@ mod tests {
     #[test]
     fn batch_is_clamped_to_total() {
         let mut rows = WindowedRows::new(10);
-        rows.set_items(vec![1, 2, 3, 4]);
+        rows.set_items(&*vec![1, 2, 3, 4]);
         rows.set_viewport(3, 10);
 
         let b = rows.batch();

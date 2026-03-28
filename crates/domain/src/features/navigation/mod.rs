@@ -158,13 +158,19 @@ where
             let show_delay_ms = show_delay_ms.clone();
             ui_for_switch.set_content_visible(false);
             let ui_after_hide = ui_for_switch.clone();
-            slint::Timer::single_shot(Duration::from_millis(hide_delay_ms.get().max(1)), move || {
-                ui_after_hide.set_active_tab_index(new_index);
-                let ui_after_show = ui_after_hide.clone();
-                slint::Timer::single_shot(Duration::from_millis(show_delay_ms.get().max(1)), move || {
-                    ui_after_show.set_content_visible(true);
-                });
-            });
+            slint::Timer::single_shot(
+                Duration::from_millis(hide_delay_ms.get().max(1)),
+                move || {
+                    ui_after_hide.set_active_tab_index(new_index);
+                    let ui_after_show = ui_after_hide.clone();
+                    slint::Timer::single_shot(
+                        Duration::from_millis(show_delay_ms.get().max(1)),
+                        move || {
+                            ui_after_show.set_content_visible(true);
+                        },
+                    );
+                },
+            );
         });
 
         Ok(())
