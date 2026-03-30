@@ -1,0 +1,57 @@
+import { Icons } from "icons.slint";
+
+export component GenericTreeCell inherits Rectangle {
+    in property <int> depth: 0;
+    in property <bool> has-children: false;
+    in property <bool> is-expanded: false;
+    in property <image> icon;
+    in property <string> text;
+    in property <color> text-color: white;
+
+    callback toggle-expand();
+
+    HorizontalLayout {
+        padding-left: 8px + root.depth * 16px;
+        spacing: 8px;
+
+        if (root.has-children): Rectangle {
+            width: 12px;
+            Image {
+                source: Icons.arrow-up-regular;
+                width: 12px;
+                height: 12px;
+                colorize: root.text-color;
+                transform-rotation: root.is-expanded ? 270deg : 180deg;
+                animate transform-rotation { duration: 150ms; }
+            }
+
+            TouchArea {
+                clicked => {
+                    root.toggle-expand();
+                }
+            }
+        }
+
+        if (!root.has-children && root.depth > 0): Rectangle {
+            width: 12px;
+        }
+
+        if (root.icon.width > 0): VerticalLayout {
+            alignment: center;
+            Image {
+                source: root.icon;
+                width: 16px;
+                height: 16px;
+                image-fit: contain;
+            }
+        }
+
+        Text {
+            text: root.text;
+            color: root.text-color;
+            vertical-alignment: center;
+            font-size: 12px;
+            overflow: elide;
+        }
+    }
+}

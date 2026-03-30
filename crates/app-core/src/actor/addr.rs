@@ -1,7 +1,8 @@
 use crate::actor::envelope::{Envelope, MessageEnvelope};
 use crate::actor::traits::{Context, Handler, Message};
-use slint::ComponentHandle;
-use std::any::Any;
+use crate::actor::UiThreadGuard;
+use crate::app::Window;
+use std::any::{type_name, Any};
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, VecDeque};
 use std::rc::Rc;
@@ -13,19 +14,21 @@ thread_local! {
     pub static REGISTRY: RefCell<HashMap<usize, Box<dyn Any>>> = RefCell::new(HashMap::new());
 }
 
-pub struct Addr<A: 'static, TWindow: ComponentHandle + 'static> {
+pub struct Addr<A: 'static, TWindow: Window> {
     pub(super) id: usize,
+    pub(super) guard: UiThreadGuard,
     state: Rc<RefCell<A>>,
     queue: Rc<RefCell<VecDeque<Box<dyn Envelope<A, TWindow>>>>>,
     is_processing: Rc<Cell<bool>>,
     ui_weak: slint::Weak<TWindow>,
 }
 
-impl<A: 'static, TWindow: ComponentHandle + 'static> Clone for Addr<A, TWindow> {
+impl<A: 'static, TWindow: Window> Clone for Addr<A, TWindow> {
     fn clone(&self) -> Self {
         Self {
             id: self.id,
             state: self.state.clone(),
+            guard: self.guard.clone(),
             queue: self.queue.clone(),
             is_processing: self.is_processing.clone(),
             ui_weak: self.ui_weak.clone(),
@@ -33,7 +36,7 @@ impl<A: 'static, TWindow: ComponentHandle + 'static> Clone for Addr<A, TWindow> 
     }
 }
 
-impl<A: 'static, TWindow: ComponentHandle + 'static> Addr<A, TWindow> {
+impl<A: 'static, TWindow: Window> Addr<A, TWindow> {
     pub fn handler<M>(&self, msg: M) -> impl Fn() + 'static
     where
         M: Message + Clone,
@@ -75,9 +78,21 @@ impl<A: 'static, TWindow: ComponentHandle + 'static> Addr<A, TWindow> {
     }
 
     pub fn new(state: A, ui_weak: slint::Weak<TWindow>) -> Self {
+        let is_main_thread = ui_weak.upgrade().is_some();
+
+        let guard = if is_main_thread {
+            UiThreadGuard::new()
+        } else {
+            panic!(
+                "no main thread while creating addr, typename:{}",
+                type_name::<Self>()
+            );
+        };
+
         let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
         let addr = Self {
             id,
+            guard,
             state: Rc::new(RefCell::new(state)),
             queue: Rc::new(RefCell::new(VecDeque::new())),
             is_processing: Rc::new(Cell::new(false)),
@@ -124,6 +139,7 @@ impl<A: 'static, TWindow: ComponentHandle + 'static> Addr<A, TWindow> {
 
             let ctx = Context {
                 addr: self.clone(),
+                guard: self.guard.clone(),
                 ui_weak: self.ui_weak.clone(),
             };
 

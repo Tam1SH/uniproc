@@ -5,9 +5,11 @@ use app_contracts::features::agents::{ScanTick, WindowsReportMessage};
 use app_contracts::features::environments::{
     AgentClient, AgentConnectionState, WindowsAgentRuntimeEvent,
 };
+use app_core::app::Window;
 use app_core::{
-    actor::{addr::Addr, event_bus::EVENT_BUS},
+    actor::{addr::Addr, event_bus::EventBus},
     app::Feature,
+    ratelimit,
     reactor::Reactor,
     SharedState,
 };
@@ -16,6 +18,7 @@ use ogurpchik::transport::stream::adapters::uds::UdsTransport;
 use slint::ComponentHandle;
 use std::ops::Deref;
 use std::time::Instant;
+use tracing::{debug, error, instrument, trace, warn};
 use uniproc_protocol::{services, WindowsCodec, WindowsRequest, WindowsResponse};
 
 pub struct WindowsBackend;
@@ -41,13 +44,23 @@ impl AgentBackend for WindowsBackend {
         Ok(start.elapsed().as_millis() as i32)
     }
 
+    #[instrument(skip(client), level = "debug", err)]
     async fn perform_scan(client: &Self::Client) -> anyhow::Result<()> {
         let resp = client.call(WindowsRequest::GetReport).await?;
-        if let Ok(WindowsResponse::Report(r)) =
-            rkyv::deserialize::<WindowsResponse, rkyv::rancor::Error>(*resp.deref())
-        {
-            EVENT_BUS.with(|bus| bus.publish(WindowsReportMessage(r)));
+
+        let response = rkyv::deserialize::<WindowsResponse, rkyv::rancor::Error>(*resp.deref())
+            .map_err(|e| {
+                error!(error = %e, "Deserialization failed");
+                anyhow::anyhow!("Failed to deserialize WindowsResponse: {}", e)
+            })?;
+
+        if let WindowsResponse::Report(r) = response {
+            EventBus::publish(WindowsReportMessage(r));
+            ratelimit!(3600, info!("Report published to event bus"));
+        } else {
+            warn!("Unexpected response type: {:?}", response);
         }
+
         Ok(())
     }
 
@@ -57,25 +70,26 @@ impl AgentBackend for WindowsBackend {
     ) -> Self::RuntimeEvent {
         WindowsAgentRuntimeEvent {
             state: state.into(),
-            client: None,
             latency_ms: latency,
         }
     }
 }
 
 pub struct WindowsAgentFeature;
-impl<T: ComponentHandle + 'static> Feature<T> for WindowsAgentFeature {
+impl<T: Window> Feature<T> for WindowsAgentFeature {
     fn install(self, reactor: &mut Reactor, ui: &T, shared: &SharedState) -> anyhow::Result<()> {
         let settings = AgentSettings::new(shared)?;
         let addr = Addr::new(
-            GenericAgentActor::<WindowsBackend>::new(settings.connect_timeout_secs()?),
+            GenericAgentActor::<WindowsBackend>::new(settings.connect_timeout_secs()),
             ui.as_weak(),
         );
         let a = addr.clone();
-        reactor.add_dynamic_loop(&settings.ping_interval_ms()?, move || a.send(Ping));
-        EVENT_BUS.with(|bus| {
-            bus.subscribe::<GenericAgentActor<WindowsBackend>, ScanTick, T>(addr.clone())
-        });
+        reactor.add_dynamic_loop(&settings.ping_interval_ms(), move || a.send(Ping));
+        EventBus::subscribe::<GenericAgentActor<WindowsBackend>, ScanTick, T>(
+            &ui.new_token(),
+            addr.clone(),
+        );
+
         addr.send(Init);
         Ok(())
     }

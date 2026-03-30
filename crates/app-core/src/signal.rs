@@ -19,7 +19,7 @@ impl Drop for SignalSubscription {
     }
 }
 
-impl<T: Send + Sync + 'static> Signal<T> {
+impl<T: 'static> Signal<T> {
     pub fn new(initial: T) -> Self {
         Self {
             value: Arc::new(ArcSwap::from_pointee(initial)),
@@ -32,12 +32,26 @@ impl<T: Send + Sync + 'static> Signal<T> {
         self.value.load_full()
     }
 
+    pub fn store_arc(&self, arc: Arc<T>) {
+        self.value.store(arc);
+        self.emit();
+    }
+
     pub fn set(&self, new_value: T) {
-        let arc_val = Arc::new(new_value);
-        self.value.store(arc_val.clone());
-        let subs = self.subscribers.lock().unwrap();
-        for (_, cb) in subs.iter() {
-            cb(&arc_val);
+        self.value.store(Arc::new(new_value));
+        self.emit();
+    }
+
+    fn emit(&self) {
+        let val = self.value.load_full();
+
+        let callbacks: Vec<_> = {
+            let subs = self.subscribers.lock().unwrap();
+            subs.iter().map(|(_, cb)| cb.clone()).collect()
+        };
+
+        for cb in callbacks {
+            cb(&val);
         }
     }
 
@@ -49,7 +63,7 @@ impl<T: Send + Sync + 'static> Signal<T> {
         let mut subs = self.subscribers.lock().unwrap();
         subs.push((id, Arc::new(callback)));
 
-        let subscribers = Arc::clone(&self.subscribers);
+        let subscribers = self.subscribers.clone();
         SignalSubscription {
             id,
             cleanup: Arc::new(move |id| {
@@ -61,7 +75,7 @@ impl<T: Send + Sync + 'static> Signal<T> {
     }
 }
 
-impl<T: Send + Sync + Clone + 'static> Signal<T> {
+impl<T: Clone + 'static> Signal<T> {
     pub fn get(&self) -> T {
         self.value.load().as_ref().clone()
     }

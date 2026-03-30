@@ -1,3 +1,4 @@
+use app_core::app::Window;
 use app_contracts::features::run_task::{RunTaskPort, RunTaskRequest};
 use app_core::actor::traits::{Context, Handler, Message};
 use app_core::messages;
@@ -16,7 +17,7 @@ pub struct RunTaskActor<P> {
 
 impl<TWindow, P> Handler<Drag, TWindow> for RunTaskActor<P>
 where
-    TWindow: ComponentHandle + 'static,
+    TWindow: Window,
     P: RunTaskPort,
 {
     fn handle(&mut self, _msg: Drag, _ctx: &Context<Self, TWindow>) {
@@ -26,7 +27,7 @@ where
 
 impl<TWindow, P> Handler<Show, TWindow> for RunTaskActor<P>
 where
-    TWindow: ComponentHandle + 'static,
+    TWindow: Window,
     P: RunTaskPort,
 {
     fn handle(&mut self, _msg: Show, _ctx: &Context<Self, TWindow>) {
@@ -36,7 +37,7 @@ where
 
 impl<TWindow, P> Handler<Hide, TWindow> for RunTaskActor<P>
 where
-    TWindow: ComponentHandle + 'static,
+    TWindow: Window,
     P: RunTaskPort,
 {
     fn handle(&mut self, _msg: Hide, _ctx: &Context<Self, TWindow>) {
@@ -46,7 +47,7 @@ where
 
 impl<TWindow, P> Handler<Execute, TWindow> for RunTaskActor<P>
 where
-    TWindow: ComponentHandle + 'static,
+    TWindow: Window,
     P: RunTaskPort,
 {
     fn handle(&mut self, _msg: Execute, ctx: &Context<Self, TWindow>) {

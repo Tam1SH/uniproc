@@ -1,3 +1,4 @@
+use app_core::app::Window;
 use app_core::SharedState;
 use app_core::app::Feature;
 use app_core::l10n::{L10nManager, L10nPort};
@@ -16,7 +17,7 @@ impl<F> L10nFeature<F> {
 
 impl<TWindow, F, P> Feature<TWindow> for L10nFeature<F>
 where
-    TWindow: ComponentHandle + 'static,
+    TWindow: Window,
     F: Fn(&TWindow) -> P + 'static,
     P: L10nPort,
 {

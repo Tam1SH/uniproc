@@ -1,0 +1,33 @@
+import { Theme } from "theme.slint";
+export component ResizableHeaderCell inherits Rectangle {
+    in property <length> column-width; 
+    in property <length> prop-min-width: 40px;
+    in property <string> column-id;
+    callback resized(string, float);
+
+    width: column-width;
+    
+    HorizontalLayout {
+        @children
+
+        Rectangle {
+            width: 6px;
+            background: touch.pressed ? Theme.accent : (touch.has-hover ? Theme.layer_background : transparent);
+            animate background { duration: 100ms; }
+
+            touch := TouchArea {
+                width: 12px;
+                mouse-cursor: ew-resize;
+                moved => {
+                    if (self.pressed) {
+                        let delta = (self.mouse-x - self.pressed-x) / 1px;
+                        let new-w = (root.column-width / 1px) + delta;
+                        if (new-w > (root.min-width / 1px)) {
+                            root.resized(root.column-id, new-w);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

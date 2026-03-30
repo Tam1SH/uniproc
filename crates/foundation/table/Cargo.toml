@@ -8,3 +8,4 @@ app-core.workspace = true
 anyhow.workspace = true
 slint.workspace = true
 dashmap.workspace = true
+tracing.workspace = true

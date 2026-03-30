@@ -12,12 +12,14 @@ use app_contracts::features::processes::{
 use app_core::actor::addr::Addr;
 use app_core::actor::traits::Message;
 use app_core::actor::traits::{Context, Handler};
-use app_core::messages;
+use app_core::app::Window;
+use app_core::{messages, ratelimit};
 use slint::{ComponentHandle, SharedString};
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
+use tracing::{info, instrument, warn, Span};
 
-pub struct ProcessSnapshotActor<P: ProcessesUiPort, TWindow: ComponentHandle + 'static> {
+pub struct ProcessSnapshotActor<P: ProcessesUiPort, TWindow: Window> {
     pub snapshots: HashMap<&'static str, BridgeSnapshot>,
     pub contexts: HashMap<&'static str, Arc<StatefulContext>>,
     pub target: Addr<ProcessActor<P>, TWindow>,
@@ -34,7 +36,7 @@ messages! {
     }
 }
 
-impl<P: ProcessesUiPort, TWindow: ComponentHandle + 'static> ProcessSnapshotActor<P, TWindow> {
+impl<P: ProcessesUiPort, TWindow: Window> ProcessSnapshotActor<P, TWindow> {
     fn context_for(&mut self, schema_id: &'static str) -> Arc<StatefulContext> {
         self.contexts
             .entry(schema_id)
@@ -48,6 +50,7 @@ impl<P: ProcessesUiPort, TWindow: ComponentHandle + 'static> ProcessSnapshotActo
         }
 
         let total_count: usize = self.snapshots.values().map(|s| s.processes.len()).sum();
+        Span::current().record("total_pids", total_count);
 
         self.scratch_seen.clear();
         let mut column_defs: Vec<FieldDefDto> = Vec::new();
@@ -66,6 +69,15 @@ impl<P: ProcessesUiPort, TWindow: ComponentHandle + 'static> ProcessSnapshotActo
             }
         }
 
+        ratelimit!(
+            3600,
+            info!(
+                pids = total_count,
+                cols = column_defs.len(),
+                "Snapshot sent to UI"
+            )
+        );
+
         self.target.send(ProcessSnapshotReady {
             column_defs,
             processes: self.scratch_processes.clone(),
@@ -77,7 +89,7 @@ impl<P: ProcessesUiPort, TWindow: ComponentHandle + 'static> ProcessSnapshotActo
 impl<P, TWindow> Handler<TabChanged, TWindow> for ProcessSnapshotActor<P, TWindow>
 where
     P: ProcessesUiPort,
-    TWindow: ComponentHandle + 'static,
+    TWindow: Window,
 {
     fn handle(&mut self, msg: TabChanged, _ctx: &Context<Self, TWindow>) {
         self.is_active = msg.name == "Processes";
@@ -87,7 +99,7 @@ where
 impl<P, TWindow> Handler<RemoteScanResult, TWindow> for ProcessSnapshotActor<P, TWindow>
 where
     P: ProcessesUiPort,
-    TWindow: ComponentHandle + 'static,
+    TWindow: Window,
 {
     fn handle(&mut self, msg: RemoteScanResult, _ctx: &Context<Self, TWindow>) {
         if !self.is_active {
@@ -110,7 +122,7 @@ where
 impl<P, TWindow> Handler<WindowsReportMessage, TWindow> for ProcessSnapshotActor<P, TWindow>
 where
     P: ProcessesUiPort,
-    TWindow: ComponentHandle + 'static,
+    TWindow: Window,
 {
     fn handle(&mut self, msg: WindowsReportMessage, _ctx: &Context<Self, TWindow>) {
         if !self.is_active {

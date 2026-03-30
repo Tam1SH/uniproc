@@ -1,0 +1,54 @@
+import { Theme } from "theme.slint";
+import { TableColWidth, TableColDef, TableCellData } from "types.slint";
+import { GenericMasterCell } from "row-master-cell.slint";
+import { GenericTableCell } from "row-cell.slint";
+export component GenericTableRow inherits Rectangle {
+    in property <bool> selected;
+    in property <bool> is-alternate;
+
+    in property <[TableColDef]> column-defs;
+    in property <[TableColWidth]> column-widths;
+
+    in property <string> master-text;
+    in property <image> master-icon;
+    in property <int> depth: 0;
+    in property <bool> has-children: false;
+    in property <bool> is-expanded: false;
+    in property <color> master-color: white;
+
+    in property <[TableCellData]> cells;
+
+    callback clicked();
+    callback toggle-expand();
+
+    height: 32px;
+    background: root.selected ? Theme.accent.with-alpha(0.1) :
+                (touch.has-hover ? rgba(255,255,255,0.05) :
+                (root.is-alternate ? Theme.fill_row_subtle : transparent));
+
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+
+    HorizontalLayout {
+        for col-def[idx] in root.column-defs : Rectangle {
+            width: root.column-widths[idx].width-px * 1px;
+            clip: true;
+
+            if (idx == 0) : GenericMasterCell {
+                text: root.master-text;
+                icon: root.master-icon;
+                depth: root.depth;
+                has-children: root.has-children;
+                is-expanded: root.is-expanded;
+                text-color: root.master-color;
+                toggle-expand => { root.toggle-expand(); }
+            }
+
+            if (idx > 0) : GenericTableCell {
+                data: root.cells[idx - 1];
+            }
+        }
+    }
+}

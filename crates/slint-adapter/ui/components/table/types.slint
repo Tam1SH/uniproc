@@ -1,0 +1,28 @@
+export struct TableColMetadata {
+    id: string,
+    is-text: bool,
+    is-metric: bool,
+}
+
+export struct TableColDef {
+    id: string,
+    label: string,
+    stat-text: string,
+    stat-detail: string,
+    stat-numeric: float,
+    threshold: float,
+    show-indicator: bool,
+}
+
+export struct TableColWidth {
+    id: string,
+    width-px: int,
+}
+
+export struct TableCellData {
+    text: string,
+    value: float,
+    threshold: float,
+    has-metric: bool,
+    dead: bool,
+}

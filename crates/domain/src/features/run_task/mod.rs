@@ -1,3 +1,4 @@
+use app_core::app::Window;
 mod actors;
 
 use crate::features::cosmetics::accent_from;
@@ -21,7 +22,7 @@ impl<F> RunTaskFeature<F> {
 
 impl<TWindow, F, P> Feature<TWindow> for RunTaskFeature<F>
 where
-    TWindow: ComponentHandle + 'static,
+    TWindow: Window,
     F: Fn(&TWindow) -> anyhow::Result<P> + 'static,
     P: RunTaskPort,
 {

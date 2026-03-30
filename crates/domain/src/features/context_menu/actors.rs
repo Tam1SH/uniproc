@@ -1,8 +1,8 @@
 use app_contracts::features::context_menu::ContextMenuUiPort;
 use app_core::actor::traits::{Context, Handler, Message};
+use app_core::app::Window;
 use app_core::messages;
 use app_core::settings::ReactiveSetting;
-use slint::ComponentHandle;
 
 messages! {
     Show { x: f32, y: f32 },
@@ -17,7 +17,7 @@ pub struct ContextMenuActor<P> {
 
 impl<TWindow, P> Handler<Show, TWindow> for ContextMenuActor<P>
 where
-    TWindow: ComponentHandle + 'static,
+    TWindow: Window,
     P: ContextMenuUiPort,
 {
     fn handle(&mut self, msg: Show, _ctx: &Context<Self, TWindow>) {
@@ -29,7 +29,7 @@ where
 
 impl<TWindow, P> Handler<Hide, TWindow> for ContextMenuActor<P>
 where
-    TWindow: ComponentHandle + 'static,
+    TWindow: Window,
     P: ContextMenuUiPort,
 {
     fn handle(&mut self, _msg: Hide, _ctx: &Context<Self, TWindow>) {
@@ -40,7 +40,7 @@ where
 
 impl<TWindow, P> Handler<HandleAction, TWindow> for ContextMenuActor<P>
 where
-    TWindow: ComponentHandle + 'static,
+    TWindow: Window,
     P: ContextMenuUiPort,
 {
     fn handle(&mut self, msg: HandleAction, ctx: &Context<Self, TWindow>) {

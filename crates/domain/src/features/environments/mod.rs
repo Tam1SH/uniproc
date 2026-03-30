@@ -1,3 +1,4 @@
+use app_core::app::Window;
 use app_contracts::features::environments::{EnvironmentsUiBindings, EnvironmentsUiPort};
 use app_core::SharedState;
 use app_core::app::Feature;
@@ -19,7 +20,7 @@ impl<F> EnvironmentsFeature<F> {
 
 impl<TWindow, F, P> Feature<TWindow> for EnvironmentsFeature<F>
 where
-    TWindow: ComponentHandle + 'static,
+    TWindow: Window,
     F: Fn(&TWindow) -> P + Clone + 'static,
     P: EnvironmentsUiPort + EnvironmentsUiBindings + Clone + 'static,
 {

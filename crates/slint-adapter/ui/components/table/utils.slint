@@ -1,0 +1,21 @@
+import { Theme } from "theme.slint";
+
+export global TableUtils {
+    pure public function threshold-color(
+        value: float,
+        threshold: float,
+        dead: bool,
+    ) -> color {
+        if (dead)                  { return Theme.text_disabled; }
+        if (value < threshold)     { return Theme.text_secondary; }
+        if (value < threshold * 2) { return #f49a36; }
+        return #ff5757;
+    }
+    pure public function viewport-first(viewport-y: length, row-height: length) -> int {
+        return Math.max(0, Math.floor((-viewport-y / row-height)) - 10);
+    }
+
+    pure public function viewport-visible(visible-height: length, row-height: length) -> int {
+        return Math.ceil(visible-height / row-height) + 20;
+    }
+}

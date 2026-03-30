@@ -1,227 +1,74 @@
 import { ListView } from "std-widgets.slint";
 import { Theme } from "theme.slint";
+import { ProcessStatusBar } from "process-status-bar.slint";
 import { Icons } from "icons.slint";
 import {
     ProcessesFeatureGlobal,
     ProcessEntry,
-    ProcessField,
 } from "globals.slint";
+
 import {
+    GenericTableRow,
+    TableHeader,
     TableColDef,
     TableColWidth,
-    TableHeader
-} from "table-view.slint";
-
-export struct EnvironmentCount {
-    name: string,
-    count: int,
-}
-
-export component ProcessStatusBar inherits Rectangle {
-    in property <int> total-count;
-    in property <[EnvironmentCount]> env-counts;
-
-    height: 32px;
-    background: Theme.colorNeutralBackgroundAlpha;
-
-    Rectangle {
-        width: 100%;
-        height: 1px;
-        background: Theme.layer_background;
-        y: 0;
-    }
-
-    VerticalLayout {
-        alignment: center;
-        HorizontalLayout {
-            padding-left: 8px;
-            spacing: 6px;
-
-            Text {
-                text: "Processes: \{root.total-count}";
-                color: Theme.text_secondary;
-                font-size: 12px;
-            }
-
-            for env[idx] in root.env-counts: HorizontalLayout {
-                spacing: 6px;
-                Text {
-                    text: "|";
-                    color: Theme.text_disabled;
-                    font-size: 12px;
-                }
-                Text {
-                    text: "\{env.name}: \{env.count}";
-                    color: Theme.text_secondary;
-                    font-size: 12px;
-                }
-            }
-        }
-    }
+    TableColMetadata,
+    TableUtils,
+} from "table/index.slint";
 
 
-}
 
-component MetricSplitBar inherits Rectangle {
-    in property <float> value;
-    in property <float> threshold: 100;
-    in property <color> accent-color: Theme.accent;
-    in property <length> bar-width: 50px;
-
-    width: bar-width;
-    height: 3px;
-    border-radius: 3px;
-
-    public pure function ratio() -> float {
-        if (threshold <= 0) { return 0; }
-        return Math.min(value / threshold, 1);
-    }
-
-    HorizontalLayout {
-        spacing: 0;
-        Rectangle {
-            width: root.width * root.ratio();
-            height: parent.height;
-            background: root.accent-color;
-            border-radius: 3px;
-        }
-        Rectangle {
-            width: root.width * (1 - root.ratio());
-            height: parent.height;
-            background: Theme.layer_background;
-            border-radius: 3px;
-        }
-    }
-}
-
-component ProcessDataCell inherits Rectangle {
-    in property <ProcessField> field;
-    in property <bool> is-dead;
-    in property <bool> is-child;
-
-    pure function get-color(load: float, threshold: float, is_dead: bool) -> color {
-        if (is_dead) { return Theme.text_disabled; }
-        if (load < threshold) { return Theme.text_secondary; }
-        if (load < threshold * 2) { return #f49a36; }
-        return #ff5757;
-    }
-
-    HorizontalLayout {
-        padding-left: 8px;
-        padding-right: 8px;
-        alignment: end;
-
-        if (field.id == "memory" && !is-child): VerticalLayout {
-            alignment: center;
-            padding-right: 4px;
-            MetricSplitBar {
-                value: field.numeric;
-                threshold: 1.0;
-                bar-width: 40px;
-            }
-        }
-
-        Text {
-            text: field.text;
-            vertical-alignment: center;
-            horizontal-alignment: right;
-            color: root.get-color(field.numeric, field.threshold, is-dead);
-            font-weight: 600;
-            font-size: 12px;
-        }
-    }
-}
-
-component ProcessItem inherits Rectangle {
+component ProcessItem inherits GenericTableRow {
     in property <ProcessEntry> entry;
     in property <int> idx;
 
-    height: 32px;
-    background: entry.pid == ProcessesFeatureGlobal.selected-pid ?
-        Theme.accent.with-alpha(0.1) :
-        (row-touch.has-hover ? rgba(255,255,255,0.05) : ((Math.mod(idx, 2) == 0) ? transparent : Theme.fill_row_subtle));
+    selected: entry.pid == ProcessesFeatureGlobal.selected-pid;
+    is-alternate: Math.mod(idx, 2) != 0;
+    column-defs: ProcessesFeatureGlobal.column-defs;
+    column-widths: ProcessesFeatureGlobal.column-widths;
 
+    master-text: entry.name;
+    master-icon: entry.icon;
+    depth: entry.depth;
+    has-children: entry.has-children;
+    is-expanded: entry.is-expanded;
+    master-color: entry.is-dead ? Theme.text_disabled : white;
 
-    row-touch := TouchArea {
-        mouse-cursor: pointer;
-        clicked => { ProcessesFeatureGlobal.select-process(entry.pid, idx); }
+    cells: entry.cells;
+
+    clicked => {
+        ProcessesFeatureGlobal.select-process(entry.pid, idx);
     }
-
-    HorizontalLayout {
-
-        for col-def[col-idx] in ProcessesFeatureGlobal.column-defs: Rectangle {
-            width: ProcessesFeatureGlobal.column-widths[col-idx].width-px * 1px;
-            clip: true;
-
-            if (col-def.id == "name"): HorizontalLayout {
-                padding-left: 8px + entry.depth * 16px;
-                spacing: 8px;
-
-                if (entry.has-children): VerticalLayout {
-                    alignment: center;
-                    Image {
-                        source: Icons.arrow-up-regular;
-                        width: 12px;
-                        height: 12px;
-                        colorize: white;
-                        transform-rotation: entry.is-expanded ? 270deg : 180deg;
-                    }
-                    TouchArea {
-                        clicked => { ProcessesFeatureGlobal.toggle-expand-group(entry.name); }
-                    }
-                }
-
-                if (!entry.has-children): Rectangle { width: 12px; }
-
-                VerticalLayout {
-                    alignment: center;
-                    Image { source: entry.icon; width: 16px; height: 16px; image-fit: contain; }
-                }
-
-                Text {
-                    text: entry.name;
-                    vertical-alignment: center;
-                    color: entry.is-dead ? Theme.text_disabled : white;
-                    overflow: elide;
-                    font-size: 12px;
-                }
-            }
-
-            if (col-def.id != "name"): HorizontalLayout {
-                for f in entry.fields: Rectangle {
-                    if (f.id == col-def.id): ProcessDataCell {
-                        field: f;
-                        is-dead: entry.is-dead;
-                        is-child: entry.depth > 0;
-                    }
-                }
-            }
-        }
+    toggle-expand => {
+        ProcessesFeatureGlobal.toggle-expand-group(entry.name);
     }
 }
 
 export component ProcessViewBody inherits Rectangle {
-
     in property <int> total-rows;
     in property <length> row-height: 32px;
 
     function emit-viewport() {
-        let first   = Math.max(0, Math.floor((-list.viewport-y / root.row-height)) - 10);
-        let visible = Math.ceil(list.visible-height / root.row-height) + 20;
-        ProcessesFeatureGlobal.rows-viewport-changed(first, visible);
+        ProcessesFeatureGlobal.rows-viewport-changed(
+            TableUtils.viewport-first(list.viewport-y, root.row-height),
+            TableUtils.viewport-visible(list.visible-height, root.row-height),
+        );
     }
-
 
     VerticalLayout {
         TableHeader {
-            column-metadatas: ProcessesFeatureGlobal.column-metadatas;
             column-defs: ProcessesFeatureGlobal.column-defs;
             column-widths: ProcessesFeatureGlobal.column-widths;
+            column-metadatas: ProcessesFeatureGlobal.column-metadatas;
             current-sort: ProcessesFeatureGlobal.current-sort;
             current-sort-descending: ProcessesFeatureGlobal.current-sort-descending;
 
-            resized(id, width) => { ProcessesFeatureGlobal.column-resized(id, width); }
-            sort-by(id) => { ProcessesFeatureGlobal.sort-by(id); }
+            resized(id, width) => {
+                ProcessesFeatureGlobal.column-resized(id, width);
+            }
+            sort-by(id) => {
+                ProcessesFeatureGlobal.sort-by(id);
+            }
         }
 
         Rectangle {
@@ -229,11 +76,14 @@ export component ProcessViewBody inherits Rectangle {
             background: Theme.colorNeutralStrokeAlpha;
         }
 
-
-
         list := ListView {
-            changed viewport-y => { root.emit-viewport(); }
-            changed visible-height => { root.emit-viewport(); }
+            changed viewport-y => {
+                root.emit-viewport();
+            }
+            changed visible-height => {
+                root.emit-viewport();
+            }
+
             for entry[idx] in ProcessesFeatureGlobal.process-rows: ProcessItem {
                 entry: entry;
                 idx: idx;
@@ -262,13 +112,19 @@ export component ProcessViewHeader inherits Rectangle {
             vertical-alignment: center;
         }
 
-        Rectangle { horizontal-stretch: 1; }
+        Rectangle {
+            horizontal-stretch: 1;
+        }
 
         if (root.has-selection): TouchArea {
             width: 24px;
-            clicked => { ProcessesFeatureGlobal.terminate(); }
-            Image { source: Icons.prohibited; colorize: #FF6060; }
+            clicked => {
+                ProcessesFeatureGlobal.terminate();
+            }
+            Image {
+                source: Icons.prohibited;
+                colorize: #FF6060;
+            }
         }
     }
 }
-

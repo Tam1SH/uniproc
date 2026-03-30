@@ -1,0 +1,104 @@
+import { TableColDef } from "types.slint";
+import { SortArrow } from "sort-arrow.slint";
+import { MetricSplitBar } from "row-cell.slint";
+import { Theme } from "theme.slint";
+
+export component TableHeaderCell inherits Rectangle {
+    in property <TableColDef> def;
+    in property <bool> is-sorted;
+    in property <bool> sort-descending;
+    in property <bool> is-text: false;
+    in property <bool> is-metric: false;
+    in property <bool> is-custom: false;
+    callback clicked();
+
+    TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            root.clicked();
+        }
+    }
+
+    if (root.is-sorted): HorizontalLayout {
+        padding: 8px;
+        SortArrow {
+            descending: root.sort-descending;
+        }
+    }
+
+    if (!root.is-custom && root.is-text): HorizontalLayout {
+        alignment: start;
+        VerticalLayout {
+            alignment: center;
+            padding-left: 12px;
+            Text {
+                text: def.label;
+                color: Theme.text_primary;
+                font-size: Theme.font_size_body;
+            }
+        }
+    }
+
+    if (!root.is-custom && root.is-metric): HorizontalLayout {
+        alignment: end;
+        padding-right: 10px;
+        VerticalLayout {
+            alignment: center;
+            spacing: 2px;
+            Text {
+                text: def.stat-text;
+                horizontal-alignment: right;
+                color: Theme.text_secondary;
+                font-size: 16px;
+            }
+
+            HorizontalLayout {
+                Text {
+                    text: def.stat-detail;
+                    horizontal-alignment: right;
+                    color: Theme.text_disabled;
+                    font-size: 12px;
+                }
+
+                Rectangle {
+                    horizontal-stretch: 1;
+                }
+
+                Text {
+                    text: def.label;
+                    horizontal-alignment: right;
+                    color: Theme.text_secondary;
+                    font-size: 12px;
+                }
+            }
+
+            Rectangle {
+                height: 2px;
+            }
+
+            if (def.show-indicator): MetricSplitBar {
+                value: def.stat-numeric;
+                threshold: 100.0;
+                bar-width: root.width;
+                accent-color: Theme.accent;
+            }
+            if (!def.show-indicator): Rectangle {
+                height: 3px;
+            }
+        }
+    }
+
+    if (!root.is-custom && !root.is-text && !root.is-metric): HorizontalLayout {
+        alignment: end;
+        padding-right: 10px;
+        VerticalLayout {
+            alignment: center;
+            Text {
+                text: def.label;
+                horizontal-alignment: right;
+                color: Theme.text_secondary;
+                font-size: 12px;
+            }
+        }
+    }
+}

@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 pub trait SlintTableRowAdapter<TSlintRow, TSlintField> {
     fn unique_id(&self) -> String;
-    fn to_slint_row(&self, fields: ModelRc<TSlintField>) -> TSlintRow;
+    fn to_slint_row(&self, cells: ModelRc<TSlintField>) -> TSlintRow;
     fn update_slint_fields(&self, model: &Rc<VecModel<TSlintField>>);
 }
 

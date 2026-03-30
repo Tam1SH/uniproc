@@ -1,3 +1,4 @@
+use app_core::app::Window;
 use crate::agents_impl::actor::{GenericAgentActor, Init, Ping};
 use crate::agents_impl::backend::AgentBackend;
 use crate::features::agents::settings::AgentSettings;
@@ -40,11 +41,17 @@ impl AgentBackend for LinuxBackend {
         Ok(start.elapsed().as_millis() as i32)
     }
 
+    #[instrument(skip(client), level = "debug", fields(target = "linux"), err)]
     async fn perform_scan(client: &Self::Client) -> anyhow::Result<()> {
         let resp = client.call(LinuxRequest::GetReport).await?;
-        if let Ok(LinuxResponse::Report(r)) =
-            rkyv::deserialize::<LinuxResponse, rkyv::rancor::Error>(*resp.deref())
-        {
+
+        let report = rkyv::deserialize::<LinuxResponse, rkyv::rancor::Error>(*resp.deref())
+            .map_err(|e| {
+                error!(error = %e, "Failed to deserialize Linux response");
+                anyhow::anyhow!("Linux scan deserialization error: {}", e)
+            })?;
+
+        if let LinuxResponse::Report(r) = report {
             EVENT_BUS.with(|bus| {
                 bus.publish(RemoteScanResult {
                     schema_id: "linux",
@@ -52,7 +59,11 @@ impl AgentBackend for LinuxBackend {
                     machine: r.machine,
                 })
             });
+            ratelimit!(3600, info!("Report published to event bus"));
+        } else {
+            warn!(response = ?report, "Unexpected Linux response type â€” strange");
         }
+
         Ok(())
     }
 
@@ -68,7 +79,7 @@ impl AgentBackend for LinuxBackend {
 }
 
 pub struct LinuxAgentFeature;
-impl<T: ComponentHandle + 'static> Feature<T> for LinuxAgentFeature {
+impl<T: Window> Feature<T> for LinuxAgentFeature {
     fn install(self, reactor: &mut Reactor, ui: &T, shared: &SharedState) -> anyhow::Result<()> {
         let settings = AgentSettings::new(shared)?;
         let addr = Addr::new(

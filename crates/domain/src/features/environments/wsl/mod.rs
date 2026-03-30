@@ -1,3 +1,4 @@
+use app_core::app::Window;
 mod actors;
 pub mod domain;
 
@@ -6,25 +7,11 @@ pub use actors::{Init, InstallAgent, WslEnvActor};
 use app_contracts::features::environments::{
     EnvironmentsUiBindings, EnvironmentsUiPort, WslAgentRuntimeEvent,
 };
-use app_core::SharedState;
 use app_core::actor::addr::Addr;
-use app_core::actor::event_bus::EVENT_BUS;
+use app_core::actor::event_bus::EventBus;
 use app_core::app::Feature;
 use app_core::reactor::Reactor;
-use app_core::settings::{FeatureSettings, SettingsScope, SettingsStore};
-use slint::ComponentHandle;
-
-struct WslEnvSettings;
-
-impl SettingsScope for WslEnvSettings {
-    const PREFIX: &'static str = "wsl";
-}
-
-impl FeatureSettings for WslEnvSettings {
-    fn ensure_defaults(_settings: &SettingsStore) -> anyhow::Result<()> {
-        Ok(())
-    }
-}
+use app_core::SharedState;
 
 pub struct WslFeature<F> {
     make_ui_port: F,
@@ -38,7 +25,7 @@ impl<F> WslFeature<F> {
 
 impl<TWindow, F, P> Feature<TWindow> for WslFeature<F>
 where
-    TWindow: ComponentHandle + 'static,
+    TWindow: Window,
     F: Fn(&TWindow) -> P + 'static,
     P: EnvironmentsUiPort + EnvironmentsUiBindings + Clone + 'static,
 {
@@ -54,10 +41,10 @@ where
         let a = addr.clone();
         ui_port.on_install_agent(move |distro| a.send(InstallAgent(distro)));
 
-        EVENT_BUS.with(|bus| {
-            bus.subscribe::<WslEnvActor<P>, WslAgentRuntimeEvent, TWindow>(addr.clone());
-        });
-
+        EventBus::subscribe::<WslEnvActor<P>, WslAgentRuntimeEvent, TWindow>(
+            &ui.new_token(),
+            addr.clone(),
+        );
         addr.send(Init);
         Ok(())
     }

@@ -1,5 +1,7 @@
 import { MainBodyState } from "content/globals.slint";
 
+import { TableCellData } from "table/index.slint";
+
 import {
     EnvironmentsFeatureGlobal,
     EnvsLoading,
@@ -20,7 +22,6 @@ import {
     ProcessEntry,
     ProcessesFeatureGlobal,
     ProcessGroup,
-    ProcessField,
 } from "features/processes/globals.slint";
 
 import {
@@ -38,7 +39,7 @@ import {
     RunTaskProxy,
 } from "features/processes/run-task-dialog.slint";
 
-import { TableColDef, TableColWidth } from "components/table-view.slint";
+import { TableColDef, TableColWidth } from "table/index.slint";
 
 import { Theme } from "theme.slint";
 
@@ -50,5 +51,6 @@ export {
     ProcessEntry, ProcessesFeatureGlobal, ProcessGroup,
     ContextMenuProxy, Theme, L10n, ProcessContextMenu,
     PageEntry, TitleBarActions, WindowClickHandler,
-    RunEnv, RunTaskDialog, RunTaskProxy, Dashboard
+    RunEnv, RunTaskDialog, RunTaskProxy, Dashboard,
+    TableCellData
 }

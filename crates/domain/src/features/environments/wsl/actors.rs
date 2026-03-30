@@ -1,3 +1,4 @@
+use app_core::app::Window;
 use crate::features::environments::wsl::domain::{
     check_wsl_availability_async, fetch_distros_data, inject_agent_async,
 };
@@ -67,7 +68,7 @@ messages! {
 impl<P, TWindow> Handler<WslAgentRuntimeEvent, TWindow> for WslEnvActor<P>
 where
     P: EnvironmentsUiPort,
-    TWindow: ComponentHandle + 'static,
+    TWindow: Window,
 {
     fn handle(&mut self, msg: WslAgentRuntimeEvent, _ctx: &Context<Self, TWindow>) {
         match msg.state {
@@ -87,7 +88,7 @@ where
 impl<P, TWindow> Handler<Init, TWindow> for WslEnvActor<P>
 where
     P: EnvironmentsUiPort,
-    TWindow: ComponentHandle + 'static,
+    TWindow: Window,
 {
     #[instrument(skip(self, ctx))]
     fn handle(&mut self, _: Init, ctx: &Context<Self, TWindow>) {
@@ -98,7 +99,7 @@ where
 impl<P, TWindow> Handler<CheckStatus, TWindow> for WslEnvActor<P>
 where
     P: EnvironmentsUiPort,
-    TWindow: ComponentHandle + 'static,
+    TWindow: Window,
 {
     fn handle(&mut self, _: CheckStatus, ctx: &Context<Self, TWindow>) {
         self.ui_port.set_wsl_is_loading(true);
@@ -111,7 +112,7 @@ where
 impl<P, TWindow> Handler<SetStatus, TWindow> for WslEnvActor<P>
 where
     P: EnvironmentsUiPort,
-    TWindow: ComponentHandle + 'static,
+    TWindow: Window,
 {
     fn handle(&mut self, msg: SetStatus, ctx: &Context<Self, TWindow>) {
         self.ui_port.set_wsl_is_loading(false);
@@ -125,7 +126,7 @@ where
 impl<P, TWindow> Handler<RefreshDistros, TWindow> for WslEnvActor<P>
 where
     P: EnvironmentsUiPort,
-    TWindow: ComponentHandle + 'static,
+    TWindow: Window,
 {
     fn handle(&mut self, _: RefreshDistros, ctx: &Context<Self, TWindow>) {
         self.ui_port.set_wsl_distros_is_loading(true);
@@ -148,7 +149,7 @@ where
 impl<P, TWindow> Handler<UpdateDistros, TWindow> for WslEnvActor<P>
 where
     P: EnvironmentsUiPort,
-    TWindow: ComponentHandle + 'static,
+    TWindow: Window,
 {
     fn handle(&mut self, msg: UpdateDistros, _ctx: &Context<Self, TWindow>) {
         self.ui_port.set_wsl_distros_is_loading(false);
@@ -159,7 +160,7 @@ where
 impl<P, TWindow> Handler<InstallAgent, TWindow> for WslEnvActor<P>
 where
     P: EnvironmentsUiPort,
-    TWindow: ComponentHandle + 'static,
+    TWindow: Window,
 {
     #[instrument(skip(self, ctx))]
     fn handle(&mut self, msg: InstallAgent, ctx: &Context<Self, TWindow>) {

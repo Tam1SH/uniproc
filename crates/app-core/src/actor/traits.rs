@@ -1,23 +1,25 @@
 use crate::actor::addr::{Addr, REGISTRY};
-use crate::actor::event_bus::EVENT_BUS;
 use crate::actor::event_bus::subscribe::Event;
+use crate::actor::event_bus::EventBus;
+use crate::actor::UiThreadGuard;
+use crate::app::Window;
 use crate::messages;
-use slint::ComponentHandle;
 
 pub trait Message: 'static {}
 
-pub trait Handler<M: Message, TWindow: ComponentHandle + 'static>: 'static {
+pub trait Handler<M: Message, TWindow: Window>: 'static {
     fn handle(&mut self, msg: M, ctx: &Context<Self, TWindow>)
     where
         Self: Sized;
 }
 
-pub struct Context<A: 'static, TWindow: ComponentHandle + 'static> {
+pub struct Context<A: 'static, TWindow: Window> {
+    pub(super) guard: UiThreadGuard,
     pub(super) addr: Addr<A, TWindow>,
     pub ui_weak: slint::Weak<TWindow>,
 }
 
-impl<A: 'static, TWindow: ComponentHandle> Context<A, TWindow> {
+impl<A: 'static, TWindow: Window> Context<A, TWindow> {
     pub fn addr(&self) -> Addr<A, TWindow> {
         self.addr.clone()
     }
@@ -35,11 +37,11 @@ impl<A: 'static, TWindow: ComponentHandle> Context<A, TWindow> {
         A: Handler<M, TWindow>,
     {
         let addr = self.addr();
-        EVENT_BUS.with(|bus| bus.subscribe::<A, M, TWindow>(addr));
+        EventBus::subscribe::<A, M, TWindow>(&self.guard, addr);
     }
 
-    pub fn publish<M: Event>(&self, msg: M) {
-        EVENT_BUS.with(|bus| bus.publish(msg));
+    pub fn publish<M: Event + Send>(&self, msg: M) {
+        EventBus::publish(msg);
     }
 
     pub fn spawn_task<M, Fut, S>(&self, fut: Fut, mut loading_setter: S)
@@ -96,6 +98,6 @@ impl<A: 'static, TWindow: ComponentHandle> Context<A, TWindow> {
 }
 
 messages! { NoOp }
-impl<T: 'static, TWindow: ComponentHandle + 'static> Handler<NoOp, TWindow> for T {
+impl<T: 'static, TWindow: Window> Handler<NoOp, TWindow> for T {
     fn handle(&mut self, _: NoOp, _: &Context<Self, TWindow>) {}
 }

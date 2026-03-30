@@ -1,28 +1,17 @@
+use app_core::app::Window;
 mod actors;
+mod settings;
 
+use crate::features::context_menu::settings::ContextMenuSettings;
 use crate::features::cosmetics::accent_from;
 use actors::{ContextMenuActor, HandleAction, Hide, Show};
 use app_contracts::features::context_menu::{ContextMenuUiBindings, ContextMenuUiPort};
-use app_core::SharedState;
 use app_core::actor::addr::Addr;
 use app_core::app::Feature;
 use app_core::reactor::Reactor;
-use app_core::settings::{FeatureSettings, SettingsScope, SettingsStore, settings_from};
+use app_core::settings::{FeatureSettings, SettingsScope};
+use app_core::SharedState;
 use slint::ComponentHandle;
-
-const REVEAL_DELAY_MS: &str = "reveal_delay_ms";
-
-struct ContextMenuSettings;
-
-impl SettingsScope for ContextMenuSettings {
-    const PREFIX: &'static str = "context_menu";
-}
-
-impl FeatureSettings for ContextMenuSettings {
-    fn ensure_defaults(settings: &SettingsStore) -> anyhow::Result<()> {
-        Self::ensure_default(settings, REVEAL_DELAY_MS, 20u64)
-    }
-}
 
 pub struct ContextMenuFeature<F> {
     make_port: F,
@@ -36,7 +25,7 @@ impl<F> ContextMenuFeature<F> {
 
 impl<TWindow, F, P> Feature<TWindow> for ContextMenuFeature<F>
 where
-    TWindow: ComponentHandle + 'static,
+    TWindow: Window,
     F: Fn(&TWindow) -> anyhow::Result<P> + 'static,
     P: ContextMenuUiPort + ContextMenuUiBindings + Clone,
 {
@@ -46,9 +35,8 @@ where
         ui: &TWindow,
         shared: &SharedState,
     ) -> anyhow::Result<()> {
-        let settings = settings_from(shared);
-        ContextMenuSettings::ensure_defaults(&settings)?;
-        let reveal_delay_ms = ContextMenuSettings::setting_or(&settings, REVEAL_DELAY_MS, 20u64)?;
+        let settings = ContextMenuSettings::new(shared)?;
+        let reveal_delay_ms = settings.reveal_delay_ms();
 
         let port = (self.make_port)(ui)?;
         if let Some(accent) = accent_from(shared) {

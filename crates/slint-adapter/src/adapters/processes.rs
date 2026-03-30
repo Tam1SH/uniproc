@@ -1,5 +1,5 @@
 use crate::{
-    AppWindow, MainBodyState, ProcessEntry, ProcessField, ProcessesFeatureGlobal, TableColDef,
+    AppWindow, MainBodyState, ProcessEntry, ProcessesFeatureGlobal, TableCellData, TableColDef,
     TableColMetadata, TableColWidth,
 };
 use app_contracts::features::processes::{
@@ -7,35 +7,46 @@ use app_contracts::features::processes::{
 };
 use app_core::app::FromUiWeak;
 use app_table::ui_cache::{SlintTableRowAdapter, UiTableCache};
-use slint::{ComponentHandle, Model, ModelRc, SharedString, VecModel};
+use slint::{ComponentHandle, Model, SharedString, VecModel};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
-use tracing::info;
 
 struct AdapterModels {
     rows: Rc<VecModel<ProcessEntry>>,
     columns: Rc<VecModel<TableColDef>>,
+
+    widths_model: Rc<VecModel<TableColWidth>>,
+    metadata_model: Rc<VecModel<TableColMetadata>>,
+
+    last_widths: RefCell<Vec<TableColWidth>>,
+    last_metadata: RefCell<Vec<TableColMetadata>>,
 }
 
 #[derive(Clone)]
 pub struct ProcessesUiAdapter {
     ui: slint::Weak<AppWindow>,
     models: Rc<AdapterModels>,
-    cache: Rc<RefCell<UiTableCache<ProcessEntry, ProcessField>>>,
+    cache: Rc<RefCell<UiTableCache<ProcessEntry, TableCellData>>>,
 }
 
 impl ProcessesUiAdapter {
     pub fn new(ui: slint::Weak<AppWindow>) -> Self {
         let models = Rc::new(AdapterModels {
-            rows: Rc::new(VecModel::from(Vec::<ProcessEntry>::new())),
-            columns: Rc::new(VecModel::from(Vec::<TableColDef>::new())),
+            rows: Rc::new(VecModel::default()),
+            columns: Rc::new(VecModel::default()),
+            widths_model: Rc::new(VecModel::default()),
+            metadata_model: Rc::new(VecModel::default()),
+            last_widths: Default::default(),
+            last_metadata: Default::default(),
         });
 
         if let Some(window) = ui.upgrade() {
             let bridge = window.global::<ProcessesFeatureGlobal>();
             bridge.set_process_rows(models.rows.clone().into());
             bridge.set_column_defs(models.columns.clone().into());
+            bridge.set_column_widths(models.widths_model.clone().into());
+            bridge.set_column_metadatas(models.metadata_model.clone().into());
         }
 
         Self {
@@ -64,39 +75,40 @@ impl FromUiWeak<AppWindow> for ProcessesUiAdapter {
 impl ProcessesUiPort for ProcessesUiAdapter {
     fn set_column_widths(&self, widths: Vec<(SharedString, u64)>) {
         self.with_ui(|ui| {
-            let defs = ui.global::<ProcessesFeatureGlobal>().get_column_defs();
-            let id_order: Vec<SharedString> = defs.iter().map(|d| d.id.clone()).collect();
-
+            let global = ui.global::<ProcessesFeatureGlobal>();
+            let defs = global.get_column_defs();
             let width_map: HashMap<SharedString, u64> = widths.into_iter().collect();
 
-            let sorted_widths_vec: Vec<TableColWidth> = id_order
-                .into_iter()
-                .map(|id| {
-                    let w = width_map.get(&id).cloned().unwrap_or(100);
-
+            let next_widths: Vec<TableColWidth> = defs
+                .iter()
+                .map(|def| {
+                    let w = width_map.get(&def.id).cloned().unwrap_or(100);
                     TableColWidth {
-                        id: id.into(),
+                        id: def.id.clone(),
                         width_px: w as i32,
                     }
                 })
                 .collect();
 
-            let model = ModelRc::new(VecModel::from(sorted_widths_vec));
-            ui.global::<ProcessesFeatureGlobal>()
-                .set_column_widths(model);
+            let mut last = self.models.last_widths.borrow_mut();
+            if *last == next_widths {
+                return;
+            }
+
+            *last = next_widths.clone();
+
+            patch_model(&self.models.widths_model, next_widths);
         });
     }
 
     fn set_column_metadata(&self, data: Vec<FieldMetadata>) {
         self.with_ui(|ui| {
             let global = ui.global::<ProcessesFeatureGlobal>();
-
             let defs = global.get_column_defs();
-
-            let mut data_map: HashMap<SharedString, FieldMetadata> =
+            let data_map: HashMap<SharedString, FieldMetadata> =
                 data.into_iter().map(|m| (m.id.clone(), m)).collect();
 
-            let sorted_metadata: Vec<TableColMetadata> = defs
+            let next_metadata: Vec<TableColMetadata> = defs
                 .iter()
                 .map(|def| {
                     if let Some(m) = data_map.get(&def.id) {
@@ -114,8 +126,15 @@ impl ProcessesUiPort for ProcessesUiAdapter {
                     }
                 })
                 .collect();
-            info!("{:?}", sorted_metadata);
-            global.set_column_metadatas(ModelRc::new(VecModel::from(sorted_metadata)));
+
+            let mut last = self.models.last_metadata.borrow_mut();
+            if *last == next_metadata {
+                return;
+            }
+
+            *last = next_metadata.clone();
+
+            patch_model(&self.models.metadata_model, next_metadata);
         });
     }
 
@@ -240,12 +259,12 @@ impl ProcessesUiBindings for ProcessesUiAdapter {
     }
 }
 
-impl SlintTableRowAdapter<ProcessEntry, ProcessField> for ProcessEntryVm {
+impl SlintTableRowAdapter<ProcessEntry, TableCellData> for ProcessEntryVm {
     fn unique_id(&self) -> String {
         format!("{}-{}", self.pid, self.name)
     }
 
-    fn to_slint_row(&self, fields: slint::ModelRc<ProcessField>) -> ProcessEntry {
+    fn to_slint_row(&self, cells: slint::ModelRc<TableCellData>) -> ProcessEntry {
         ProcessEntry {
             pid: self.pid,
             name: self.name.clone(),
@@ -254,26 +273,30 @@ impl SlintTableRowAdapter<ProcessEntry, ProcessField> for ProcessEntryVm {
             has_children: self.has_children,
             is_expanded: self.is_expanded,
             is_dead: self.is_dead,
-            fields,
+            cells,
         }
     }
 
-    fn update_slint_fields(&self, model: &Rc<VecModel<ProcessField>>) {
-        if model.row_count() != self.fields.len() {
-            let empty_fields = vec![ProcessField::default(); self.fields.len()];
-            model.set_vec(empty_fields);
+    fn update_slint_fields(&self, model: &Rc<VecModel<TableCellData>>) {
+        let cells: Vec<TableCellData> = self
+            .fields
+            .iter()
+            .map(|f| TableCellData {
+                text: f.text.clone(),
+                value: f.numeric,
+                threshold: f.threshold,
+                has_metric: f.id == "memory" && self.depth == 0,
+                dead: self.is_dead,
+            })
+            .collect();
+
+        if model.row_count() != cells.len() {
+            model.set_vec(cells);
+            return;
         }
-
-        for (i, f_dto) in self.fields.iter().enumerate() {
-            let new_field = ProcessField {
-                id: f_dto.id.clone(),
-                text: f_dto.text.clone(),
-                numeric: f_dto.numeric,
-                threshold: f_dto.threshold,
-            };
-
-            if model.row_data(i) != Some(new_field.clone()) {
-                model.set_row_data(i, new_field);
+        for (i, cell) in cells.into_iter().enumerate() {
+            if model.row_data(i) != Some(cell.clone()) {
+                model.set_row_data(i, cell);
             }
         }
     }
@@ -319,6 +342,16 @@ impl ProcessesUiAdapter {
 
     fn fetch_column_metadata(&self, g: &ProcessesFeatureGlobal) -> Vec<TableColMetadata> {
         g.get_column_metadatas().iter().collect()
+    }
+}
+
+fn patch_model<T: Clone + 'static>(model: &Rc<VecModel<T>>, next: Vec<T>) {
+    if model.row_count() != next.len() {
+        model.set_vec(next);
+        return;
+    }
+    for (i, item) in next.into_iter().enumerate() {
+        model.set_row_data(i, item);
     }
 }
 

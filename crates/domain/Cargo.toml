@@ -8,5 +8,7 @@ slint = { workspace = true }
 anyhow = { workspace = true }
 app-core = { workspace = true }
 app-contracts = { workspace = true }
+macros.workspace = true
+serde.workspace = true
 
 

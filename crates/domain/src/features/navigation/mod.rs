@@ -1,32 +1,18 @@
+mod settings;
+
+use crate::features::navigation::settings::NavigationSettings;
 use app_contracts::features::navigation::{
-    NavigationUiBindings, NavigationUiPort, PageEntryDto, TabChanged, tab_name_by_index,
+    tab_name_by_index, NavigationUiBindings, NavigationUiPort, PageEntryDto, TabChanged,
 };
-use app_core::SharedState;
-use app_core::actor::event_bus::EVENT_BUS;
+use app_core::actor::event_bus::EventBus;
 use app_core::app::Feature;
+use app_core::app::Window;
 use app_core::reactor::Reactor;
-use app_core::settings::{FeatureSettings, SettingsScope, SettingsStore, settings_from};
-use slint::ComponentHandle;
+use app_core::settings::{FeatureSettings, SettingsScope};
+use app_core::SharedState;
 use std::cell::Cell;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
-
-const SWITCH_HIDE_DELAY_MS: &str = "switch_hide_delay_ms";
-const SWITCH_SHOW_DELAY_MS: &str = "switch_show_delay_ms";
-
-struct NavigationSettings;
-
-impl SettingsScope for NavigationSettings {
-    const PREFIX: &'static str = "navigation";
-}
-
-impl FeatureSettings for NavigationSettings {
-    fn ensure_defaults(settings: &SettingsStore) -> anyhow::Result<()> {
-        Self::ensure_default(settings, SWITCH_HIDE_DELAY_MS, 60u64)?;
-        Self::ensure_default(settings, SWITCH_SHOW_DELAY_MS, 20u64)?;
-        Ok(())
-    }
-}
 
 pub struct NavigationFeature<F> {
     make_ui_port: F,
@@ -74,7 +60,7 @@ fn animate_switch_progress<P>(
 
 impl<TWindow, F, P> Feature<TWindow> for NavigationFeature<F>
 where
-    TWindow: ComponentHandle + 'static,
+    TWindow: Window,
     F: Fn(&TWindow) -> P + 'static,
     P: NavigationUiPort + NavigationUiBindings + Clone + 'static,
 {
@@ -84,11 +70,10 @@ where
         ui: &TWindow,
         shared: &SharedState,
     ) -> anyhow::Result<()> {
-        let settings = settings_from(shared);
-        NavigationSettings::ensure_defaults(&settings)?;
+        let settings = NavigationSettings::new(shared)?;
 
-        let hide_delay_ms = NavigationSettings::setting_or(&settings, SWITCH_HIDE_DELAY_MS, 60u64)?;
-        let show_delay_ms = NavigationSettings::setting_or(&settings, SWITCH_SHOW_DELAY_MS, 20u64)?;
+        let hide_delay_ms = settings.switch_hide_delay_ms();
+        let show_delay_ms = settings.switch_show_delay_ms();
 
         let ui_port = (self.make_ui_port)(ui);
         ui_port.set_pages(vec![
@@ -136,7 +121,7 @@ where
             let event = TabChanged {
                 name: tab_name_by_index(new_index).to_string(),
             };
-            EVENT_BUS.with(|bus| bus.publish(event));
+            EventBus::publish(event);
 
             let current_index = ui_for_switch.get_active_tab_index();
             if current_index == new_index {

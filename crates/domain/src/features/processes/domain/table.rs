@@ -5,7 +5,7 @@ use crate::processes_impl::settings::ProcessSettings;
 use app_contracts::features::processes::{
     FieldDefDto, FieldMetadata, ProcessEntryVm, ProcessNodeDto,
 };
-use app_core::signal::SignalSubscription;
+use app_core::settings::reactive::ReactiveSettingSubscription;
 use app_table::flow::{SortState, TableNode};
 use app_table::layout::TableSettingsProvider;
 use app_table::view::TableView;
@@ -17,22 +17,22 @@ struct ProcessTableSettingsAdapter(ProcessSettings);
 
 impl TableSettingsProvider for ProcessTableSettingsAdapter {
     fn default_width(&self) -> anyhow::Result<u64> {
-        self.0.columns().default_width_px().map(|s| s.get())
+        Ok(self.0.columns().default_width_px().get())
     }
 
     fn initial_widths(&self) -> anyhow::Result<DashMap<String, u64>> {
-        self.0.columns().widths_px().map(|s| s.get())
+        Ok(self.0.columns().widths_px().get())
     }
 
     fn min_widths(&self) -> anyhow::Result<DashMap<String, u64>> {
-        self.0.columns().min_widths_px().map(|s| s.get())
+        Ok(self.0.columns().min_widths_px().get())
     }
 
-    fn subscribe_widths<F>(&self, callback: F) -> SignalSubscription
+    fn subscribe_widths<F>(&self, callback: F) -> ReactiveSettingSubscription
     where
         F: Fn(DashMap<String, u64>) + Send + Sync + 'static,
     {
-        self.0.columns().widths_px().unwrap().subscribe(callback)
+        self.0.columns().widths_px().subscribe(callback)
     }
 }
 
@@ -40,7 +40,7 @@ pub struct ProcessTable {
     view: TableView<ProcessNodeDto, ProcessEntryVm, u32, SharedString, SharedString, SharedString>,
     settings: ProcessSettings,
     grouping_scratchpad: Vec<(SharedString, usize)>,
-    _sub: SignalSubscription,
+    _sub: ReactiveSettingSubscription,
     header_columns: Vec<FieldDefDto>,
 }
 
@@ -95,7 +95,7 @@ impl ProcessTable {
     pub fn refresh(&mut self, metadata: &mut ProcessMetadataService) -> anyhow::Result<()> {
         let mut builder = ProcessTreeBuilder {
             metadata,
-            show_icons: self.settings.show_icons()?.get(),
+            show_icons: self.settings.show_icons().get(),
             grouping_scratchpad: &mut self.grouping_scratchpad,
         };
         let sort_state = self.view.flow.sort.clone();
@@ -137,11 +137,11 @@ impl ProcessTable {
     }
 
     pub fn resize_column(&mut self, id: String, new_width: u64) -> anyhow::Result<()> {
-        let def_width = self.settings.columns().default_width_px()?.get();
+        let def_width = self.settings.columns().default_width_px().get();
         let min_w = self
             .settings
             .columns()
-            .min_widths_px()?
+            .min_widths_px()
             .get()
             .get(&id)
             .map(|r| *r.value())
@@ -154,11 +154,10 @@ impl ProcessTable {
         Ok(())
     }
 
-    pub fn column_metadata(&self) -> anyhow::Result<Vec<FieldMetadata>> {
-        Ok(self
-            .settings
+    pub fn column_metadata(&self) -> Vec<FieldMetadata> {
+        self.settings
             .columns()
-            .column_metadata()?
+            .column_metadata()
             .get()
             .clone()
             .into_iter()
@@ -167,7 +166,7 @@ impl ProcessTable {
                 is_metric: v.is_metric,
                 id: k.into(),
             })
-            .collect())
+            .collect()
     }
     pub fn column_widths(&self) -> Vec<(SharedString, u64)> {
         self.view

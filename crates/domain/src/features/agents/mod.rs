@@ -1,3 +1,4 @@
+use app_core::app::Window;
 pub mod actor;
 pub mod backend;
 pub mod connection;
@@ -9,16 +10,18 @@ use app_core::app::Feature;
 use app_core::reactor::Reactor;
 use app_core::SharedState;
 use slint::ComponentHandle;
+use tracing::info;
 
 pub struct AgentsFeature;
 
-impl<TWindow: ComponentHandle + 'static> Feature<TWindow> for AgentsFeature {
+impl<TWindow: Window> Feature<TWindow> for AgentsFeature {
     fn install(
         self,
         reactor: &mut Reactor,
         ui: &TWindow,
         shared: &SharedState,
     ) -> anyhow::Result<()> {
+        info!("Agents feature installed");
         cfg_if::cfg_if! {
             if #[cfg(target_os = "windows")] {
                 wsl::WslAgentFeature.install(reactor, ui, shared)?;

@@ -1,3 +1,4 @@
+use app_core::app::Window;
 use app_contracts::features::cosmetics::{AccentColor, CosmeticsPort};
 use app_core::SharedState;
 use app_core::app::Feature;
@@ -19,7 +20,7 @@ impl<F> CosmeticsFeature<F> {
 
 impl<TWindow, F, P> Feature<TWindow> for CosmeticsFeature<F>
 where
-    TWindow: ComponentHandle + 'static,
+    TWindow: Window,
     F: Fn(&TWindow) -> P + 'static,
     P: CosmeticsPort,
 {

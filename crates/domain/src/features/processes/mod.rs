@@ -1,3 +1,4 @@
+use app_core::app::Window;
 use app_core::app::{Feature, FromUiWeak};
 use app_core::reactor::Reactor;
 
@@ -13,11 +14,12 @@ use app_contracts::features::agents::{RemoteScanResult, ScanTick};
 use app_contracts::features::navigation::TabChanged;
 use app_contracts::features::processes::{ProcessesUiBindings, ProcessesUiPort};
 use app_core::actor::addr::Addr;
-use app_core::actor::event_bus::EVENT_BUS;
+use app_core::actor::event_bus::EventBus;
 use app_core::SharedState;
 use slint::ComponentHandle;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
+
 mod application;
 mod domain;
 mod scanner;
@@ -63,7 +65,7 @@ impl ProcessFeatureBuilder {
         self,
     ) -> ProcessFeature<impl Fn(&TWindow) -> TAdapter + 'static>
     where
-        TWindow: ComponentHandle + 'static,
+        TWindow: Window,
         TAdapter: FromUiWeak<TWindow> + ProcessesUiPort + ProcessesUiBindings + Clone + 'static,
     {
         ProcessFeature::new(self.show_icons, |ui: &TWindow| {
@@ -74,7 +76,7 @@ impl ProcessFeatureBuilder {
 
 impl<TWindow, F, P> Feature<TWindow> for ProcessFeature<F>
 where
-    TWindow: ComponentHandle + 'static,
+    TWindow: Window,
     F: Fn(&TWindow) -> P + 'static,
     P: ProcessesUiPort + ProcessesUiBindings + Clone + 'static,
 {
@@ -86,7 +88,7 @@ where
     ) -> anyhow::Result<()> {
         let settings = ProcessSettings::new(&shared)?;
         let ui_port = (self.make_ui_port)(ui);
-        let scan_interval_ms = settings.scan_interval_ms()?;
+        let scan_interval_ms = settings.scan_interval_ms();
 
         let process_actor = ProcessActor {
             table: ProcessTable::new(settings.clone())?,
@@ -110,23 +112,13 @@ where
 
         bind_ui_events(addr.clone(), &ui_port);
 
-        EVENT_BUS.with(|bus| {
-            bus.subscribe::<ProcessActor<P>, TabChanged, TWindow>(addr.clone());
-            bus.subscribe::<ProcessSnapshotActor<P, TWindow>, TabChanged, TWindow>(
-                snapshot_addr.clone(),
-            );
-            bus.subscribe::<ProcessSnapshotActor<P, TWindow>, RemoteScanResult, TWindow>(
-                snapshot_addr.clone(),
-            );
-            #[cfg(target_os = "windows")]
-            bus.subscribe::<ProcessSnapshotActor<P, TWindow>, WindowsReportMessage, TWindow>(
-                snapshot_addr.clone(),
-            );
-        });
+        EventBus::subscribe::<_, TabChanged, _>(&ui.new_token(), addr.clone());
+        EventBus::subscribe::<_, TabChanged, _>(&ui.new_token(), snapshot_addr.clone());
+        EventBus::subscribe::<_, RemoteScanResult, _>(&ui.new_token(), snapshot_addr.clone());
+        #[cfg(target_os = "windows")]
+        EventBus::subscribe::<_, WindowsReportMessage, _>(&ui.new_token(), snapshot_addr.clone());
 
-        reactor.add_dynamic_loop(&scan_interval_ms, || {
-            EVENT_BUS.with(|bus| bus.publish(ScanTick))
-        });
+        reactor.add_dynamic_loop(&scan_interval_ms, || EventBus::publish(ScanTick));
 
         Ok(())
     }
@@ -134,7 +126,7 @@ where
 
 fn bind_ui_events<P, TWindow>(addr: Addr<ProcessActor<P>, TWindow>, ui_port: &P)
 where
-    TWindow: ComponentHandle + 'static,
+    TWindow: Window,
     P: ProcessesUiPort + ProcessesUiBindings + Clone + 'static,
 {
     let a = addr.clone();

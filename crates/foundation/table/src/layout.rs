@@ -1,4 +1,5 @@
-use app_core::signal::{Signal, SignalSubscription};
+use app_core::settings::reactive::ReactiveSettingSubscription;
+use app_core::signal::Signal;
 use dashmap::DashMap;
 use std::collections::HashMap;
 use std::hash::Hash;
@@ -8,11 +9,11 @@ pub trait TableSettingsProvider {
     fn default_width(&self) -> anyhow::Result<u64>;
     fn initial_widths(&self) -> anyhow::Result<DashMap<String, u64>>;
     fn min_widths(&self) -> anyhow::Result<DashMap<String, u64>>;
-    fn subscribe_widths<F>(&self, callback: F) -> SignalSubscription
+    fn subscribe_widths<F>(&self, callback: F) -> ReactiveSettingSubscription
     where
         F: Fn(DashMap<String, u64>) + Send + Sync + 'static;
 
-    fn setup<ID>(self, layout: &mut TableLayout<ID>) -> anyhow::Result<SignalSubscription>
+    fn setup<ID>(self, layout: &mut TableLayout<ID>) -> anyhow::Result<ReactiveSettingSubscription>
     where
         ID: From<String> + Eq + Hash + Clone + Send + Sync + 'static,
         Self: Sized,
@@ -69,7 +70,7 @@ where
 pub fn setup_table_layout<ID>(
     layout: &mut TableLayout<ID>,
     provider: &impl TableSettingsProvider,
-) -> anyhow::Result<SignalSubscription>
+) -> anyhow::Result<ReactiveSettingSubscription>
 where
     ID: From<String> + Eq + Hash + Clone + Send + Sync + 'static,
 {
@@ -84,6 +85,7 @@ where
     });
 
     let signal_map = layout.widths.clone();
+
     Ok(provider.subscribe_widths(move |new_map| {
         for (id, w) in new_map {
             if let Some(sig) = signal_map.get(&ID::from(id)) {

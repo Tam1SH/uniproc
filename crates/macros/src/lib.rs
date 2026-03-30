@@ -77,18 +77,28 @@ pub fn feature_settings(args: TokenStream, input: TokenStream) -> TokenStream {
                 return None;
             }
 
-            let patch_name = format_ident!("patch_{}", field_name);
+            if is_trivial_type(ty) {
+                let set_name = format_ident!("set_{}", field_name);
+                Some(quote! {
+                    pub fn #set_name(&self, value: #ty) -> anyhow::Result<()> {
+                        self.#field_name.set(value)
+                    }
+                })
+            } else {
+                let patch_name = format_ident!("patch_{}", field_name);
+                Some(quote! {
+                    pub fn #patch_name<F>(&self, f: F) -> anyhow::Result<()>
+                    where F: FnOnce(&mut std::sync::Arc<#ty>)
+                    {
+                        let mut data = self.#field_name.get_arc();
+                        f(&mut data);
+                        let json = serde_json::to_value(data.as_ref())?;
+                        self.#field_name.get_store_subscription().settings.set(&self.#field_name.get_path(), json)?;
 
-            Some(quote! {
-                pub fn #patch_name<F>(&self, f: F) -> anyhow::Result<()>
-                where F: FnOnce(&mut std::sync::Arc<#ty>)
-                {
-                    let setting = self.#field_name()?;
-                    let mut data = setting.get_arc();
-                    f(&mut data);
-                    Ok(())
-                }
-            })
+                        Ok(())
+                    }
+                })
+            }
         })
         .collect::<Vec<_>>();
 
@@ -103,7 +113,7 @@ pub fn feature_settings(args: TokenStream, input: TokenStream) -> TokenStream {
             &patch_methods,
         )
     } else {
-        generate_nested_proxy(
+        generate_nested_settings(
             struct_vis,
             &wrapper_name,
             &original_attrs,
@@ -123,15 +133,24 @@ fn generate_root_settings(
     settings_entries: &[(&Ident, String, Option<Expr>, bool, bool, &syn::Type)],
     patch_methods: &[proc_macro2::TokenStream],
 ) -> proc_macro2::TokenStream {
-    let wrapper_methods = settings_entries.iter().map(|(field_name, key, default_expr, is_json, is_nested, ty)| {
+    let struct_fields = settings_entries
+        .iter()
+        .map(|(field_name, _, _, _, is_nested, ty)| {
+            if *is_nested {
+                quote! {
+                    #field_name: std::sync::Arc<#ty>,
+                }
+            } else {
+                quote! { #field_name: app_core::settings::ReactiveSetting<#ty>, }
+            }
+        });
+
+    let init_fields = settings_entries.iter().map(|(field_name, key, default_expr, is_json, is_nested, ty)| {
         if *is_nested {
             quote! {
-                pub fn #field_name(&self) -> #ty<'_, Self> {
-                    #ty::new(
-                        &self.store,
-                        std::borrow::Cow::Borrowed(concat!(#prefix_str, ".", #key))
-                    )
-                }
+                #field_name: std::sync::Arc::new(
+                    #ty::new::<Self>(&store, #key)?
+                ),
             }
         } else {
             let def = default_expr.as_ref().unwrap();
@@ -140,19 +159,34 @@ fn generate_root_settings(
             } else {
                 quote! { #def }
             };
-
             quote! {
-                pub fn #field_name(&self) -> anyhow::Result<app_core::settings::ReactiveSetting<#ty>> {
-                    self.reactive(#key, #default_value)
-                }
+                #field_name: app_core::settings::setting_or::<Self, #ty>(&store, #key, #default_value)?,
             }
         }
     });
 
+    let getters = settings_entries
+        .iter()
+        .map(|(field_name, _, _, _, is_nested, ty)| {
+            if *is_nested {
+                quote! {
+                    pub fn #field_name(&self) -> std::sync::Arc<#ty> {
+                        self.#field_name.clone()
+                    }
+                }
+            } else {
+                quote! {
+                    pub fn #field_name(&self) -> app_core::settings::ReactiveSetting<#ty> {
+                        self.#field_name.clone()
+                    }
+                }
+            }
+        });
+
     let ensure_calls = settings_entries.iter().map(|(_, key, default_expr, is_json, is_nested, ty)| {
         if *is_nested {
             quote! {
-                #ty::<Self>::ensure_defaults(settings, concat!(#prefix_str, ".", #key))?;
+                #ty::ensure_defaults::<Self>(settings, #key)?;
             }
         } else {
             let def = default_expr.as_ref().unwrap();
@@ -161,7 +195,6 @@ fn generate_root_settings(
             } else {
                 quote! { #def }
             };
-
             quote! {
                 <Self as app_core::settings::FeatureSettings>::ensure_default(settings, #key, #default_value)?;
             }
@@ -173,6 +206,7 @@ fn generate_root_settings(
         #(#original_attrs)*
         #struct_vis struct #wrapper_name {
             store: std::sync::Arc<app_core::settings::store::SettingsStore>,
+            #(#struct_fields)*
         }
 
         impl app_core::settings::SettingsScope for #wrapper_name {
@@ -190,18 +224,15 @@ fn generate_root_settings(
             pub fn new(shared: &app_core::shared_state::SharedState) -> anyhow::Result<Self> {
                 let store = app_core::settings::settings_from(shared);
                 <Self as app_core::settings::FeatureSettings>::ensure_defaults(&store)?;
-                Ok(Self { store })
+                Ok(Self {
+                    #(#init_fields)*
+                    store,
+                })
             }
 
-            fn reactive<TValue>(&self, key: &str, default: TValue) -> anyhow::Result<app_core::settings::ReactiveSetting<TValue>>
-            where
-                TValue: serde::Serialize + serde::de::DeserializeOwned + Clone + Send + Sync + 'static,
-            {
-                app_core::settings::setting_or::<Self, TValue>(&self.store, key, default)
-            }
-
-            #(#wrapper_methods)*
+            #(#getters)*
             #(#patch_methods)*
+
             pub fn store(&self) -> &std::sync::Arc<app_core::settings::store::SettingsStore> {
                 &self.store
             }
@@ -209,20 +240,33 @@ fn generate_root_settings(
     }
 }
 
-fn generate_nested_proxy(
+fn generate_nested_settings(
     struct_vis: &syn::Visibility,
     wrapper_name: &Ident,
     original_attrs: &[Attribute],
     settings_entries: &[(&Ident, String, Option<Expr>, bool, bool, &syn::Type)],
     patch_methods: &[proc_macro2::TokenStream],
 ) -> proc_macro2::TokenStream {
-    let wrapper_methods = settings_entries.iter().map(|(field_name, key, default_expr, is_json, is_nested, ty)| {
+    let struct_fields = settings_entries
+        .iter()
+        .map(|(field_name, _, _, _, is_nested, ty)| {
+            if *is_nested {
+                quote! {
+                    #field_name: std::sync::Arc<#ty>,
+                }
+            } else {
+                quote! {
+                    #field_name: std::sync::Arc<app_core::settings::ReactiveSetting<#ty>>,
+                }
+            }
+        });
+
+    let init_fields = settings_entries.iter().map(|(field_name, key, default_expr, is_json, is_nested, ty)| {
         if *is_nested {
             quote! {
-                pub fn #field_name(&self) -> #ty<'_, TScope> {
-                    let next_ns = format!("{}.{}", self.namespace, #key);
-                    #ty::new(self.store, std::borrow::Cow::Owned(next_ns))
-                }
+                #field_name: std::sync::Arc::new(
+                    #ty::new::<TScope>(store, &format!("{}.{}", namespace, #key))?
+                ),
             }
         } else {
             let def = default_expr.as_ref().unwrap();
@@ -231,11 +275,29 @@ fn generate_nested_proxy(
             } else {
                 quote! { #def }
             };
-
             quote! {
-                pub fn #field_name(&self) -> anyhow::Result<app_core::settings::ReactiveSetting<#ty>> {
-                    let full_key = format!("{}.{}", self.namespace, #key);
-                    app_core::settings::setting_or::<TScope, #ty>(self.store, &full_key, #default_value)
+                #field_name: std::sync::Arc::new(
+                    app_core::settings::setting_or::<TScope, #ty>(
+                        store,
+                        &format!("{}.{}", namespace, #key),
+                        #default_value,
+                    )?
+                ),
+            }
+        }
+    });
+
+    let getters = settings_entries.iter().map(|(field_name, _, _, _, is_nested, ty)| {
+        if *is_nested {
+            quote! {
+                pub fn #field_name(&self) -> std::sync::Arc<#ty> {
+                    self.#field_name.clone()
+                }
+            }
+        } else {
+            quote! {
+                pub fn #field_name(&self) -> std::sync::Arc<app_core::settings::ReactiveSetting<#ty>> {
+                    self.#field_name.clone()
                 }
             }
         }
@@ -244,8 +306,7 @@ fn generate_nested_proxy(
     let ensure_calls = settings_entries.iter().map(|(_, key, default_expr, is_json, is_nested, ty)| {
         if *is_nested {
             quote! {
-                let next_ns = format!("{}.{}", namespace, #key);
-                #ty::<TScope>::ensure_defaults(settings, &next_ns)?;
+                #ty::ensure_defaults::<TScope>(settings, &format!("{}.{}", namespace, #key))?;
             }
         } else {
             let def = default_expr.as_ref().unwrap();
@@ -254,10 +315,8 @@ fn generate_nested_proxy(
             } else {
                 quote! { #def }
             };
-
             quote! {
-                let full_key = format!("{}.{}", namespace, #key);
-                TScope::ensure_default(settings, &full_key, #default_value)?;
+                TScope::ensure_default(settings, &format!("{}.{}", namespace, #key), #default_value)?;
             }
         }
     });
@@ -265,26 +324,61 @@ fn generate_nested_proxy(
     quote! {
         #[derive(Debug, Clone)]
         #(#original_attrs)*
-        #struct_vis struct #wrapper_name<'a, TScope: app_core::settings::FeatureSettings> {
-            store: &'a std::sync::Arc<app_core::settings::store::SettingsStore>,
-            namespace: std::borrow::Cow<'a, str>,
-            _marker: std::marker::PhantomData<TScope>,
+        #struct_vis struct #wrapper_name {
+            #(#struct_fields)*
         }
 
-        impl<'a, TScope: app_core::settings::FeatureSettings> #wrapper_name<'a, TScope> {
-            pub fn new(store: &'a std::sync::Arc<app_core::settings::store::SettingsStore>, namespace: std::borrow::Cow<'a, str>) -> Self {
-                Self { store, namespace, _marker: std::marker::PhantomData }
+        impl #wrapper_name {
+            pub fn new<TScope: app_core::settings::FeatureSettings>(
+                store: &std::sync::Arc<app_core::settings::store::SettingsStore>,
+                namespace: &str,
+            ) -> anyhow::Result<Self> {
+                Ok(Self {
+                    #(#init_fields)*
+                })
             }
 
-            pub fn ensure_defaults(settings: &app_core::settings::store::SettingsStore, namespace: &str) -> anyhow::Result<()> {
+            pub fn ensure_defaults<TScope: app_core::settings::FeatureSettings>(
+                settings: &app_core::settings::store::SettingsStore,
+                namespace: &str,
+            ) -> anyhow::Result<()> {
                 #(#ensure_calls)*
                 Ok(())
             }
 
-            #(#wrapper_methods)*
-
+            #(#getters)*
             #(#patch_methods)*
         }
+    }
+}
+
+fn is_trivial_type(ty: &syn::Type) -> bool {
+    if let syn::Type::Path(tp) = ty {
+        if tp.qself.is_none() && tp.path.segments.len() == 1 {
+            let ident = tp.path.segments[0].ident.to_string();
+            matches!(
+                ident.as_str(),
+                "u8" | "u16"
+                    | "u32"
+                    | "u64"
+                    | "u128"
+                    | "i8"
+                    | "i16"
+                    | "i32"
+                    | "i64"
+                    | "i128"
+                    | "f32"
+                    | "f64"
+                    | "bool"
+                    | "String"
+                    | "usize"
+                    | "isize"
+            )
+        } else {
+            false
+        }
+    } else {
+        false
     }
 }
 
@@ -346,6 +440,5 @@ fn parse_setting_attr(attr: &Attribute, field_name: &Ident) -> (String, Option<E
     }
 
     let key = explicit_key.unwrap_or_else(|| field_name.to_string());
-
     (key, default, is_json, is_nested)
 }

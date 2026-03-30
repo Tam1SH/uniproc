@@ -15,19 +15,8 @@ pub struct ProcessSettings {
 
     #[setting(nested)]
     columns: ColumnsSettings,
-
-    #[setting(nested)]
-    metadata: MetadataSettings,
 }
 
-#[feature_settings]
-pub struct MetadataSettings {
-    #[setting(default = 300u64)]
-    name_cache_ttl_secs: u64,
-
-    #[setting(default = 300u64)]
-    icon_cache_ttl_secs: u64,
-}
 #[feature_settings]
 pub struct ColumnsSettings {
     #[setting(default = 70u64)]

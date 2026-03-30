@@ -1,0 +1,70 @@
+import { Theme } from "theme.slint";
+import { TableCellData } from "types.slint";
+import { TableUtils } from "utils.slint";
+
+export component MetricSplitBar inherits Rectangle {
+    in property <float> value;
+    in property <float> threshold: 100;
+    in property <color> accent-color: Theme.accent;
+    in property <length> bar-width: 50px;
+
+    width: bar-width;
+    height: 3px;
+    border-radius: 3px;
+
+    public pure function ratio() -> float {
+        if (threshold <= 0) {
+            return 0;
+        }
+        return Math.min(value / threshold, 1);
+    }
+
+    HorizontalLayout {
+        spacing: 0;
+        alignment: start;
+        Rectangle {
+            width: root.width * root.ratio();
+            height: parent.height;
+            background: root.accent-color;
+            border-radius: 3px;
+        }
+
+        Rectangle {
+            width: root.width * (1 - root.ratio());
+            height: parent.height;
+            background: Theme.layer_background;
+            border-radius: 3px;
+        }
+    }
+}
+
+export component GenericTableCell inherits Rectangle {
+    in property <TableCellData> data;
+
+    HorizontalLayout {
+        padding-left: 8px;
+        padding-right: 8px;
+
+        if (root.data.has-metric): VerticalLayout {
+            alignment: center;
+            MetricSplitBar {
+                value: root.data.value;
+                threshold: root.data.threshold;
+                bar-width: 40px;
+            }
+        }
+
+        Rectangle {
+            horizontal-stretch: 1;
+        }
+
+        Text {
+            text: root.data.text;
+            color: TableUtils.threshold-color(root.data.value, root.data.threshold, root.data.dead);
+            font-size: 12px;
+            font-weight: 600;
+            vertical-alignment: center;
+            horizontal-alignment: right;
+        }
+    }
+}

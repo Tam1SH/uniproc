@@ -16,9 +16,6 @@ pub use store::SubscriptionId;
 pub use store::SubscriptionKind;
 use tracing::error;
 
-const SAVE_DEBOUNCE_MS: &str = "save_debounce_ms";
-const WATCH_INTERVAL_MS: &str = "watch_interval_ms";
-
 pub trait SettingsScope {
     const PREFIX: &'static str;
 }
@@ -131,20 +128,6 @@ where
             id: store_sub_id,
         }),
     })
-}
-
-pub struct SettingsPersistenceSettings;
-
-impl SettingsScope for SettingsPersistenceSettings {
-    const PREFIX: &'static str = "settings.persistence";
-}
-
-impl FeatureSettings for SettingsPersistenceSettings {
-    fn ensure_defaults(settings: &SettingsStore) -> anyhow::Result<()> {
-        Self::ensure_default(settings, SAVE_DEBOUNCE_MS, 300u64)?;
-        Self::ensure_default(settings, WATCH_INTERVAL_MS, 500u64)?;
-        Ok(())
-    }
 }
 
 pub fn settings_from(shared: &SharedState) -> Arc<SettingsStore> {

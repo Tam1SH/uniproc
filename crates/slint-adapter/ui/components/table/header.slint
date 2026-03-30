@@ -1,0 +1,35 @@
+import { TableColDef, TableColMetadata, TableColWidth } from "types.slint";
+import { ResizableHeaderCell } from "resizable-divider.slint";
+import { TableHeaderCell } from "header-cell.slint";
+
+export component TableHeader inherits Rectangle {
+    in property <[TableColDef]> column-defs;
+    in property <[TableColWidth]> column-widths;
+    in property <[TableColMetadata]> column-metadatas;
+    in property <string> current-sort;
+    in property <bool> current-sort-descending;
+    callback resized(string, float);
+    callback sort-by(string);
+
+    height: 50px;
+
+    HorizontalLayout {
+        alignment: start;
+
+        for def[i] in root.column-widths: ResizableHeaderCell {
+            column-id: def.id;
+            column-width: root.column-widths[i].width-px * 1px;
+            prop-min-width: 40px;
+            resized(id, w) => { root.resized(id, w); }
+
+            TableHeaderCell {
+                def: root.column-defs[i];
+                is-text: root.column-metadatas[i].is-text;
+                is-metric: root.column-metadatas[i].is-metric;
+                is-sorted: root.current-sort == def.id;
+                sort-descending: root.current-sort-descending;
+                clicked => { root.sort-by(def.id); }
+            }
+        }
+    }
+}

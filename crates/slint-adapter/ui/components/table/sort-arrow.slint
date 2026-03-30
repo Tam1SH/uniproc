@@ -1,0 +1,10 @@
+import { Icons } from "icons.slint";
+export component SortArrow inherits Image {
+    in property <bool> descending;
+    source: Icons.arrow-up-regular;
+    transform-rotation: descending ? -90deg : 90deg;
+    transform-origin: { x: 2.5px, y: 5px };
+    colorize: white;
+    width: 10px;
+    height: 10px;
+}

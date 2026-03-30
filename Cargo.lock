@@ -246,6 +246,8 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "arc-swap",
+ "once_cell",
+ "parking_lot",
  "rust-i18n",
  "serde",
  "serde_json",
@@ -264,6 +266,7 @@ dependencies = [
  "app-core",
  "dashmap",
  "slint",
+ "tracing",
 ]
 
 [[package]]
@@ -1627,6 +1630,8 @@ dependencies = [
  "anyhow",
  "app-contracts",
  "app-core",
+ "macros",
+ "serde",
  "slint",
 ]
 

@@ -1,3 +1,4 @@
+use app_core::app::Window;
 mod actors;
 
 use actors::{Close, Drag, Maximize, Minimize, Resize, WindowActor};
@@ -20,7 +21,7 @@ impl<F> WindowActionsFeature<F> {
 
 impl<TWindow, F, P> Feature<TWindow> for WindowActionsFeature<F>
 where
-    TWindow: ComponentHandle + 'static,
+    TWindow: Window,
     F: Fn(&TWindow) -> P + 'static,
     P: WindowActionsPort,
 {

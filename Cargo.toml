@@ -10,7 +10,7 @@ members = [
     "crates/domain",
     "crates/app-core",
     "crates/macros",
-    "crates/app-contracts",
+    "crates/ui-contracts",
     "crates/slint-adapter",
     "crates/domain/src/features/agents",
     "crates/domain/src/features/environments",
@@ -22,12 +22,15 @@ default-members = ["crates/desktop"]
 resolver = "2"
 
 [workspace.dependencies]
-
+domain-agents = { path = "crates/domain/src/features/agents" }
+domain-environments = { path = "crates/domain/src/features/environments" }
+domain-processes = { path = "crates/domain/src/features/processes" }
+domain = { path = "crates/domain" }
 ogurpchik = { git = "https://github.com/Tam1SH/oguRPChik", branch = "master", features = ["rkyv-codec", "vsock", "uds"] }
 rust-i18n = "3"
 app-core = { path = "crates/app-core" }
 foundation-services = { path = "crates/foundation/services" }
-app-contracts = { path = "crates/app-contracts" }
+app-contracts = { path = "crates/ui-contracts" }
 app-table = { path = "crates/foundation/table" }
 slint-adapter = { path = "crates/slint-adapter" }
 macros = { path = "crates/macros" }

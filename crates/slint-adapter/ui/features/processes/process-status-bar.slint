@@ -1,0 +1,51 @@
+
+import { Theme } from "theme.slint";
+
+export struct EnvironmentCount {
+    name: string,
+    count: int,
+}
+
+export component ProcessStatusBar inherits Rectangle {
+    in property <int> total-count;
+    in property <[EnvironmentCount]> env-counts;
+
+    height: 32px;
+    background: Theme.colorNeutralBackgroundAlpha;
+
+    Rectangle {
+        width: 100%;
+        height: 1px;
+        background: Theme.layer_background;
+        y: 0;
+    }
+
+    VerticalLayout {
+        alignment: center;
+        HorizontalLayout {
+            padding-left: 8px;
+            spacing: 6px;
+
+            Text {
+                text: "Processes: \{root.total-count}";
+                color: Theme.text_secondary;
+                font-size: 12px;
+            }
+
+            for env[idx] in root.env-counts: HorizontalLayout {
+                spacing: 6px;
+                Text {
+                    text: "|";
+                    color: Theme.text_disabled;
+                    font-size: 12px;
+                }
+
+                Text {
+                    text: "\{env.name}: \{env.count}";
+                    color: Theme.text_secondary;
+                    font-size: 12px;
+                }
+            }
+        }
+    }
+}

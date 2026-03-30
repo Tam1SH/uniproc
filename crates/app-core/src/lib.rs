@@ -5,6 +5,7 @@ pub mod actor;
 pub mod app;
 pub mod icons;
 pub mod l10n;
+pub mod ratelimit_tracing;
 pub mod reactor;
 pub mod settings;
 pub mod shared_state;

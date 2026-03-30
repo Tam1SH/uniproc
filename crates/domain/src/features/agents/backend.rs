@@ -3,7 +3,7 @@ use app_core::actor::traits::Message;
 
 pub trait AgentBackend: Send + Sync + 'static {
     type Client: Clone + Send + Sync + 'static;
-    type RuntimeEvent: Message + Clone + 'static;
+    type RuntimeEvent: Message + Send + Clone + 'static;
 
     const NAME: &'static str;
 

@@ -51,7 +51,6 @@ cfg_if::cfg_if! {
         #[derive(Clone)]
         pub struct WindowsAgentRuntimeEvent {
             pub state: AgentConnectionState,
-            pub client: Option<AgentClient>,
             pub latency_ms: Option<i32>,
         }
         impl Message for WindowsAgentRuntimeEvent {}

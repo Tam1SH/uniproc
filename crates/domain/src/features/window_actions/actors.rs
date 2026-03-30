@@ -1,3 +1,4 @@
+use app_core::app::Window;
 use app_contracts::features::window_actions::{ResizeEdge, WindowActionsPort};
 use app_core::actor::traits::{Context, Handler, Message};
 use app_core::messages;
@@ -17,7 +18,7 @@ pub struct WindowActor<P> {
 
 impl<TWindow, P> Handler<Drag, TWindow> for WindowActor<P>
 where
-    TWindow: ComponentHandle + 'static,
+    TWindow: Window,
     P: WindowActionsPort,
 {
     fn handle(&mut self, _msg: Drag, _ctx: &Context<Self, TWindow>) {
@@ -27,7 +28,7 @@ where
 
 impl<TWindow, P> Handler<Close, TWindow> for WindowActor<P>
 where
-    TWindow: ComponentHandle + 'static,
+    TWindow: Window,
     P: WindowActionsPort,
 {
     fn handle(&mut self, _msg: Close, _ctx: &Context<Self, TWindow>) {
@@ -37,7 +38,7 @@ where
 
 impl<TWindow, P> Handler<Minimize, TWindow> for WindowActor<P>
 where
-    TWindow: ComponentHandle + 'static,
+    TWindow: Window,
     P: WindowActionsPort,
 {
     fn handle(&mut self, _msg: Minimize, _ctx: &Context<Self, TWindow>) {
@@ -47,7 +48,7 @@ where
 
 impl<TWindow, P> Handler<Maximize, TWindow> for WindowActor<P>
 where
-    TWindow: ComponentHandle + 'static,
+    TWindow: Window,
     P: WindowActionsPort,
 {
     fn handle(&mut self, _msg: Maximize, _ctx: &Context<Self, TWindow>) {
@@ -57,7 +58,7 @@ where
 
 impl<TWindow, P> Handler<Resize, TWindow> for WindowActor<P>
 where
-    TWindow: ComponentHandle + 'static,
+    TWindow: Window,
     P: WindowActionsPort,
 {
     fn handle(&mut self, msg: Resize, _ctx: &Context<Self, TWindow>) {

@@ -2,8 +2,9 @@ use super::backend::AgentBackend;
 use crate::features::agents::connection::*;
 use app_contracts::features::agents::ScanTick;
 use app_contracts::features::environments::AgentConnectionState;
-use app_core::actor::event_bus::EVENT_BUS;
-use app_core::actor::traits::{Context, Handler, Message};
+use app_core::actor::event_bus::EventBus;
+use app_core::actor::traits::{Context, Handler, Message, NoOp};
+use app_core::app::Window;
 use app_core::messages;
 use app_core::settings::ReactiveSetting;
 use slint::ComponentHandle;
@@ -17,8 +18,7 @@ messages! {
     TryConnectWithDelay(u64),
     RetryTimerElapsed,
     ConnectionLost,
-    PingResult(Option<i32>),
-    Dummy
+    PingResult(Option<i32>)
 }
 
 struct ConnectResult<C>(Option<C>);
@@ -58,10 +58,10 @@ impl<B: AgentBackend> GenericAgentActor<B> {
 
     fn publish_state(&self, latency_ms: Option<i32>) {
         let event = B::create_runtime_event(self.connection.state(), latency_ms);
-        EVENT_BUS.with(|bus| bus.publish(event));
+        EventBus::publish(event);
     }
 
-    fn spawn_connect<T: ComponentHandle + 'static>(&self, ctx: &Context<Self, T>) {
+    fn spawn_connect<T: Window>(&self, ctx: &Context<Self, T>) {
         let timeout = self.connect_timeout_secs.get().max(1);
         ctx.spawn_bg(async move {
             match B::connect(timeout).await {
@@ -78,7 +78,7 @@ impl<B: AgentBackend> GenericAgentActor<B> {
 impl<B, T> Handler<Init, T> for GenericAgentActor<B>
 where
     B: AgentBackend,
-    T: ComponentHandle + 'static,
+    T: Window,
 {
     fn handle(&mut self, _: Init, ctx: &Context<Self, T>) {
         info!("[{}] Actor init", B::NAME);
@@ -90,7 +90,7 @@ where
 impl<B, T> Handler<StartConnect, T> for GenericAgentActor<B>
 where
     B: AgentBackend,
-    T: ComponentHandle + 'static,
+    T: Window,
 {
     fn handle(&mut self, _: StartConnect, ctx: &Context<Self, T>) {
         if let Some(t) = self.apply(ConnectionEvent::BeginConnect) {
@@ -105,7 +105,7 @@ where
 impl<B, T> Handler<ConnectResult<B::Client>, T> for GenericAgentActor<B>
 where
     B: AgentBackend,
-    T: ComponentHandle + 'static,
+    T: Window,
 {
     fn handle(&mut self, msg: ConnectResult<B::Client>, ctx: &Context<Self, T>) {
         match msg.0 {
@@ -134,10 +134,10 @@ where
 impl<B, T> Handler<Ping, T> for GenericAgentActor<B>
 where
     B: AgentBackend,
-    T: ComponentHandle + 'static,
+    T: Window,
 {
     fn handle(&mut self, _: Ping, ctx: &Context<Self, T>) {
-        let has_subs = EVENT_BUS.with(|bus| bus.has_subscribers::<B::RuntimeEvent>());
+        let has_subs = EventBus::has_subscribers::<B::RuntimeEvent>();
         if !has_subs {
             return;
         }
@@ -166,7 +166,7 @@ where
 impl<B, T> Handler<PingResult, T> for GenericAgentActor<B>
 where
     B: AgentBackend,
-    T: ComponentHandle + 'static,
+    T: Window,
 {
     fn handle(&mut self, msg: PingResult, ctx: &Context<Self, T>) {
         if !self.ping_in_flight {
@@ -183,7 +183,7 @@ where
 impl<B, T> Handler<ScanTick, T> for GenericAgentActor<B>
 where
     B: AgentBackend,
-    T: ComponentHandle + 'static,
+    T: Window,
 {
     fn handle(&mut self, _: ScanTick, ctx: &Context<Self, T>) {
         if !matches!(self.connection.state(), AgentConnectionState::Connected) {
@@ -191,13 +191,15 @@ where
         }
 
         let Some(client) = self.client.clone() else {
+            warn!("[{}] client is None (unexpected state)", B::NAME);
             return;
         };
+
         ctx.spawn_bg(async move {
             if let Err(err) = B::perform_scan(&client).await {
                 warn!("[{}] Scan failed: {err}", B::NAME);
             }
-            Dummy
+            NoOp
         });
     }
 }
@@ -205,7 +207,7 @@ where
 impl<B, T> Handler<TryConnectWithDelay, T> for GenericAgentActor<B>
 where
     B: AgentBackend,
-    T: ComponentHandle + 'static,
+    T: Window,
 {
     fn handle(&mut self, msg: TryConnectWithDelay, ctx: &Context<Self, T>) {
         let secs = msg.0;
@@ -219,30 +221,17 @@ where
 impl<B, T> Handler<RetryTimerElapsed, T> for GenericAgentActor<B>
 where
     B: AgentBackend,
-    T: ComponentHandle + 'static,
+    T: Window,
 {
     fn handle(&mut self, _: RetryTimerElapsed, ctx: &Context<Self, T>) {
-        if let Some(t) = self.apply(ConnectionEvent::RetryDelayElapsed) {
-            if t.to == AgentConnectionState::Connecting {
-                self.publish_state(None);
-                self.spawn_connect(ctx);
-            }
-        }
+        ctx.addr().send(StartConnect);
     }
-}
-
-impl<B, T> Handler<Dummy, T> for GenericAgentActor<B>
-where
-    B: AgentBackend,
-    T: ComponentHandle + 'static,
-{
-    fn handle(&mut self, _: Dummy, ctx: &Context<Self, T>) {}
 }
 
 impl<B, T> Handler<ConnectionLost, T> for GenericAgentActor<B>
 where
     B: AgentBackend,
-    T: ComponentHandle + 'static,
+    T: Window,
 {
     fn handle(&mut self, _: ConnectionLost, ctx: &Context<Self, T>) {
         if self.apply(ConnectionEvent::ConnectionLost).is_none() {

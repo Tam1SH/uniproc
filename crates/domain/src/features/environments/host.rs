@@ -1,3 +1,4 @@
+use app_core::app::Window;
 use super::get_icon_for_env;
 use app_contracts::features::environments::EnvironmentsUiPort;
 use app_core::SharedState;
@@ -18,7 +19,7 @@ impl<F> HostFeature<F> {
 
 impl<TWindow, F, P> Feature<TWindow> for HostFeature<F>
 where
-    TWindow: ComponentHandle + 'static,
+    TWindow: Window,
     F: Fn(&TWindow) -> P + 'static,
     P: EnvironmentsUiPort,
 {

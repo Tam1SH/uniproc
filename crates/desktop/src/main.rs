@@ -10,9 +10,8 @@ use domain::features::settings::SettingsFeature;
 use domain::features::window_actions::WindowActionsFeature;
 use domain_agents::features::agents::AgentsFeature;
 use domain_environments::features::environments::EnvironmentsFeature;
-use domain_processes::features::processes::ProcessFeature;
+use domain_processes::processes_impl::ProcessFeature;
 use slint::ComponentHandle;
-use slint_adapter::AppWindow;
 use slint_adapter::adapters::context_menu::ContextMenuUiAdapter;
 use slint_adapter::adapters::cosmetics::CosmeticsAdapter;
 use slint_adapter::adapters::environments::EnvironmentsUiAdapter;
@@ -21,6 +20,7 @@ use slint_adapter::adapters::navigation::NavigationUiAdapter;
 use slint_adapter::adapters::processes::ProcessesUiAdapter;
 use slint_adapter::adapters::run_task::RunTaskAdapter;
 use slint_adapter::adapters::window_actions::WindowActionsAdapter;
+use slint_adapter::AppWindow;
 use tracing::Level;
 use tracing_subscriber::filter::Targets;
 use tracing_subscriber::layer::SubscriberExt;
@@ -42,7 +42,8 @@ fn main() -> anyhow::Result<()> {
 
     let targets = Targets::new()
         .with_default(Level::DEBUG)
-        .with_target("ogurpchik", Level::WARN);
+        .with_target("ogurpchik", Level::WARN)
+        .with_target("app_core::settings::store", Level::DEBUG);
 
     tracing_subscriber::registry()
         .with(targets)
