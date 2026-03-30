@@ -47,6 +47,7 @@ pub struct SettingsStore {
     subscriptions: Arc<RwLock<Vec<SubscriptionEntry>>>,
     next_subscription_id: AtomicU64,
     save_tx: mpsc::Sender<()>,
+    last_write_mtime: Arc<RwLock<Option<std::time::SystemTime>>>,
 }
 
 impl Debug for SettingsStore {
@@ -294,12 +295,16 @@ impl SettingsStore {
         let inner = Arc::new(RwLock::new(initial));
         let subscriptions = Arc::new(RwLock::new(Vec::<SubscriptionEntry>::new()));
         let (save_tx, save_rx) = mpsc::channel::<()>();
+        let last_write_mtime = Arc::new(RwLock::new(None));
+
+        let last_write_time_capture = last_write_mtime.clone();
+        let watch_mtime_ref = last_write_mtime.clone();
 
         let persist_path = path.clone();
-        let persist_inner = Arc::clone(&inner);
+        let persist_inner = inner.clone();
 
         let debounce = save_debounce;
-        std::thread::spawn(move || {
+        thread::spawn(move || {
             let span = tracing::info_span!("settings_save_worker", path = %persist_path.display());
             let _enter = span.enter();
             debug!("save worker started");
@@ -322,6 +327,14 @@ impl SettingsStore {
                 if let Err(err) = persist_atomic(&persist_path, &snapshot) {
                     warn!("settings save failed: {err:#}");
                 } else {
+                    if let Ok(meta) = std::fs::metadata(&persist_path) {
+                        if let Ok(mtime) = meta.modified() {
+                            if let Ok(mut lw) = last_write_time_capture.write() {
+                                *lw = Some(mtime);
+                                trace!(?mtime, "updated last write timestamp");
+                            }
+                        }
+                    }
                     trace!("settings saved successfully");
                 }
             }
@@ -330,8 +343,9 @@ impl SettingsStore {
         });
 
         let watch_path = path.clone();
-        let watch_inner = Arc::clone(&inner);
-        let watch_subs = Arc::clone(&subscriptions);
+        let watch_inner = inner.clone();
+        let watch_subs = subscriptions.clone();
+
         thread::spawn(move || {
             let span = tracing::info_span!("settings_watch_worker", path = %watch_path.display());
             let _enter = span.enter();
@@ -339,6 +353,18 @@ impl SettingsStore {
 
             loop {
                 thread::sleep(watch_interval);
+
+                if let Ok(meta) = std::fs::metadata(&watch_path) {
+                    let mtime = meta.modified().unwrap_or(std::time::SystemTime::UNIX_EPOCH);
+
+                    if let Ok(last_write) = watch_mtime_ref.read() {
+                        if let Some(lw) = *last_write {
+                            if mtime <= lw {
+                                continue;
+                            }
+                        }
+                    }
+                }
 
                 let on_disk = if watch_path.exists() {
                     match Self::load_map(&watch_path) {
@@ -389,6 +415,7 @@ impl SettingsStore {
             subscriptions,
             next_subscription_id: AtomicU64::new(1),
             save_tx,
+            last_write_mtime,
         }
     }
 
@@ -421,7 +448,7 @@ impl SettingsStore {
             .map(|subs| {
                 subs.iter()
                     .filter(|sub| matches_subscription(&sub.kind, &event.path))
-                    .map(|sub| Arc::clone(&sub.callback))
+                    .map(|sub| sub.callback.clone())
                     .collect::<Vec<_>>()
             })
             .unwrap_or_else(|_| {
@@ -808,7 +835,7 @@ mod tests {
         let exact_hits = Arc::new(Mutex::new(Vec::<String>::new()));
         let prefix_hits = Arc::new(Mutex::new(Vec::<String>::new()));
 
-        let any_capture = Arc::clone(&any_hits);
+        let any_capture = any_hits.clone();
         store.on_state_changed(Arc::new(move |evt| {
             any_capture
                 .lock()
@@ -816,7 +843,7 @@ mod tests {
                 .push(evt.path.clone());
         }));
 
-        let exact_capture = Arc::clone(&exact_hits);
+        let exact_capture = exact_hits.clone();
         store.on_field_changed(
             Arc::from("ui.theme.dark"),
             Arc::new(move |evt| {
@@ -827,7 +854,7 @@ mod tests {
             }),
         );
 
-        let prefix_capture = Arc::clone(&prefix_hits);
+        let prefix_capture = prefix_hits.clone();
         store.on_subfield_changed(
             Arc::from("ui.theme"),
             Arc::new(move |evt| {
@@ -871,7 +898,7 @@ mod tests {
         let store = SettingsStore::new(path, Map::new());
 
         let hit_count = Arc::new(Mutex::new(0usize));
-        let counter_capture = Arc::clone(&hit_count);
+        let counter_capture = hit_count.clone();
         let id = store.on_state_changed(Arc::new(move |_| {
             let mut guard = counter_capture
                 .lock()

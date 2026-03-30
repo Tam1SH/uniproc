@@ -51,7 +51,11 @@ where
         let path = self.path.clone();
 
         let signal_sub = self.signal.subscribe(move |val: &TValue| {
-            info!("event, path: {}", path);
+            info!(
+                "event, path: {}, val: {:?}",
+                path,
+                serde_json::to_value(val).unwrap()
+            );
             callback(val.clone());
         });
 
