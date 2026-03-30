@@ -1,0 +1,29 @@
+import { Theme } from "theme.slint";
+
+export component ResizeHandle inherits Rectangle {
+
+    callback resized(length);
+
+    width: 12px;
+    z: 100;
+
+    Rectangle {
+        width: 2px;
+        x: (parent.width - self.width) / 2;
+
+        background: touch.pressed ? Theme.accent : (touch.has-hover ? Theme.layer_background : transparent);
+        animate background { duration: 100ms; }
+    }
+
+    touch := TouchArea {
+        width: 100%;
+        height: 100%;
+        mouse-cursor: ew-resize;
+        moved => {
+            if (self.pressed) {
+
+                root.resized(self.mouse-x - self.pressed-x);
+            }
+        }
+    }
+}

@@ -43,7 +43,7 @@ fn main() -> anyhow::Result<()> {
     let targets = Targets::new()
         .with_default(Level::DEBUG)
         .with_target("ogurpchik", Level::WARN)
-        .with_target("app_core::settings::store", Level::DEBUG);
+        .with_target("app_core::settings::store", Level::WARN);
 
     tracing_subscriber::registry()
         .with(targets)

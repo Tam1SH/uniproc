@@ -1,4 +1,5 @@
 import { Theme } from "theme.slint";
+import { ResizeHandle } from "resize-handle.slint";
 export component ResizableHeaderCell inherits Rectangle {
     in property <length> column-width;
     in property <length> prop-min-width: 40px;
@@ -7,33 +8,18 @@ export component ResizableHeaderCell inherits Rectangle {
 
     width: column-width;
     HorizontalLayout {
+        padding-left: 6px;
+        padding-right: 6px;
         @children
-        handle := Rectangle {
-            width: 12px;
+    }
 
-            Rectangle {
-                width: 2px;
+    ResizeHandle {
+        x: parent.width - (self.width / 2);
 
-                x: (parent.width - self.width) / 2;
-
-                background: touch.pressed ? Theme.accent : (touch.has-hover ? Theme.layer_background : transparent);
-
-                animate background { duration: 100ms; }
-            }
-
-            touch := TouchArea {
-
-                width: parent.width;
-                mouse-cursor: ew-resize;
-                moved => {
-                    if (self.pressed) {
-                        let delta = (self.mouse-x - self.pressed-x) / 1px;
-                        let new-w = (root.column-width / 1px) + delta;
-                        if (new-w > (root.prop-min-width / 1px)) {
-                            root.resized(root.column-id, new-w);
-                        }
-                    }
-                }
+        resized(delta) => {
+            let new-w = root.column-width + delta;
+            if (new-w >= root.prop-min-width) {
+                root.resized(root.column-id, new-w / 1px);
             }
         }
     }
