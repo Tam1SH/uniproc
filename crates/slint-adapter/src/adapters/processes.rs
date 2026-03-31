@@ -7,6 +7,7 @@ use app_contracts::features::processes::{
 };
 use app_core::app::FromUiWeak;
 use app_table::ui_cache::{SlintTableRowAdapter, UiTableCache};
+use macros::ui_adapter;
 use slint::{ComponentHandle, Model, SharedString, VecModel};
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -55,15 +56,6 @@ impl ProcessesUiAdapter {
             cache: Default::default(),
         }
     }
-
-    fn with_ui<F>(&self, f: F)
-    where
-        F: FnOnce(&AppWindow),
-    {
-        if let Some(ui) = self.ui.upgrade() {
-            f(&ui);
-        }
-    }
 }
 
 impl FromUiWeak<AppWindow> for ProcessesUiAdapter {
@@ -72,70 +64,67 @@ impl FromUiWeak<AppWindow> for ProcessesUiAdapter {
     }
 }
 
+#[ui_adapter]
 impl ProcessesUiPort for ProcessesUiAdapter {
-    fn set_column_widths(&self, widths: Vec<(SharedString, u64)>) {
-        self.with_ui(|ui| {
-            let global = ui.global::<ProcessesFeatureGlobal>();
-            let defs = global.get_column_defs();
-            let width_map: HashMap<SharedString, u64> = widths.into_iter().collect();
+    fn set_column_widths(&self, ui: &AppWindow, widths: Vec<(SharedString, u64)>) {
+        let global = ui.global::<ProcessesFeatureGlobal>();
+        let defs = global.get_column_defs();
+        let width_map: HashMap<SharedString, u64> = widths.into_iter().collect();
 
-            let next_widths: Vec<TableColWidth> = defs
-                .iter()
-                .map(|def| {
-                    let w = width_map.get(&def.id).cloned().unwrap_or(100);
-                    TableColWidth {
-                        id: def.id.clone(),
-                        width_px: w as i32,
-                    }
-                })
-                .collect();
+        let next_widths: Vec<TableColWidth> = defs
+            .iter()
+            .map(|def| {
+                let w = width_map.get(&def.id).cloned().unwrap_or(100);
+                TableColWidth {
+                    id: def.id.clone(),
+                    width_px: w as i32,
+                }
+            })
+            .collect();
 
-            let mut last = self.models.last_widths.borrow_mut();
-            if *last == next_widths {
-                return;
-            }
+        let mut last = self.models.last_widths.borrow_mut();
+        if *last == next_widths {
+            return;
+        }
 
-            *last = next_widths.clone();
+        *last = next_widths.clone();
 
-            patch_model(&self.models.widths_model, next_widths);
-        });
+        patch_model(&self.models.widths_model, next_widths);
     }
 
-    fn set_column_metadata(&self, data: Vec<FieldMetadata>) {
-        self.with_ui(|ui| {
-            let global = ui.global::<ProcessesFeatureGlobal>();
-            let defs = global.get_column_defs();
-            let data_map: HashMap<SharedString, FieldMetadata> =
-                data.into_iter().map(|m| (m.id.clone(), m)).collect();
+    fn set_column_metadata(&self, ui: &AppWindow, data: Vec<FieldMetadata>) {
+        let global = ui.global::<ProcessesFeatureGlobal>();
+        let defs = global.get_column_defs();
+        let data_map: HashMap<SharedString, FieldMetadata> =
+            data.into_iter().map(|m| (m.id.clone(), m)).collect();
 
-            let next_metadata: Vec<TableColMetadata> = defs
-                .iter()
-                .map(|def| {
-                    if let Some(m) = data_map.get(&def.id) {
-                        TableColMetadata {
-                            id: m.id.clone(),
-                            is_text: m.is_text,
-                            is_metric: m.is_metric,
-                        }
-                    } else {
-                        TableColMetadata {
-                            id: def.id.clone(),
-                            is_text: false,
-                            is_metric: false,
-                        }
+        let next_metadata: Vec<TableColMetadata> = defs
+            .iter()
+            .map(|def| {
+                if let Some(m) = data_map.get(&def.id) {
+                    TableColMetadata {
+                        id: m.id.clone(),
+                        is_text: m.is_text,
+                        is_metric: m.is_metric,
                     }
-                })
-                .collect();
+                } else {
+                    TableColMetadata {
+                        id: def.id.clone(),
+                        is_text: false,
+                        is_metric: false,
+                    }
+                }
+            })
+            .collect();
 
-            let mut last = self.models.last_metadata.borrow_mut();
-            if *last == next_metadata {
-                return;
-            }
+        let mut last = self.models.last_metadata.borrow_mut();
+        if *last == next_metadata {
+            return;
+        }
 
-            *last = next_metadata.clone();
+        *last = next_metadata.clone();
 
-            patch_model(&self.models.metadata_model, next_metadata);
-        });
+        patch_model(&self.models.metadata_model, next_metadata);
     }
 
     fn set_process_rows_window(&self, total_rows: usize, start: usize, rows: &[ProcessEntryVm]) {
@@ -162,117 +151,90 @@ impl ProcessesUiPort for ProcessesUiAdapter {
         self.models.columns.set_vec(defs);
     }
 
-    fn set_loading(&self, loading: bool) {
-        self.with_ui(|ui| ui.global::<MainBodyState>().set_is_loading(loading));
+    fn set_loading(&self, ui: &AppWindow, loading: bool) {
+        ui.global::<MainBodyState>().set_is_loading(loading);
     }
 
-    fn set_is_grouped(&self, is_grouped: bool) {
-        self.with_ui(|ui| {
-            ui.global::<ProcessesFeatureGlobal>()
-                .set_is_grouped(is_grouped)
-        });
+    fn set_is_grouped(&self, ui: &AppWindow, is_grouped: bool) {
+        ui.global::<ProcessesFeatureGlobal>().set_is_grouped(is_grouped);
     }
 
-    fn get_selected_pid(&self) -> i32 {
-        if let Some(ui) = self.ui.upgrade() {
-            return ui.global::<ProcessesFeatureGlobal>().get_selected_pid();
-        }
-        -1
+    #[default(-1)]
+    fn get_selected_pid(&self, ui: &AppWindow) -> i32 {
+        ui.global::<ProcessesFeatureGlobal>().get_selected_pid()
     }
 
-    fn set_selected_pid(&self, pid: i32) {
-        self.with_ui(|ui| ui.global::<ProcessesFeatureGlobal>().set_selected_pid(pid));
+    fn set_selected_pid(&self, ui: &AppWindow, pid: i32) {
+        ui.global::<ProcessesFeatureGlobal>().set_selected_pid(pid);
     }
 
-    fn set_selected_name(&self, name: SharedString) {
-        self.with_ui(|ui| {
-            ui.global::<ProcessesFeatureGlobal>()
-                .set_selected_name(name)
-        });
+    fn set_selected_name(&self, ui: &AppWindow, name: SharedString) {
+        ui.global::<ProcessesFeatureGlobal>().set_selected_name(name);
     }
 
-    fn set_sort_state(&self, field: SharedString, descending: bool) {
-        self.with_ui(|ui| {
-            let bridge = ui.global::<ProcessesFeatureGlobal>();
-            bridge.set_current_sort(field);
-            bridge.set_current_sort_descending(descending);
-        });
+    fn set_sort_state(&self, ui: &AppWindow, field: SharedString, descending: bool) {
+        let bridge = ui.global::<ProcessesFeatureGlobal>();
+        bridge.set_current_sort(field);
+        bridge.set_current_sort_descending(descending);
     }
 
-    fn set_total_processes_count(&self, count: usize) {
-        self.with_ui(|ui| {
-            let bridge = ui.global::<ProcessesFeatureGlobal>();
-            bridge.set_total_processes_count(count as i32);
-        })
+    fn set_total_processes_count(&self, ui: &AppWindow, count: usize) {
+        let bridge = ui.global::<ProcessesFeatureGlobal>();
+        bridge.set_total_processes_count(count as i32);
     }
 }
 
+#[ui_adapter]
 impl ProcessesUiBindings for ProcessesUiAdapter {
-    fn on_sort_by<F>(&self, handler: F)
+    fn on_sort_by<F>(&self, ui: &AppWindow, handler: F)
     where
         F: Fn(SharedString) + 'static,
     {
-        self.with_ui(move |ui| {
-            ui.global::<ProcessesFeatureGlobal>()
-                .on_sort_by(handler);
-        });
+        ui.global::<ProcessesFeatureGlobal>().on_sort_by(handler);
     }
 
-    fn on_toggle_expand_group<F>(&self, handler: F)
+    fn on_toggle_expand_group<F>(&self, ui: &AppWindow, handler: F)
     where
         F: Fn(SharedString) + 'static,
     {
-        self.with_ui(move |ui| {
-            ui.global::<ProcessesFeatureGlobal>()
-                .on_toggle_expand_group(handler);
-        });
+        ui.global::<ProcessesFeatureGlobal>()
+            .on_toggle_expand_group(handler);
     }
 
-    fn on_terminate<F>(&self, handler: F)
+    fn on_terminate<F>(&self, ui: &AppWindow, handler: F)
     where
         F: Fn() + 'static,
     {
-        self.with_ui(move |ui| ui.global::<ProcessesFeatureGlobal>().on_terminate(handler));
+        ui.global::<ProcessesFeatureGlobal>().on_terminate(handler);
     }
 
-    fn on_select_process<F>(&self, handler: F)
+    fn on_select_process<F>(&self, ui: &AppWindow, handler: F)
     where
         F: Fn(i32, i32) + 'static,
     {
-        self.with_ui(move |ui| {
-            ui.global::<ProcessesFeatureGlobal>()
-                .on_select_process(handler);
-        });
+        ui.global::<ProcessesFeatureGlobal>().on_select_process(handler);
     }
 
-    fn on_rows_viewport_changed<F>(&self, handler: F)
+    fn on_rows_viewport_changed<F>(&self, ui: &AppWindow, handler: F)
     where
         F: Fn(i32, i32) + 'static,
     {
-        self.with_ui(move |ui| {
-            ui.global::<ProcessesFeatureGlobal>()
-                .on_rows_viewport_changed(handler);
-        });
+        ui.global::<ProcessesFeatureGlobal>()
+            .on_rows_viewport_changed(handler);
     }
 
-    fn on_column_resized<F>(&self, handler: F)
+    fn on_column_resized<F>(&self, ui: &AppWindow, handler: F)
     where
         F: Fn(SharedString, f32) + 'static,
     {
-        self.with_ui(move |ui| {
-            ui.global::<ProcessesFeatureGlobal>()
-                .on_column_resized(handler);
-        });
+        ui.global::<ProcessesFeatureGlobal>().on_column_resized(handler);
     }
 
-    fn on_group_clicked<F>(&self, handler: F)
+    fn on_group_clicked<F>(&self, ui: &AppWindow, handler: F)
     where
         F: Fn() + 'static,
     {
-        self.with_ui(move |ui| {
-            ui.global::<ProcessesFeatureGlobal>()
-                .on_group_clicked(handler);
-        });
+        ui.global::<ProcessesFeatureGlobal>().on_group_clicked(handler);
     }
 }
 

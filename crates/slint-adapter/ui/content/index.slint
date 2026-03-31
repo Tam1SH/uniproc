@@ -10,7 +10,7 @@ import { StatisticsPage } from "../pages/dashboard/subpages/statistics/index.sli
 import { StartupAppsPage } from "../pages/dashboard/subpages/startup-apps/index.slint";
 import { UsersPage } from "../pages/dashboard/subpages/users/index.slint";
 import { ServicesPage } from "../pages/dashboard/subpages/services/index.slint";
-
+import { MainBodyState, PageStatus } from "globals.slint";
 component PageHeader inherits Rectangle {
     in property <string> title;
 
@@ -30,7 +30,6 @@ component PageHeader inherits Rectangle {
 
 export component Content inherits Rectangle {
     background: Theme.colorNeutralBackgroundAlpha;
-
     border-width: 1px;
     border-color: Theme.colorNeutralStrokeAlpha;
     border-top-left-radius: Theme.border_radius_m;
@@ -38,8 +37,7 @@ export component Content inherits Rectangle {
 
     private property <int> current-page-id: Navigation.active_tab_index;
     private property <string> current-page-title: Dashboard.pages[root.current-page-id].text;
-    private property <bool> is-entering: false;
-
+    private property <bool> is-ready: MainBodyState.status == PageStatus.ready;
 
     init => {
         Navigation.request-tab-switch(0);
@@ -57,31 +55,52 @@ export component Content inherits Rectangle {
             vertical-stretch: 1;
             clip: true;
 
+            if (MainBodyState.status == PageStatus.loading) : Rectangle {
+                Text {
+                    text: "Loading...";
+                    color: Theme.text_secondary;
+                    font-size: Theme.font_size_body;
+                }
+            }
+
+            if (MainBodyState.status == PageStatus.error) : Rectangle {
+                VerticalLayout {
+                    alignment: center;
+                    spacing: 12px;
+                    Text { text: "⚠️"; font-size: 24px; horizontal-alignment: center; }
+                    Text {
+                        text: MainBodyState.error-msg;
+                        color: Theme.text_secondary;
+                        horizontal-alignment: center;
+                        font-size: Theme.font_size_body;
+                    }
+                }
+            }
+
             content-layer := Rectangle {
                 width: 100%;
                 height: 100%;
-
                 opacity: 0;
                 y: 30px;
+                visible: root.is-ready;
 
-            states [
-                visible when Navigation.content-visible : {
-                    opacity: 1;
-                    y: 0px;
-
-                    in {
-                        animate y {
-                            duration: 400ms;
-                            easing: cubic-bezier(0.1, 0.9, 0.2, 1.0);
+                states [
+                    visible when Navigation.content-visible && root.is-ready : {
+                        opacity: 1;
+                        y: 0px;
+                        in {
+                            animate y {
+                                duration: 400ms;
+                                easing: cubic-bezier(0.1, 0.9, 0.2, 1.0);
+                            }
+                            animate opacity { duration: 250ms; }
+                        }
+                        out {
+                            animate opacity { duration: 150ms; easing: ease-in-out; }
+                            animate y { duration: 0ms; delay: 150ms; }
                         }
                     }
-
-                    out {
-                        animate opacity { duration: 150ms; easing: ease-in-out; }
-                        animate y { duration: 0ms; delay: 150ms; }
-                    }
-                }
-            ]
+                ]
 
                 if (root.current-page-id == 0): ProcessesPageBody { width: 100%; height: 100%; }
                 if (root.current-page-id == 1): PerformancePage { width: 100%; height: 100%; }

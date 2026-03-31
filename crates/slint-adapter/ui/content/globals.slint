@@ -1,3 +1,13 @@
+
+export enum PageStatus {
+    inactive,
+    loading,
+    ready,
+    error
+}
+
 export global MainBodyState {
-    in property <bool> is-loading: true;
+    in-out property <bool> is-loading: true;
+    in-out property <PageStatus> status: PageStatus.loading;
+    in-out property <string> error-msg: "Unknown error occurred";
 }

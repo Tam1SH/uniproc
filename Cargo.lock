@@ -5498,6 +5498,7 @@ dependencies = [
  "app-table",
  "cfg-if",
  "i-slint-backend-winit",
+ "macros",
  "raw-window-handle",
  "slint",
  "slint-build",

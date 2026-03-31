@@ -1,23 +1,20 @@
 use crate::{AppWindow, Theme};
 use app_contracts::features::cosmetics::{AccentColor, CosmeticsPort};
+use macros::ui_adapter;
 use slint::ComponentHandle;
+
 #[derive(Clone)]
 pub struct CosmeticsAdapter {
     ui: slint::Weak<AppWindow>,
 }
+
 impl CosmeticsAdapter {
     pub fn new(ui: slint::Weak<AppWindow>) -> Self {
         Self { ui }
     }
-    fn with_ui<F>(&self, f: F)
-    where
-        F: FnOnce(&AppWindow),
-    {
-        if let Some(ui) = self.ui.upgrade() {
-            f(&ui);
-        }
-    }
 }
+
+#[ui_adapter]
 impl CosmeticsPort for CosmeticsAdapter {
     fn get_system_accent_color(&self) -> Option<AccentColor> {
         #[cfg(target_os = "windows")]
@@ -37,17 +34,17 @@ impl CosmeticsPort for CosmeticsAdapter {
             None
         }
     }
-    fn set_main_window_accent(&self, accent: AccentColor) {
-        self.with_ui(|ui| {
-            ui.global::<Theme>().set_accent(slint::Color::from_argb_u8(
-                accent.a, accent.r, accent.g, accent.b,
-            ));
-        });
+
+    fn set_main_window_accent(&self, ui: &AppWindow, accent: AccentColor) {
+        ui.global::<Theme>().set_accent(slint::Color::from_argb_u8(
+            accent.a, accent.r, accent.g, accent.b,
+        ));
     }
-    fn apply_main_window_effects(&self) {
+
+    fn apply_main_window_effects(&self, ui: &AppWindow) {
         #[cfg(target_os = "windows")]
         {
-            let ui_weak = self.ui.clone();
+            let ui_weak = ui.as_weak();
             let _ = slint::spawn_local(async move {
                 if let Some(ui) = ui_weak.upgrade() {
                     windows::apply_native_win11_style(ui.window(), windows::WindowTexture::Mica)
@@ -57,6 +54,7 @@ impl CosmeticsPort for CosmeticsAdapter {
         }
     }
 }
+
 #[cfg(target_os = "windows")]
 mod windows {
     #[allow(dead_code)]
@@ -66,6 +64,7 @@ mod windows {
         Acrylic,
         None,
     }
+
     pub(crate) async fn apply_native_win11_style(
         slint_window: &slint::Window,
         texture: WindowTexture,
@@ -80,9 +79,11 @@ mod windows {
             DwmSetWindowAttribute,
         };
         use windows::Win32::UI::Controls::MARGINS;
+
         if slint_window.winit_window().await.is_err() {
             return;
         }
+
         slint_window.with_winit_window(|winit_window| {
             let hwnd = HWND({
                 let handle = match winit_window.window_handle() {

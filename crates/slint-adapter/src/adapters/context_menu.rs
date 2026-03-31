@@ -1,6 +1,7 @@
 use crate::{AppWindow, ContextMenuProxy, ProcessContextMenu, ProcessesFeatureGlobal, Theme};
 use app_contracts::features::context_menu::{ContextMenuUiBindings, ContextMenuUiPort};
 use app_contracts::features::cosmetics::AccentColor;
+use macros::ui_adapter;
 use slint::ComponentHandle;
 use std::rc::Rc;
 
@@ -19,26 +20,16 @@ impl ContextMenuUiAdapter {
             menu: Rc::new(menu),
         })
     }
-
-    fn with_ui<F>(&self, f: F)
-    where
-        F: FnOnce(&AppWindow),
-    {
-        if let Some(ui) = self.ui.upgrade() {
-            f(&ui);
-        }
-    }
 }
 
+#[ui_adapter]
 impl ContextMenuUiPort for ContextMenuUiAdapter {
-    fn set_menu_open(&self, is_open: bool) {
-        self.with_ui(|ui| ui.global::<ContextMenuProxy>().set_is_open(is_open));
+    fn set_menu_open(&self, ui: &AppWindow, is_open: bool) {
+        ui.global::<ContextMenuProxy>().set_is_open(is_open);
     }
 
-    fn invoke_terminate_selected(&self) {
-        self.with_ui(|ui| {
-            ui.global::<ProcessesFeatureGlobal>().invoke_terminate();
-        });
+    fn invoke_terminate_selected(&self, ui: &AppWindow) {
+        ui.global::<ProcessesFeatureGlobal>().invoke_terminate();
     }
 
     fn on_action<F>(&self, handler: F)
@@ -50,33 +41,31 @@ impl ContextMenuUiPort for ContextMenuUiAdapter {
             .on_action(move |x| handler(x.to_string()));
     }
 
-    fn show_menu(&self, x: f32, y: f32, reveal_delay_ms: u64) {
-        self.with_ui(|ui| {
-            if self.menu.window().is_visible() {
-                let _ = self.menu.hide();
-            }
+    fn show_menu(&self, ui: &AppWindow, x: f32, y: f32, reveal_delay_ms: u64) {
+        if self.menu.window().is_visible() {
+            let _ = self.menu.hide();
+        }
 
-            let main_hwnd = platform::get_window_hwnd(ui.window());
-            self.menu.as_ref().set_show_progress(0.0);
+        let main_hwnd = platform::get_window_hwnd(ui.window());
+        self.menu.as_ref().set_show_progress(0.0);
 
-            let window_pos = ui.window().position();
-            let screen_pos =
-                slint::PhysicalPosition::new(window_pos.x + x as i32, window_pos.y + y as i32);
-            self.menu.as_ref().window().set_position(screen_pos);
+        let window_pos = ui.window().position();
+        let screen_pos =
+            slint::PhysicalPosition::new(window_pos.x + x as i32, window_pos.y + y as i32);
+        self.menu.as_ref().window().set_position(screen_pos);
 
-            platform::configure_window_styles(self.menu.as_ref(), main_hwnd);
-            let _ = self.menu.as_ref().show();
+        platform::configure_window_styles(self.menu.as_ref(), main_hwnd);
+        let _ = self.menu.as_ref().show();
 
-            let menu_weak = self.menu.as_ref().as_weak();
-            slint::Timer::single_shot(
-                std::time::Duration::from_millis(reveal_delay_ms.max(1)),
-                move || {
-                    if let Some(m) = menu_weak.upgrade() {
-                        m.set_show_progress(1.0);
-                    }
-                },
-            );
-        });
+        let menu_weak = self.menu.as_ref().as_weak();
+        slint::Timer::single_shot(
+            std::time::Duration::from_millis(reveal_delay_ms.max(1)),
+            move || {
+                if let Some(m) = menu_weak.upgrade() {
+                    m.set_show_progress(1.0);
+                }
+            },
+        );
     }
 
     fn hide_menu(&self) {
@@ -93,25 +82,21 @@ impl ContextMenuUiPort for ContextMenuUiAdapter {
     }
 }
 
+#[ui_adapter]
 impl ContextMenuUiBindings for ContextMenuUiAdapter {
-    fn on_show_context_menu<F>(&self, handler: F)
+    fn on_show_context_menu<F>(&self, ui: &AppWindow, handler: F)
     where
         F: Fn(f32, f32) + 'static,
     {
-        self.with_ui(move |ui| {
-            ui.global::<ContextMenuProxy>()
-                .on_show_context_menu(handler);
-        });
+        ui.global::<ContextMenuProxy>()
+            .on_show_context_menu(handler);
     }
 
-    fn on_close_menu<F>(&self, handler: F)
+    fn on_close_menu<F>(&self, ui: &AppWindow, handler: F)
     where
         F: Fn() + 'static,
     {
-        self.with_ui(move |ui| {
-            ui.global::<ContextMenuProxy>()
-                .on_close_menu(handler);
-        });
+        ui.global::<ContextMenuProxy>().on_close_menu(handler);
     }
 }
 

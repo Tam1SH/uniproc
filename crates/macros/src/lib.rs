@@ -1,8 +1,72 @@
 use proc_macro::TokenStream;
 use proc_macro2::Ident;
 use quote::{format_ident, quote};
-use syn::{Attribute, Data, DataStruct, Expr, Fields, Lit, Meta};
-use syn::{DeriveInput, parse_macro_input};
+use syn::{parse_macro_input, DeriveInput};
+use syn::{
+    parse_quote, Attribute, Data, DataStruct, Expr, Fields, FnArg, ImplItem, ItemImpl, Lit, Meta,
+    Pat, ReturnType,
+};
+
+#[proc_macro_attribute]
+pub fn ui_adapter(_args: TokenStream, input: TokenStream) -> TokenStream {
+    let mut item_impl = parse_macro_input!(input as ItemImpl);
+
+    for item in &mut item_impl.items {
+        if let ImplItem::Fn(method) = item {
+            let mut ui_arg_idx = None;
+
+            for (i, arg) in method.sig.inputs.iter().enumerate() {
+                if let FnArg::Typed(pat_type) = arg {
+                    if let Pat::Ident(ref id) = *pat_type.pat {
+                        if id.ident == "ui" {
+                            ui_arg_idx = Some(i);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if let Some(idx) = ui_arg_idx {
+                let mut inputs = syn::punctuated::Punctuated::<syn::FnArg, syn::token::Comma>::new();
+                for (i, arg) in method.sig.inputs.clone().into_iter().enumerate() {
+                    if i != idx {
+                        inputs.push(arg);
+                    }
+                }
+                method.sig.inputs = inputs;
+
+                let mut default_value = quote! { Default::default() };
+
+                if let Some(pos) = method
+                    .attrs
+                    .iter()
+                    .position(|attr| attr.path().is_ident("default"))
+                {
+                    let attr = &method.attrs[pos];
+                    if let Ok(val) = attr.parse_args::<syn::Expr>() {
+                        default_value = quote! { #val };
+                    }
+                    method.attrs.remove(pos);
+                }
+
+                let sig = &method.sig;
+                let return_stmt = match &sig.output {
+                    ReturnType::Default => quote! { return },
+                    ReturnType::Type(_, _) => quote! { return #default_value },
+                };
+
+                let block = &method.block;
+
+                method.block = parse_quote! ({
+                    let Some(ui) = self.ui.upgrade() else { #return_stmt };
+                    #block
+                });
+            }
+        }
+    }
+
+    TokenStream::from(quote!(#item_impl))
+}
 
 #[proc_macro_attribute]
 pub fn feature_settings(args: TokenStream, input: TokenStream) -> TokenStream {
@@ -386,10 +450,11 @@ fn parse_prefix_arg(args: &syn::punctuated::Punctuated<Meta, syn::Token![,]>) ->
     for meta in args {
         if let Meta::NameValue(nv) = meta
             && nv.path.is_ident("prefix")
-                && let Expr::Lit(lit) = &nv.value
-                    && let Lit::Str(s) = &lit.lit {
-                        return Some(s.value());
-                    }
+            && let Expr::Lit(lit) = &nv.value
+            && let Lit::Str(s) = &lit.lit
+        {
+            return Some(s.value());
+        }
     }
     None
 }
@@ -408,26 +473,26 @@ fn parse_setting_attr(attr: &Attribute, field_name: &Ident) -> (String, Option<E
                 Meta::NameValue(nv) => {
                     if nv.path.is_ident("key") {
                         if let Expr::Lit(lit) = &nv.value
-                            && let Lit::Str(s) = &lit.lit {
-                                explicit_key = Some(s.value());
-                            }
+                            && let Lit::Str(s) = &lit.lit
+                        {
+                            explicit_key = Some(s.value());
+                        }
                     } else if nv.path.is_ident("default") {
                         default = Some(nv.value.clone());
                         if let Expr::Macro(mac) = &nv.value
                             && mac.mac.path.segments.last().map(|s| s.ident.to_string())
                                 == Some("json".to_string())
-                            {
-                                is_json = true;
-                            }
+                        {
+                            is_json = true;
+                        }
                     } else if nv.path.is_ident("default_json") {
                         default = Some(nv.value.clone());
                         is_json = true;
                     }
                 }
-                Meta::Path(p)
-                    if p.is_ident("nested") => {
-                        is_nested = true;
-                    }
+                Meta::Path(p) if p.is_ident("nested") => {
+                    is_nested = true;
+                }
                 _ => {}
             }
         }
