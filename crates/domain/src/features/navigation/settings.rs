@@ -7,4 +7,7 @@ pub struct NavigationSettings {
 
     #[setting(default = 20u64)]
     pub switch_show_delay_ms: u64,
+
+    #[setting(default = 260u64)]
+    pub side_bar_width: u64,
 }

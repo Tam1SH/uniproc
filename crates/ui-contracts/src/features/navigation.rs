@@ -34,10 +34,14 @@ pub trait NavigationUiPort: 'static {
     fn set_active_tab_index(&self, index: i32);
     fn set_switch_transition(&self, from_index: i32, to_index: i32, progress: f32);
     fn set_switch_progress(&self, progress: f32);
+    fn set_side_bar_width(&self, width: u64);
 }
 
 pub trait NavigationUiBindings: 'static {
     fn on_request_tab_switch<F>(&self, handler: F)
     where
         F: Fn(i32) + 'static;
+    fn on_side_bar_width_changed<F>(&self, handler: F)
+    where
+        F: Fn(u64) + 'static;
 }

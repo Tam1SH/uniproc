@@ -12,8 +12,10 @@ export global Navigation {
     in-out property <int> switch_to_index: -1;
     in-out property <float> switch_progress: 1.0;
 
+    in-out property <length> side_bar_width: 260px;
     in-out property <bool> content_visible: true;
 
+    callback side_bar_width_changed(length);
     callback request_tab_switch(int);
     callback request_tab_close(int);
     callback request_tab_add();

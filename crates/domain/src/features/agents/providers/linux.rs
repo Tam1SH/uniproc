@@ -1,4 +1,3 @@
-use app_core::app::Window;
 use crate::agents_impl::actor::{GenericAgentActor, Init, Ping};
 use crate::agents_impl::backend::AgentBackend;
 use crate::features::agents::settings::AgentSettings;
@@ -6,11 +5,12 @@ use app_contracts::features::agents::{RemoteScanResult, ScanTick};
 use app_contracts::features::environments::{
     AgentClient, AgentConnectionState, WslAgentRuntimeEvent,
 };
+use app_core::app::Window;
 use app_core::{
+    SharedState,
     actor::{addr::Addr, event_bus::EVENT_BUS},
     app::Feature,
     reactor::Reactor,
-    SharedState,
 };
 use ogurpchik::discovery::Scope;
 use ogurpchik::high::node::Node;

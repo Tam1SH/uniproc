@@ -1,6 +1,6 @@
+use crate::SharedState;
 use crate::actor::UiThreadGuard;
 use crate::reactor::Reactor;
-use crate::SharedState;
 use slint::ComponentHandle;
 
 pub trait FromUiWeak<TWindow: ComponentHandle + 'static>: Sized {

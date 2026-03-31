@@ -77,7 +77,6 @@ export global ProcessesFeatureGlobal {
         { id: "disk", width-px: 70 },
         { id: "net", width-px: 70 },
     ];
-    callback column-resized(string, float);
 
     in property <[ProcessGroup]> process-groups: [];
     in property <[ProcessEntry]> process-rows: [
@@ -100,10 +99,13 @@ export global ProcessesFeatureGlobal {
     in property <string> selected-name;
     in property <string> current-sort;
     in property <bool> current-sort-descending;
+    in property <bool> is-grouped;
     in property <int> total-processes-count;
     callback sort-by(string);
+    callback group-clicked();
     callback toggle-expand-group(string);
     callback select-process(int, int);
     callback rows-viewport-changed(int, int);
+    callback column-resized(string, float);
     callback terminate();
 }

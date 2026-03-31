@@ -59,8 +59,7 @@ component DropdownItem inherits Rectangle {
 export component Environments inherits Rectangle {
     height: 40px;
     border-radius: 6px;
-    // background: Theme.layer_background;
-    
+    in property <bool> is-collapsed;
     touch := TouchArea {
         mouse-cursor: pointer;
         clicked => {
@@ -87,6 +86,7 @@ export component Environments inherits Rectangle {
 
             Text {
                 text: L10n.environments;
+                visible: !root.is-collapsed;
                 color: Theme.text_primary;
                 font-weight: 600;
                 font-size: Theme.font_size_body;
@@ -123,9 +123,7 @@ export component Environments inherits Rectangle {
     }
 
     dropdown := PopupWindow {
-        
         width: root.width;
-        
         Rectangle {
             border-radius: 8px;
             background: Theme.background;
@@ -153,7 +151,6 @@ export component Environments inherits Rectangle {
                             latency-ms: distro.latency-ms;
                             is-running: distro.is_running;
                             show-latency: true;
-                            
                         }
                     }
                 }

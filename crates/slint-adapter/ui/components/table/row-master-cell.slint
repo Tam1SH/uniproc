@@ -31,12 +31,11 @@ export component GenericMasterCell inherits Rectangle {
                 }
             }
         }
-
-        if (!root.has-children && root.depth > 0): Rectangle {
+        if (!root.has-children): Rectangle {
             width: 12px;
         }
 
-        if (root.icon.width > 0): VerticalLayout {
+        VerticalLayout {
             alignment: center;
             Image {
                 source: root.icon;

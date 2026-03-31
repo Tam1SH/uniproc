@@ -11,13 +11,13 @@ import { SideBar } from "features/navigation/sidebar/index.slint";
 import { ContextMenuProxy } from "features/processes/context-menu/globals.slint";
 import { ResizeHandler } from "utils/resize-area.slint";
 import { WslDistro } from "features/environments/globals.slint";
-
+import { WindowSize, WindowAdapter } from "window-adapter.slint";
 export * from "globals-export.slint";
 
 export component AppWindow inherits Window {
 
-    min-width: 800px;
-    min-height: 600px;
+    min-width: 400px;
+    min-height: 300px;
 
     no-frame: true;
     background: transparent;
@@ -25,7 +25,27 @@ export component AppWindow inherits Window {
     always-on-top: false;
     
     callback start_resize(int);
-    
+
+    changed width => {
+        WindowAdapter.window-width = root.width;
+        if (root.width < 600px) {
+            if (WindowAdapter.size != WindowSize.sm) {
+                WindowAdapter.size = WindowSize.sm;
+                WindowAdapter.size-changed(WindowSize.sm);
+            }
+        } else if (root.width < 1024px) {
+            if (WindowAdapter.size != WindowSize.md) {
+                WindowAdapter.size = WindowSize.md;
+                WindowAdapter.size-changed(WindowSize.md);
+            }
+        } else {
+            if (WindowAdapter.size != WindowSize.lg) {
+                WindowAdapter.size = WindowSize.lg;
+                WindowAdapter.size-changed(WindowSize.lg);
+            }
+        }
+    }
+
     VerticalLayout {
         padding: 0;
         spacing: 0;

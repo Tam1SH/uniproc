@@ -1,4 +1,5 @@
 use app_core::icons::Icons;
+use bon::Builder;
 use slint::Image;
 use std::cell::RefCell;
 use std::time::Duration;
@@ -17,6 +18,14 @@ thread_local! {
     static ICON_PROVIDER: IconProvider = IconProvider::new(Duration::from_secs(3600));
 }
 
+#[derive(Builder)]
+pub struct IconRequest<'a> {
+    pub path: &'a str,
+
+    #[cfg(windows)]
+    pub package_full_name: Option<&'a str>,
+}
+
 impl IconProvider {
     pub fn global<R>(f: impl FnOnce(&Self) -> R) -> R {
         ICON_PROVIDER.with(f)
@@ -24,28 +33,33 @@ impl IconProvider {
 
     fn new(ttl: Duration) -> Self {
         Self {
-            cache: RefCell::new(TtlCache::new(256)),
+            cache: RefCell::new(TtlCache::new(512)),
             default_icon: Icons::get("app"),
             ttl,
         }
     }
 
-    pub fn get_icon(&self, path: &str) -> Image {
-        if path.is_empty() {
+    pub fn get_icon(&self, req: IconRequest) -> Image {
+        if req.path.is_empty() {
             return self.default_icon.clone();
         }
 
         let mut cache = self.cache.borrow_mut();
 
-        if let Some(cached) = cache.get(path) {
+        if let Some(cached) = cache.get(req.path) {
             return cached.clone();
         }
 
         let icon = {
             #[cfg(windows)]
             {
-                crate::caches::icons::windows::extract_icon_raw(path)
-                    .unwrap_or_else(|| self.default_icon.clone())
+                let pkg_name = req.package_full_name.unwrap_or_default();
+                if !pkg_name.is_empty() {
+                    windows::extract_appx_icon(pkg_name, 16)
+                        .unwrap_or_else(|| self.default_icon.clone())
+                } else {
+                    windows::extract_icon_raw(req.path).unwrap_or_else(|| self.default_icon.clone())
+                }
             }
             #[cfg(not(windows))]
             {
@@ -53,7 +67,7 @@ impl IconProvider {
             }
         };
 
-        cache.insert(path.to_string(), icon.clone(), self.ttl);
+        cache.insert(req.path.to_string(), icon.clone(), self.ttl);
         icon
     }
 }

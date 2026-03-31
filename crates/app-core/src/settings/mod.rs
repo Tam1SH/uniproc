@@ -3,11 +3,11 @@ pub mod store;
 
 use std::sync::Arc;
 
-use crate::signal::Signal;
 use crate::SharedState;
+use crate::signal::Signal;
 pub use reactive::{ReactiveSetting, SettingSubscription};
-use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 pub use store::SettingEvent;
 pub use store::SettingOp;
 pub use store::SettingsCallback;
@@ -139,8 +139,8 @@ pub fn settings_from(shared: &SharedState) -> Arc<SettingsStore> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::Arc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
     use std::time::Duration;
     use tempfile::tempdir;
 

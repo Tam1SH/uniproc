@@ -1,15 +1,18 @@
-use app_core::app::Window;
-use app_contracts::features::window_actions::{ResizeEdge, WindowActionsPort};
+use app_contracts::features::window_actions::{
+    ResizeEdge, WindowActionsPort, WindowBreakpoint, WindowConfigChanged,
+};
+use app_core::actor::event_bus::EventBus;
 use app_core::actor::traits::{Context, Handler, Message};
+use app_core::app::Window;
 use app_core::messages;
-use slint::ComponentHandle;
 
 messages! {
     Drag,
     Close,
     Minimize,
     Maximize,
-    Resize(ResizeEdge)
+    Resize(ResizeEdge),
+    BreakpointChanged(WindowBreakpoint, u64)
 }
 
 pub struct WindowActor<P> {
@@ -63,5 +66,18 @@ where
 {
     fn handle(&mut self, msg: Resize, _ctx: &Context<Self, TWindow>) {
         self.port.resize_window(msg.0);
+    }
+}
+
+impl<TWindow, P> Handler<BreakpointChanged, TWindow> for WindowActor<P>
+where
+    TWindow: Window,
+    P: WindowActionsPort,
+{
+    fn handle(&mut self, msg: BreakpointChanged, _ctx: &Context<Self, TWindow>) {
+        EventBus::publish(WindowConfigChanged {
+            breakpoint: msg.0,
+            width: msg.1,
+        });
     }
 }

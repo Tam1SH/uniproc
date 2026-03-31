@@ -7,9 +7,6 @@ pub struct ProcessSettings {
     #[setting(default = 1500u64)]
     scan_interval_ms: u64,
 
-    #[setting(default = true)]
-    show_icons: bool,
-
     #[setting(default = 5000u64)]
     terminate_timeout_ms: u64,
 

@@ -1,3 +1,20 @@
+use app_core::actor::traits::Message;
+use serde::{Deserialize, Serialize};
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+pub enum WindowBreakpoint {
+    Sm,
+    Md,
+    Lg,
+}
+
+impl Message for WindowConfigChanged {}
+
+#[derive(Debug, Clone)]
+pub struct WindowConfigChanged {
+    pub breakpoint: WindowBreakpoint,
+    pub width: u64,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ResizeEdge {
     North,
@@ -30,6 +47,9 @@ pub trait WindowActionsPort: Clone + 'static {
     fn on_start_resize<F>(&self, handler: F)
     where
         F: Fn(ResizeEdge) + 'static;
+    fn on_config_changed<F>(&self, handler: F)
+    where
+        F: Fn(WindowBreakpoint, u64) + 'static;
 
     fn drag_window(&self);
     fn close_window(&self);

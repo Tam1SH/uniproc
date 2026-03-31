@@ -1,8 +1,8 @@
-use app_core::app::Window;
 use super::get_icon_for_env;
 use app_contracts::features::environments::EnvironmentsUiPort;
 use app_core::SharedState;
 use app_core::app::Feature;
+use app_core::app::Window;
 use app_core::reactor::Reactor;
 use slint::ComponentHandle;
 use sysinfo::System;

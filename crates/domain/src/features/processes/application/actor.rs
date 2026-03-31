@@ -19,6 +19,7 @@ messages! {
     Select { pid: u32, idx: usize },
     TerminateSelected,
     ResizeColumn { id: String, width: f32 },
+    GroupClicked,
 }
 
 pub struct ProcessActor<P: ProcessesUiPort> {
@@ -165,5 +166,22 @@ where
 
         let widths = self.table.column_widths();
         self.ui_port.set_column_widths(widths);
+    }
+}
+impl<P, TWindow> Handler<GroupClicked, TWindow> for ProcessActor<P>
+where
+    P: ProcessesUiPort,
+    TWindow: Window,
+{
+    fn handle(&mut self, msg: GroupClicked, _ctx: &Context<Self, TWindow>) {
+        info!("clicked");
+        static mut LOL: bool = true;
+        unsafe {
+            LOL = !LOL;
+        }
+
+        unsafe {
+            self.ui_port.set_is_grouped(LOL);
+        }
     }
 }

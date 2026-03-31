@@ -1,6 +1,6 @@
-use app_core::app::Window;
 use app_core::SharedState;
 use app_core::app::Feature;
+use app_core::app::Window;
 use app_core::l10n::{L10nManager, L10nPort};
 use app_core::reactor::Reactor;
 use slint::ComponentHandle;

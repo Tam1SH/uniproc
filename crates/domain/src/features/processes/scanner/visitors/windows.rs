@@ -1,9 +1,11 @@
 use crate::features::processes::scanner::base::{
     Field, ProcessVisitor, ScanResult, VisitorContext,
 };
+use crate::processes_impl::scanner::base::DisplayNameRequest;
 use crate::processes_impl::scanner::consts::*;
 use crate::processes_impl::scanner::ctx::StatefulContext;
 use crate::processes_impl::scanner::field_value::{FieldValue, FieldValueFormat, FieldValueKind};
+use slint::SharedString;
 use std::fmt::Write;
 use std::sync::Arc;
 use uniproc_protocol::{WindowsProcessStats, WindowsReport};
@@ -18,16 +20,30 @@ impl ProcessVisitor for WindowsProcessStats {
         self.pid
     }
 
-    fn name(&self, ctx: &dyn VisitorContext) -> slint::SharedString {
-        ctx.intern_name(self.pid(), &self.name)
+    fn name(&self, ctx: &dyn VisitorContext) -> SharedString {
+        ctx.resolve_display_name(
+            DisplayNameRequest::builder()
+                .pid(self.pid)
+                .process_name(&self.name)
+                .package_full_name(&self.package_full_name)
+                .build(),
+        )
+    }
+
+    fn package_name(&self, ctx: &dyn VisitorContext) -> Option<SharedString> {
+        if self.package_full_name.is_empty() {
+            return None;
+        }
+
+        Some(ctx.intern(&*self.package_full_name))
     }
 
     fn parent_pid(&self) -> u32 {
         self.parent_pid
     }
 
-    fn exe_path(&self) -> Option<&str> {
-        None
+    fn exe_path(&self, ctx: &dyn VisitorContext) -> SharedString {
+        ctx.intern(&self.cmdline[0])
     }
 
     fn visit(&self, ctx: &dyn VisitorContext, visitor: &mut dyn FnMut(Field)) {

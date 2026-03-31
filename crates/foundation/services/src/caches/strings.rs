@@ -1,43 +1,44 @@
 use slint::SharedString;
-use std::cell::RefCell;
+use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
 use ttl_cache::TtlCache;
 
 pub struct StringsProvider {
-    cache: RefCell<TtlCache<String, SharedString>>,
+    cache: Mutex<TtlCache<String, SharedString>>,
     ttl: Duration,
 }
 
-thread_local! {
-    static NAME_PROVIDER: StringsProvider = StringsProvider::new(Duration::from_secs(60));
-}
-
 impl StringsProvider {
-    pub fn global<R>(f: impl FnOnce(&Self) -> R) -> R {
-        NAME_PROVIDER.with(f)
+    pub fn global() -> &'static Self {
+        static INSTANCE: OnceLock<StringsProvider> = OnceLock::new();
+        INSTANCE.get_or_init(|| Self::new(Duration::from_secs(1200), 1500))
     }
 
-    fn new(ttl: Duration) -> Self {
+    fn new(ttl: Duration, capacity: usize) -> Self {
         Self {
-            cache: RefCell::new(TtlCache::new(1000)),
+            cache: Mutex::new(TtlCache::new(capacity)),
             ttl,
         }
     }
 
-    pub fn get_clean(&self, raw_name: &str) -> SharedString {
-        let clean = raw_name
-            .strip_suffix(".exe")
-            .or_else(|| raw_name.strip_suffix(".EXE"))
-            .unwrap_or(raw_name);
+    pub fn get(&self, s: &str) -> SharedString {
+        let mut cache = self.cache.lock().unwrap();
 
-        let mut cache = self.cache.borrow_mut();
-
-        if let Some(cached) = cache.get(clean) {
+        if let Some(cached) = cache.get(s) {
             return cached.clone();
         }
 
-        let shared = SharedString::from(clean);
-        cache.insert(clean.to_string(), shared.clone(), self.ttl);
+        let shared = SharedString::from(s);
+        cache.insert(s.to_string(), shared.clone(), self.ttl);
         shared
+    }
+
+    pub fn get_stripped(&self, raw: &str) -> SharedString {
+        let clean = match raw.rfind('.') {
+            Some(idx) if idx > 0 => &raw[..idx],
+            _ => raw,
+        };
+
+        self.get(clean)
     }
 }

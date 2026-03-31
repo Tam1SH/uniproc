@@ -1,8 +1,8 @@
+use crate::actor::UiThreadGuard;
 use crate::actor::envelope::{Envelope, MessageEnvelope};
 use crate::actor::traits::{Context, Handler, Message};
-use crate::actor::UiThreadGuard;
 use crate::app::Window;
-use std::any::{type_name, Any};
+use std::any::{Any, type_name};
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, VecDeque};
 use std::rc::Rc;

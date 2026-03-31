@@ -1,5 +1,5 @@
 use crate::ratelimit;
-use anyhow::{anyhow, bail, Context};
+use anyhow::{Context, anyhow, bail};
 use serde_json::{Map, Value};
 use std::fmt::Debug;
 use std::path::{Path, PathBuf};
@@ -47,7 +47,6 @@ pub struct SettingsStore {
     subscriptions: Arc<RwLock<Vec<SubscriptionEntry>>>,
     next_subscription_id: AtomicU64,
     save_tx: mpsc::Sender<()>,
-    last_write_mtime: Arc<RwLock<Option<std::time::SystemTime>>>,
 }
 
 impl Debug for SettingsStore {
@@ -415,7 +414,6 @@ impl SettingsStore {
             subscriptions,
             next_subscription_id: AtomicU64::new(1),
             save_tx,
-            last_write_mtime,
         }
     }
 

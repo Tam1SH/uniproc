@@ -1,9 +1,11 @@
 use crate::features::processes::scanner::base::{
     Field, ProcessVisitor, ScanResult, VisitorContext,
 };
+use crate::processes_impl::scanner::base::DisplayNameRequest;
 use crate::processes_impl::scanner::consts::*;
 use crate::processes_impl::scanner::ctx::StatefulContext;
 use crate::processes_impl::scanner::field_value::FieldValueKind;
+use slint::SharedString;
 use std::sync::Arc;
 use uniproc_protocol::{LinuxMachineStats, LinuxProcessStats as WslProcessStat};
 
@@ -18,16 +20,39 @@ impl ProcessVisitor for WslProcessStat {
         self.global_pid
     }
 
-    fn name(&self, ctx: &dyn VisitorContext) -> slint::SharedString {
-        ctx.intern_name(self.pid(), &self.name)
+    fn name(&self, ctx: &dyn VisitorContext) -> SharedString {
+        let len = self
+            .name
+            .iter()
+            .position(|&b| b == 0)
+            .unwrap_or(self.name.len());
+        let s = std::str::from_utf8(&self.name[..len]).unwrap_or("<invalid>");
+
+        ctx.resolve_display_name(
+            DisplayNameRequest::builder()
+                .pid(self.local_pid)
+                .process_name(s)
+                .build(),
+        )
+    }
+
+    fn package_name(&self, ctx: &dyn VisitorContext) -> Option<SharedString> {
+        None
     }
 
     fn parent_pid(&self) -> u32 {
         0
     }
 
-    fn exe_path(&self) -> Option<&str> {
-        std::str::from_utf8(&self.name).ok()
+    fn exe_path(&self, ctx: &dyn VisitorContext) -> SharedString {
+        let len = self
+            .name
+            .iter()
+            .position(|&b| b == 0)
+            .unwrap_or(self.name.len());
+        let s = std::str::from_utf8(&self.name[..len]).unwrap_or("<invalid>");
+
+        ctx.intern(s)
     }
 
     fn visit(&self, ctx: &dyn VisitorContext, visitor: &mut dyn FnMut(Field)) {

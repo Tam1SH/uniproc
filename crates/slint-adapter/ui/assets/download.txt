@@ -1,1 +1,3 @@
 apps-list:https://api.iconify.design/fluent-color:apps-list-24.svg
+group-list-filled:https://api.iconify.design/fluent:tab-group-24-filled.svg
+group-list-regular:https://api.iconify.design/fluent:tab-group-24-regular.svg

@@ -2,15 +2,18 @@ import { TableColDef } from "types.slint";
 import { SortArrow } from "sort-arrow.slint";
 import { MetricSplitBar } from "row-cell.slint";
 import { Theme } from "theme.slint";
-
+import { Icons } from "icons.slint";
 export component TableHeaderCell inherits Rectangle {
     in property <TableColDef> def;
     in property <bool> is-sorted;
     in property <bool> sort-descending;
+    in property <bool> is-first: false;
     in property <bool> is-text: false;
     in property <bool> is-metric: false;
     in property <bool> is-custom: false;
+    in property <bool> is-grouped: false;
     callback clicked();
+    callback group-clicked();
 
     TouchArea {
         mouse-cursor: pointer;
@@ -19,8 +22,46 @@ export component TableHeaderCell inherits Rectangle {
         }
     }
 
-    if (root.is-sorted): HorizontalLayout {
+    if (root.is-first): VerticalLayout {
+        x: parent.width - self.width - 8px;
+        width: 18px;
+        height: parent.height;
+
+        padding-top: 8px;
+        padding-bottom: 8px;
+        alignment: space-between;
+
+        HorizontalLayout {
+            alignment: center;
+            if (root.is-sorted): SortArrow {
+                descending: root.sort-descending;
+            }
+        }
+
+        Rectangle {
+            width: 16px;
+            height: 16px;
+
+            Image {
+                source: root.is-grouped ? Icons.group-list-filled : Icons.group-list-regular;
+                colorize: root.is-grouped ? Theme.accent : Theme.text_secondary;
+
+                width: 100%;
+                height: 100%;
+            }
+
+            TouchArea {
+                mouse-cursor: pointer;
+                clicked => {
+                    root.group-clicked();
+                }
+            }
+        }
+    }
+
+    if (!root.is-first && root.is-sorted): HorizontalLayout {
         padding: 8px;
+        alignment: start;
         SortArrow {
             descending: root.sort-descending;
         }
@@ -29,8 +70,9 @@ export component TableHeaderCell inherits Rectangle {
     if (!root.is-custom && root.is-text): HorizontalLayout {
         alignment: start;
         VerticalLayout {
-            alignment: center;
+            alignment: root.is-first ? end : center;
             padding-left: 12px;
+            padding-bottom: 12px;
             Text {
                 text: def.label;
                 color: Theme.text_primary;

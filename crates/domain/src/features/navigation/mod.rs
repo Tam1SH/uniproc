@@ -2,14 +2,14 @@ mod settings;
 
 use crate::features::navigation::settings::NavigationSettings;
 use app_contracts::features::navigation::{
-    tab_name_by_index, NavigationUiBindings, NavigationUiPort, PageEntryDto, TabChanged,
+    NavigationUiBindings, NavigationUiPort, PageEntryDto, TabChanged, tab_name_by_index,
 };
+use app_core::SharedState;
 use app_core::actor::event_bus::EventBus;
 use app_core::app::Feature;
 use app_core::app::Window;
 use app_core::reactor::Reactor;
 use app_core::settings::{FeatureSettings, SettingsScope};
-use app_core::SharedState;
 use std::cell::Cell;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
@@ -41,7 +41,11 @@ fn animate_switch_progress<P>(
         let elapsed = started_at.elapsed().as_secs_f32();
         let total = duration.as_secs_f32().max(0.001);
         let t = (elapsed / total).clamp(0.0, 1.0);
-        let eased = t * t * (3.0 - 2.0 * t);
+        let eased = if t < 0.5 {
+            8.0 * t * t * t * t
+        } else {
+            1.0 - f32::powi(-2.0 * t + 2.0, 4) / 2.0
+        };
         ui_port.set_switch_progress(eased);
 
         if t < 1.0 {
@@ -71,11 +75,18 @@ where
         shared: &SharedState,
     ) -> anyhow::Result<()> {
         let settings = NavigationSettings::new(shared)?;
+        let ui_port = (self.make_ui_port)(ui);
+
+        let side_bar_width = settings.side_bar_width();
+        ui_port.set_side_bar_width(side_bar_width.get());
+
+        ui_port.on_side_bar_width_changed(move |new_width| {
+            let _ = side_bar_width.set(new_width);
+        });
 
         let hide_delay_ms = settings.switch_hide_delay_ms();
         let show_delay_ms = settings.switch_show_delay_ms();
 
-        let ui_port = (self.make_ui_port)(ui);
         ui_port.set_pages(vec![
             PageEntryDto {
                 id: 0,
@@ -116,7 +127,7 @@ where
 
         let ui_for_switch = ui_port.clone();
         let switch_anim_token = Rc::new(Cell::new(0u64));
-        let switch_anim_duration = Duration::from_millis(320);
+        let switch_anim_duration = Duration::from_millis(600);
         ui_port.on_request_tab_switch(move |new_index| {
             let event = TabChanged {
                 name: tab_name_by_index(new_index).to_string(),

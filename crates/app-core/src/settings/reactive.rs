@@ -1,7 +1,7 @@
 use crate::settings::{SettingsStore, SubscriptionId, SubscriptionKind};
 use crate::signal::{Signal, SignalSubscription};
-use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 use std::fmt::Debug;
 use std::sync::Arc;
 use tracing::{error, info};

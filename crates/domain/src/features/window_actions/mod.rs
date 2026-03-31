@@ -1,13 +1,13 @@
 use app_core::app::Window;
 mod actors;
 
+use crate::features::window_actions::actors::BreakpointChanged;
 use actors::{Close, Drag, Maximize, Minimize, Resize, WindowActor};
 use app_contracts::features::window_actions::WindowActionsPort;
 use app_core::SharedState;
 use app_core::actor::addr::Addr;
 use app_core::app::Feature;
 use app_core::reactor::Reactor;
-use slint::ComponentHandle;
 
 pub struct WindowActionsFeature<F> {
     make_port: F,
@@ -33,12 +33,17 @@ where
     ) -> anyhow::Result<()> {
         let port = (self.make_port)(ui);
         let addr = Addr::new(WindowActor { port: port.clone() }, ui.as_weak());
+        let a = addr.clone();
 
         port.on_drag(addr.handler(Drag));
         port.on_close(addr.handler(Close));
         port.on_minimize(addr.handler(Minimize));
         port.on_maximize(addr.handler(Maximize));
         port.on_start_resize(move |edge| addr.send(Resize(edge)));
+
+        port.on_config_changed(move |bp, width| {
+            a.send(BreakpointChanged(bp, width));
+        });
 
         Ok(())
     }

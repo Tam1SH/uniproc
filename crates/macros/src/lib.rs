@@ -1,8 +1,8 @@
 use proc_macro::TokenStream;
 use proc_macro2::Ident;
 use quote::{format_ident, quote};
-use syn::{parse_macro_input, DeriveInput};
 use syn::{Attribute, Data, DataStruct, Expr, Fields, Lit, Meta};
+use syn::{DeriveInput, parse_macro_input};
 
 #[proc_macro_attribute]
 pub fn feature_settings(args: TokenStream, input: TokenStream) -> TokenStream {

@@ -11,11 +11,9 @@ anyhow = { workspace = true }
 app-core = { workspace = true }
 app-contracts = { workspace = true }
 app-table.workspace = true
-async-trait = { workspace = true }
 slint = { workspace = true }
-smallvec = { workspace = true }
 sysinfo = { workspace = true }
-tokio = { workspace = true }
+bon.workspace = true
 tracing = { workspace = true }
 uniproc-protocol = { workspace = true }
 foundation-services.workspace = true

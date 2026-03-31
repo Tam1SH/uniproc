@@ -32,7 +32,9 @@ pub struct ProcessNodeDto {
     pub pid: u32,
     pub name: SharedString,
     pub parent_pid: u32,
-    pub exe_path: Option<SharedString>,
+    pub exe_path: SharedString,
+    #[cfg(windows)]
+    pub package_name: Option<SharedString>,
     pub fields: Vec<ProcessFieldDto>,
 }
 
@@ -60,6 +62,7 @@ pub trait ProcessesUiPort: Debug + 'static {
     fn set_process_rows_window(&self, total_rows: usize, start: usize, rows: &[ProcessEntryVm]);
     fn set_column_defs(&self, defs: Vec<FieldDefDto>);
     fn set_loading(&self, loading: bool);
+    fn set_is_grouped(&self, is_grouped: bool);
     fn get_selected_pid(&self) -> i32;
     fn set_selected_pid(&self, pid: i32);
     fn set_selected_name(&self, name: SharedString);
@@ -91,4 +94,8 @@ pub trait ProcessesUiBindings: 'static {
     fn on_column_resized<F>(&self, handler: F)
     where
         F: Fn(SharedString, f32) + 'static;
+
+    fn on_group_clicked<F>(&self, handler: F)
+    where
+        F: Fn() + 'static;
 }

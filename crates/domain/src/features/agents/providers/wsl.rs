@@ -7,15 +7,14 @@ use app_contracts::features::environments::{
 };
 use app_core::actor::event_bus::EventBus;
 use app_core::app::Window;
-use app_core::{actor::addr::Addr, app::Feature, ratelimit, reactor::Reactor, SharedState};
+use app_core::{SharedState, actor::addr::Addr, app::Feature, ratelimit, reactor::Reactor};
 use ogurpchik::discovery::register_vm_default;
 use ogurpchik::high::node::Node;
 use ogurpchik::transport::stream::adapters::vsock::{VsockAddr, VsockTransport};
-use slint::ComponentHandle;
 use std::ops::Deref;
 use std::time::Instant;
 use tracing::{error, instrument, warn};
-use uniproc_protocol::{services, LinuxCodec, LinuxRequest, LinuxResponse};
+use uniproc_protocol::{LinuxCodec, LinuxRequest, LinuxResponse, services};
 
 pub struct WslBackend;
 

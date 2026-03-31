@@ -1,5 +1,5 @@
-use crate::{AppWindow, TitleBarActions};
-use app_contracts::features::window_actions::{ResizeEdge, WindowActionsPort};
+use crate::{AppWindow, TitleBarActions, WindowAdapter, WindowSize};
+use app_contracts::features::window_actions::{ResizeEdge, WindowActionsPort, WindowBreakpoint};
 use i_slint_backend_winit::WinitWindowAccessor;
 use slint::ComponentHandle;
 use winit::window::ResizeDirection;
@@ -72,6 +72,23 @@ impl WindowActionsPort for WindowActionsAdapter {
                 };
                 handler(edge);
             });
+        });
+    }
+
+    fn on_config_changed<F>(&self, handler: F)
+    where
+        F: Fn(WindowBreakpoint, u64) + 'static,
+    {
+        self.with_ui(|ui| {
+            let adapter = ui.global::<WindowAdapter>();
+
+            let breakpoint = match adapter.get_size() {
+                WindowSize::Sm => WindowBreakpoint::Sm,
+                WindowSize::Md => WindowBreakpoint::Md,
+                WindowSize::Lg => WindowBreakpoint::Lg,
+            };
+
+            handler(breakpoint, adapter.get_window_width() as u64);
         });
     }
 

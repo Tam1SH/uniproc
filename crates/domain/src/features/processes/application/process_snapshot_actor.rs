@@ -14,10 +14,10 @@ use app_core::actor::traits::Message;
 use app_core::actor::traits::{Context, Handler};
 use app_core::app::Window;
 use app_core::{messages, ratelimit};
-use slint::{ComponentHandle, SharedString};
+use slint::SharedString;
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
-use tracing::{info, instrument, warn, Span};
+use tracing::Span;
 
 pub struct ProcessSnapshotActor<P: ProcessesUiPort, TWindow: Window> {
     pub snapshots: HashMap<&'static str, BridgeSnapshot>,
@@ -153,6 +153,7 @@ pub fn build_snapshot(result: &dyn ScanResult) -> BridgeSnapshot {
     });
 
     let ctx = result.context();
+    ctx.tick();
     let mut processes: Vec<ProcessNodeDto> = vec![];
 
     let mut fields: Vec<ProcessFieldDto> = Vec::new();
@@ -171,8 +172,10 @@ pub fn build_snapshot(result: &dyn ScanResult) -> BridgeSnapshot {
             pid: proc.pid(),
             name: proc.name(ctx),
             parent_pid: proc.parent_pid(),
-            exe_path: proc.exe_path().map(|s| s.to_string().into()),
+            exe_path: proc.exe_path(ctx),
             fields: fields.clone(),
+            #[cfg(windows)]
+            package_name: proc.package_name(ctx),
         });
     });
 

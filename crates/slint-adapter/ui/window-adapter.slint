@@ -1,0 +1,12 @@
+export enum WindowSize {
+    sm,
+    md,
+    lg
+}
+
+export global WindowAdapter {
+    in-out property <WindowSize> size: WindowSize.md;
+    in-out property <length> window-width: 0px;
+
+    callback size-changed(WindowSize);
+}

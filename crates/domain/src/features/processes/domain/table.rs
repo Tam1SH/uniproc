@@ -95,7 +95,6 @@ impl ProcessTable {
     pub fn refresh(&mut self, metadata: &mut ProcessMetadataService) -> anyhow::Result<()> {
         let mut builder = ProcessTreeBuilder {
             metadata,
-            show_icons: self.settings.show_icons().get(),
             grouping_scratchpad: &mut self.grouping_scratchpad,
         };
         let sort_state = self.view.flow.sort.clone();
@@ -201,10 +200,6 @@ impl ProcessTable {
 
     pub fn batch(&self) -> TableBatch<'_, ProcessEntryVm> {
         self.view.rows.batch()
-    }
-
-    pub fn total_count(&self) -> usize {
-        self.view.rows.items.len()
     }
 }
 

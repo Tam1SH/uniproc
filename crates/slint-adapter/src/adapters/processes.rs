@@ -166,6 +166,13 @@ impl ProcessesUiPort for ProcessesUiAdapter {
         self.with_ui(|ui| ui.global::<MainBodyState>().set_is_loading(loading));
     }
 
+    fn set_is_grouped(&self, is_grouped: bool) {
+        self.with_ui(|ui| {
+            ui.global::<ProcessesFeatureGlobal>()
+                .set_is_grouped(is_grouped)
+        });
+    }
+
     fn get_selected_pid(&self) -> i32 {
         if let Some(ui) = self.ui.upgrade() {
             return ui.global::<ProcessesFeatureGlobal>().get_selected_pid();
@@ -255,6 +262,16 @@ impl ProcessesUiBindings for ProcessesUiAdapter {
         self.with_ui(move |ui| {
             ui.global::<ProcessesFeatureGlobal>()
                 .on_column_resized(move |start, count| handler(start, count));
+        });
+    }
+
+    fn on_group_clicked<F>(&self, handler: F)
+    where
+        F: Fn() + 'static,
+    {
+        self.with_ui(move |ui| {
+            ui.global::<ProcessesFeatureGlobal>()
+                .on_group_clicked(move || handler());
         });
     }
 }

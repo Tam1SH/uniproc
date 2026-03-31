@@ -62,7 +62,10 @@ export component ProcessViewBody inherits Rectangle {
             column-metadatas: ProcessesFeatureGlobal.column-metadatas;
             current-sort: ProcessesFeatureGlobal.current-sort;
             current-sort-descending: ProcessesFeatureGlobal.current-sort-descending;
-
+            is-grouped: ProcessesFeatureGlobal.is-grouped;
+            group-clicked => {
+                ProcessesFeatureGlobal.group-clicked();
+            }
             resized(id, width) => {
                 ProcessesFeatureGlobal.column-resized(id, width);
             }

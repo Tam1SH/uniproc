@@ -3,12 +3,14 @@ import { Theme } from "theme.slint";
 export component ResizeHandle inherits Rectangle {
 
     callback resized(length);
-
+    in property <length> visible-height;
     width: 12px;
-    z: 100;
+    z: 999;
 
     Rectangle {
         width: 2px;
+        height: root.visible-height;
+        border-radius: 1px;
         x: (parent.width - self.width) / 2;
 
         background: touch.pressed ? Theme.accent : (touch.has-hover ? Theme.layer_background : transparent);

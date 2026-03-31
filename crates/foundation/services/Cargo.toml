@@ -5,9 +5,10 @@ edition.workspace = true
 
 [dependencies]
 slint.workspace = true
+tracing.workspace = true
 ttl_cache = { workspace = true }
 app-core = { workspace = true }
-
+bon.workspace = true
 
 [target.'cfg(target_os = "windows")'.dependencies]
 windows.workspace = true

@@ -1,6 +1,7 @@
 use crate::{AppWindow, Dashboard, Navigation, PageEntry};
 use app_contracts::features::navigation::{NavigationUiBindings, NavigationUiPort, PageEntryDto};
 use app_core::icons::Icons;
+use slint::private_unstable_api::re_exports::Coord;
 use slint::{ComponentHandle, ModelRc, VecModel};
 
 #[derive(Clone)]
@@ -67,6 +68,10 @@ impl NavigationUiPort for NavigationUiAdapter {
     fn set_switch_progress(&self, progress: f32) {
         self.with_ui(|ui| ui.global::<Navigation>().set_switch_progress(progress));
     }
+
+    fn set_side_bar_width(&self, width: u64) {
+        self.with_ui(|ui| ui.global::<Navigation>().set_side_bar_width(width as Coord));
+    }
 }
 
 impl NavigationUiBindings for NavigationUiAdapter {
@@ -77,6 +82,16 @@ impl NavigationUiBindings for NavigationUiAdapter {
         self.with_ui(move |ui| {
             ui.global::<Navigation>()
                 .on_request_tab_switch(move |i| handler(i));
+        });
+    }
+
+    fn on_side_bar_width_changed<F>(&self, handler: F)
+    where
+        F: Fn(u64) + 'static,
+    {
+        self.with_ui(move |ui| {
+            ui.global::<Navigation>()
+                .on_side_bar_width_changed(move |w| handler(w as u64));
         });
     }
 }

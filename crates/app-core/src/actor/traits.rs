@@ -1,7 +1,7 @@
-use crate::actor::addr::{Addr, REGISTRY};
-use crate::actor::event_bus::subscribe::Event;
-use crate::actor::event_bus::EventBus;
 use crate::actor::UiThreadGuard;
+use crate::actor::addr::{Addr, REGISTRY};
+use crate::actor::event_bus::EventBus;
+use crate::actor::event_bus::subscribe::Event;
 use crate::app::Window;
 use crate::messages;
 

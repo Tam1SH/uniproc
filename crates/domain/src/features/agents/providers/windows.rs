@@ -7,19 +7,18 @@ use app_contracts::features::environments::{
 };
 use app_core::app::Window;
 use app_core::{
+    SharedState,
     actor::{addr::Addr, event_bus::EventBus},
     app::Feature,
     ratelimit,
     reactor::Reactor,
-    SharedState,
 };
 use ogurpchik::discovery::Scope;
 use ogurpchik::transport::stream::adapters::uds::UdsTransport;
-use slint::ComponentHandle;
 use std::ops::Deref;
 use std::time::Instant;
 use tracing::{debug, error, instrument, trace, warn};
-use uniproc_protocol::{services, WindowsCodec, WindowsRequest, WindowsResponse};
+use uniproc_protocol::{WindowsCodec, WindowsRequest, WindowsResponse, services};
 
 pub struct WindowsBackend;
 

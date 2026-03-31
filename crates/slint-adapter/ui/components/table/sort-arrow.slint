@@ -1,10 +1,17 @@
 import { Icons } from "icons.slint";
-export component SortArrow inherits Image {
+export component SortArrow inherits Rectangle {
     in property <bool> descending;
-    source: Icons.arrow-up-regular;
-    transform-rotation: descending ? -90deg : 90deg;
-    transform-origin: { x: 2.5px, y: 5px };
-    colorize: white;
+
     width: 10px;
     height: 10px;
+
+    Image {
+        source: Icons.arrow-up-regular;
+        colorize: white;
+        width: 100%;
+        height: 100%;
+
+        transform-rotation: descending ? -90deg : 90deg;
+        transform-origin: { x: 2.5px, y: 5px };
+    }
 }

@@ -40,6 +40,7 @@ export component Content inherits Rectangle {
     private property <string> current-page-title: Dashboard.pages[root.current-page-id].text;
     private property <bool> is-entering: false;
 
+
     init => {
         Navigation.request-tab-switch(0);
     }
@@ -59,17 +60,28 @@ export component Content inherits Rectangle {
             content-layer := Rectangle {
                 width: 100%;
                 height: 100%;
-                opacity: Navigation.content-visible ? 1 : 0;
-                y: Navigation.content-visible ? 0px : 30px;
 
-                animate opacity {
-                    duration: 150ms;
-                    easing: ease-in-out;
+                opacity: 0;
+                y: 30px;
+
+            states [
+                visible when Navigation.content-visible : {
+                    opacity: 1;
+                    y: 0px;
+
+                    in {
+                        animate y {
+                            duration: 400ms;
+                            easing: cubic-bezier(0.1, 0.9, 0.2, 1.0);
+                        }
+                    }
+
+                    out {
+                        animate opacity { duration: 150ms; easing: ease-in-out; }
+                        animate y { duration: 0ms; delay: 150ms; }
+                    }
                 }
-                animate y {
-                    duration: Navigation.content-visible ? 400ms : 0ms;
-                    easing: cubic-bezier(0.1, 0.9, 0.2, 1.0);
-                }
+            ]
 
                 if (root.current-page-id == 0): ProcessesPageBody { width: 100%; height: 100%; }
                 if (root.current-page-id == 1): PerformancePage { width: 100%; height: 100%; }

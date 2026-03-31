@@ -1,7 +1,7 @@
+use crate::actor::UiThreadGuard;
 use crate::actor::addr::Addr;
 use crate::actor::event_bus::subscribe::{Event, Subscriber, UntypedSubscriber};
 use crate::actor::traits::Handler;
-use crate::actor::UiThreadGuard;
 use crate::app::Window;
 use crate::settings::SubscriptionId;
 use once_cell::sync::Lazy;

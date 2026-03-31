@@ -6,12 +6,11 @@ use crate::features::context_menu::settings::ContextMenuSettings;
 use crate::features::cosmetics::accent_from;
 use actors::{ContextMenuActor, HandleAction, Hide, Show};
 use app_contracts::features::context_menu::{ContextMenuUiBindings, ContextMenuUiPort};
+use app_core::SharedState;
 use app_core::actor::addr::Addr;
 use app_core::app::Feature;
 use app_core::reactor::Reactor;
 use app_core::settings::{FeatureSettings, SettingsScope};
-use app_core::SharedState;
-use slint::ComponentHandle;
 
 pub struct ContextMenuFeature<F> {
     make_port: F,

@@ -16,7 +16,6 @@ use app_contracts::features::processes::{ProcessesUiBindings, ProcessesUiPort};
 use app_core::actor::addr::Addr;
 use app_core::actor::event_bus::EventBus;
 use app_core::SharedState;
-use slint::ComponentHandle;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
@@ -27,50 +26,12 @@ mod services;
 mod settings;
 
 pub struct ProcessFeature<F> {
-    pub show_icons: bool,
     make_ui_port: F,
 }
 
-#[derive(Clone, Copy, Debug)]
-pub struct ProcessFeatureBuilder {
-    show_icons: bool,
-}
-
 impl<F> ProcessFeature<F> {
-    pub fn new(show_icons: bool, make_ui_port: F) -> Self {
-        Self {
-            show_icons,
-            make_ui_port,
-        }
-    }
-}
-
-impl ProcessFeature<()> {
-    pub fn builder() -> ProcessFeatureBuilder {
-        ProcessFeatureBuilder { show_icons: true }
-    }
-}
-
-impl ProcessFeatureBuilder {
-    pub fn show_icons(mut self, show_icons: bool) -> Self {
-        self.show_icons = show_icons;
-        self
-    }
-
-    pub fn with_ui_port<F>(self, make_ui_port: F) -> ProcessFeature<F> {
-        ProcessFeature::new(self.show_icons, make_ui_port)
-    }
-
-    pub fn with_adapter<TWindow, TAdapter>(
-        self,
-    ) -> ProcessFeature<impl Fn(&TWindow) -> TAdapter + 'static>
-    where
-        TWindow: Window,
-        TAdapter: FromUiWeak<TWindow> + ProcessesUiPort + ProcessesUiBindings + Clone + 'static,
-    {
-        ProcessFeature::new(self.show_icons, |ui: &TWindow| {
-            TAdapter::from_ui_weak(ui.as_weak())
-        })
+    pub fn new(make_ui_port: F) -> Self {
+        Self { make_ui_port }
     }
 }
 
@@ -160,4 +121,7 @@ where
             count: count.max(0) as usize,
         })
     });
+
+    let a = addr.clone();
+    ui_port.on_group_clicked(move || a.send(GroupClicked));
 }

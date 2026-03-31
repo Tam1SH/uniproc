@@ -8,8 +8,10 @@ export component TableHeader inherits Rectangle {
     in property <[TableColMetadata]> column-metadatas;
     in property <string> current-sort;
     in property <bool> current-sort-descending;
+    in property <bool> is-grouped;
     callback resized(string, float);
     callback sort-by(string);
+    callback group-clicked();
 
     height: 55px;
 
@@ -20,10 +22,14 @@ export component TableHeader inherits Rectangle {
             column-id: def.id;
             column-width: root.column-widths[i].width-px * 1px;
             prop-min-width: 40px;
+
             resized(id, w) => { root.resized(id, w); }
 
             TableHeaderCell {
+                group-clicked => { root.group-clicked(); }
+                is-grouped: root.is-grouped;
                 def: root.column-defs[i];
+                is-first: i == 0;
                 is-text: root.column-metadatas[i].is-text;
                 is-metric: root.column-metadatas[i].is-metric;
                 is-sorted: root.current-sort == def.id;
