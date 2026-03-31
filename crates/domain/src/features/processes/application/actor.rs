@@ -3,12 +3,12 @@ use crate::features::processes::services::metadata::ProcessMetadataService;
 use crate::processes_impl::application::process_snapshot_actor::ProcessSnapshotReady;
 use crate::processes_impl::domain::snapshot::BridgeSnapshot;
 use app_contracts::features::navigation::TabChanged;
-use app_contracts::features::processes::{FieldDefDto, ProcessesUiPort};
+use app_contracts::features::processes::ProcessesUiPort;
 use app_core::actor::traits::{Context, Handler, Message, NoOp};
 use app_core::app::Window;
 use app_core::messages;
 use app_core::settings::SettingSubscription;
-use slint::{ComponentHandle, SharedString};
+use slint::SharedString;
 use sysinfo::{Pid, ProcessesToUpdate, System};
 use tracing::{info, instrument};
 
@@ -136,7 +136,7 @@ where
 {
     fn handle(&mut self, _: TerminateSelected, ctx: &Context<Self, TWindow>) {
         let pid = self.ui_port.get_selected_pid();
-        let Some(pid) = (pid != -1).then(|| pid as u32) else {
+        let Some(pid) = (pid != -1).then_some(pid as u32) else {
             return;
         };
 
@@ -173,7 +173,7 @@ where
     P: ProcessesUiPort,
     TWindow: Window,
 {
-    fn handle(&mut self, msg: GroupClicked, _ctx: &Context<Self, TWindow>) {
+    fn handle(&mut self, _msg: GroupClicked, _ctx: &Context<Self, TWindow>) {
         info!("clicked");
         static mut LOL: bool = true;
         unsafe {

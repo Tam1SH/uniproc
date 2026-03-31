@@ -214,7 +214,7 @@ impl ProcessesUiBindings for ProcessesUiAdapter {
     {
         self.with_ui(move |ui| {
             ui.global::<ProcessesFeatureGlobal>()
-                .on_sort_by(move |field| handler(field));
+                .on_sort_by(handler);
         });
     }
 
@@ -224,7 +224,7 @@ impl ProcessesUiBindings for ProcessesUiAdapter {
     {
         self.with_ui(move |ui| {
             ui.global::<ProcessesFeatureGlobal>()
-                .on_toggle_expand_group(move |group| handler(group));
+                .on_toggle_expand_group(handler);
         });
     }
 
@@ -241,7 +241,7 @@ impl ProcessesUiBindings for ProcessesUiAdapter {
     {
         self.with_ui(move |ui| {
             ui.global::<ProcessesFeatureGlobal>()
-                .on_select_process(move |pid, idx| handler(pid, idx));
+                .on_select_process(handler);
         });
     }
 
@@ -251,7 +251,7 @@ impl ProcessesUiBindings for ProcessesUiAdapter {
     {
         self.with_ui(move |ui| {
             ui.global::<ProcessesFeatureGlobal>()
-                .on_rows_viewport_changed(move |start, count| handler(start, count));
+                .on_rows_viewport_changed(handler);
         });
     }
 
@@ -261,7 +261,7 @@ impl ProcessesUiBindings for ProcessesUiAdapter {
     {
         self.with_ui(move |ui| {
             ui.global::<ProcessesFeatureGlobal>()
-                .on_column_resized(move |start, count| handler(start, count));
+                .on_column_resized(handler);
         });
     }
 
@@ -271,7 +271,7 @@ impl ProcessesUiBindings for ProcessesUiAdapter {
     {
         self.with_ui(move |ui| {
             ui.global::<ProcessesFeatureGlobal>()
-                .on_group_clicked(move || handler());
+                .on_group_clicked(handler);
         });
     }
 }
@@ -375,12 +375,12 @@ fn patch_model<T: Clone + 'static>(model: &Rc<VecModel<T>>, next: Vec<T>) {
 impl From<FieldDefDto> for TableColDef {
     fn from(value: FieldDefDto) -> Self {
         Self {
-            id: value.id.into(),
-            label: value.label.into(),
-            stat_text: value.stat_text.into(),
+            id: value.id,
+            label: value.label,
+            stat_text: value.stat_text,
             stat_numeric: value.stat_numeric,
             threshold: value.threshold,
-            stat_detail: value.stat_detail.map(Into::into).unwrap_or_default(),
+            stat_detail: value.stat_detail.unwrap_or_default(),
             show_indicator: value.show_indicator,
         }
     }

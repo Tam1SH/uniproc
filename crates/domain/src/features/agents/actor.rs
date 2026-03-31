@@ -7,9 +7,8 @@ use app_core::actor::traits::{Context, Handler, Message, NoOp};
 use app_core::app::Window;
 use app_core::messages;
 use app_core::settings::ReactiveSetting;
-use slint::ComponentHandle;
 use std::fmt::Debug;
-use tracing::{info, instrument, warn};
+use tracing::{info, warn};
 
 messages! {
     Init,
@@ -93,12 +92,11 @@ where
     T: Window,
 {
     fn handle(&mut self, _: StartConnect, ctx: &Context<Self, T>) {
-        if let Some(t) = self.apply(ConnectionEvent::BeginConnect) {
-            if t.to == AgentConnectionState::Connecting {
+        if let Some(t) = self.apply(ConnectionEvent::BeginConnect)
+            && t.to == AgentConnectionState::Connecting {
                 self.publish_state(None);
                 self.spawn_connect(ctx);
             }
-        }
     }
 }
 

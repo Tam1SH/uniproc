@@ -24,6 +24,7 @@ impl StatefulContext {
         }
     }
 
+    //TODO: just use it
     pub fn clear_dead_processes(&self, active_pids: &[u32]) {
         self.cache
             .retain(|(pid, _), _| *pid == 0 || active_pids.contains(pid));
@@ -90,22 +91,22 @@ impl VisitorContext for StatefulContext {
                     resolved = windows::get_package_display_name(pkg_name);
                 }
 
-                if resolved.is_none() {
-                    if let Some(title) = self.windows_cache.get(&req.pid) {
-                        resolved = Some(title.clone());
-                    }
+                if resolved.is_none()
+                    && let Some(title) = self.windows_cache.get(&req.pid)
+                {
+                    resolved = Some(title.clone());
                 }
 
-                if resolved.is_none() {
-                    if let Some(svc) = self.services_cache.get(&req.pid) {
-                        resolved = Some(svc.clone());
-                    }
+                if resolved.is_none()
+                    && let Some(svc) = self.services_cache.get(&req.pid)
+                {
+                    resolved = Some(svc.clone());
                 }
 
-                if resolved.is_none() {
-                    if let Some(path) = req.exe_path.filter(|p| !p.is_empty()) {
-                        resolved = windows::get_win32_description(path);
-                    }
+                if resolved.is_none()
+                    && let Some(path) = req.exe_path.filter(|p| !p.is_empty())
+                {
+                    resolved = windows::get_win32_description(path);
                 }
 
                 resolved.unwrap_or_else(|| {
@@ -126,10 +127,6 @@ impl VisitorContext for StatefulContext {
 
     fn tick(&self) {
         self.refresh_system_metadata()
-    }
-
-    fn intern_stripped(&self, s: &str) -> SharedString {
-        StringsProvider::global().get_stripped(s)
     }
 
     fn intern(&self, s: &str) -> SharedString {

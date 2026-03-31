@@ -31,14 +31,13 @@ where
     {
         let new_id = source.unique_id();
 
-        if let Some((id, row_obj, fields_model)) = self.entries.get_mut(&index) {
-            if *id == new_id {
+        if let Some((id, row_obj, fields_model)) = self.entries.get_mut(&index)
+            && *id == new_id {
                 source.update_slint_fields(fields_model);
 
                 *row_obj = source.to_slint_row(ModelRc::from(fields_model.clone()));
                 return row_obj.clone();
             }
-        }
 
         let fields_model = Rc::new(VecModel::default());
         source.update_slint_fields(&fields_model);

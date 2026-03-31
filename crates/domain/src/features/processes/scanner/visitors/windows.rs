@@ -35,7 +35,7 @@ impl ProcessVisitor for WindowsProcessStats {
             return None;
         }
 
-        Some(ctx.intern(&*self.package_full_name))
+        Some(ctx.intern(&self.package_full_name))
     }
 
     fn parent_pid(&self) -> u32 {

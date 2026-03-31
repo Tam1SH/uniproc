@@ -3,7 +3,6 @@ use app_core::SharedState;
 use app_core::app::Feature;
 use app_core::app::Window;
 use app_core::reactor::Reactor;
-use slint::ComponentHandle;
 
 pub mod host;
 pub mod wsl;

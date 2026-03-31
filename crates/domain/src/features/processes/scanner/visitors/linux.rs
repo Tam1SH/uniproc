@@ -36,7 +36,7 @@ impl ProcessVisitor for WslProcessStat {
         )
     }
 
-    fn package_name(&self, ctx: &dyn VisitorContext) -> Option<SharedString> {
+    fn package_name(&self, _ctx: &dyn VisitorContext) -> Option<SharedString> {
         None
     }
 

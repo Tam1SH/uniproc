@@ -63,8 +63,8 @@ pub fn get_active_services_map() -> HashMap<u32, String> {
 
             for svc in services_slice {
                 let pid = svc.ServiceStatusProcess.dwProcessId;
-                if pid > 0 {
-                    if let Ok(name) = svc.lpDisplayName.to_string() {
+                if pid > 0
+                    && let Ok(name) = svc.lpDisplayName.to_string() {
                         map.entry(pid)
                             .and_modify(|e| {
                                 e.push_str(" / ");
@@ -72,7 +72,6 @@ pub fn get_active_services_map() -> HashMap<u32, String> {
                             })
                             .or_insert(name);
                     }
-                }
             }
         }
     }
@@ -83,28 +82,27 @@ struct EnumCtx {
     map: HashMap<u32, String>,
 }
 
-unsafe extern "system" fn enum_windows_proc(hwnd: HWND, lparam: LPARAM) -> BOOL {
+unsafe extern "system" fn enum_windows_proc(hwnd: HWND, lparam: LPARAM) -> BOOL { unsafe {
     if IsWindowVisible(hwnd).as_bool() {
         let mut pid = 0;
         GetWindowThreadProcessId(hwnd, Some(&mut pid));
 
         if pid > 0 {
             let ctx = &mut *(lparam.0 as *mut EnumCtx);
-            if !ctx.map.contains_key(&pid) {
+            if let std::collections::hash_map::Entry::Vacant(e) = ctx.map.entry(pid) {
                 let len = GetWindowTextLengthW(hwnd);
                 if len > 0 {
                     let mut buf = vec![0u16; (len + 1) as usize];
-                    if GetWindowTextW(hwnd, &mut buf) > 0 {
-                        if let Ok(title) = String::from_utf16(&buf[..len as usize]) {
-                            ctx.map.insert(pid, title);
+                    if GetWindowTextW(hwnd, &mut buf) > 0
+                        && let Ok(title) = String::from_utf16(&buf[..len as usize]) {
+                            e.insert(title);
                         }
-                    }
                 }
             }
         }
     }
     BOOL::from(true)
-}
+}}
 
 pub fn get_visible_windows_map() -> HashMap<u32, String> {
     let mut ctx = EnumCtx {
@@ -224,14 +222,12 @@ pub fn get_win32_description(exe_path: &str) -> Option<String> {
             &mut desc_ptr,
             &mut desc_len,
         ) != FALSE
-        {
-            if let Ok(desc) = PWSTR(desc_ptr as *mut _).to_string() {
+            && let Ok(desc) = PWSTR(desc_ptr as *mut _).to_string() {
                 let trimmed = desc.trim();
                 if !trimmed.is_empty() {
                     return Some(trimmed.to_string());
                 }
             }
-        }
     }
     None
 }

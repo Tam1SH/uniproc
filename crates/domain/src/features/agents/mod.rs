@@ -9,7 +9,6 @@ use crate::agents_impl::providers::{windows, wsl};
 use app_core::SharedState;
 use app_core::app::Feature;
 use app_core::reactor::Reactor;
-use slint::ComponentHandle;
 use tracing::info;
 
 pub struct AgentsFeature;

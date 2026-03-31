@@ -100,7 +100,7 @@ impl ContextMenuUiBindings for ContextMenuUiAdapter {
     {
         self.with_ui(move |ui| {
             ui.global::<ContextMenuProxy>()
-                .on_show_context_menu(move |x, y| handler(x, y));
+                .on_show_context_menu(handler);
         });
     }
 
@@ -110,7 +110,7 @@ impl ContextMenuUiBindings for ContextMenuUiAdapter {
     {
         self.with_ui(move |ui| {
             ui.global::<ContextMenuProxy>()
-                .on_close_menu(move || handler());
+                .on_close_menu(handler);
         });
     }
 }
@@ -175,7 +175,7 @@ mod platform {
         window
             .with_winit_window(|winit_window| {
                 match winit_window.window_handle().map(|h| h.as_raw()) {
-                    Ok(RawWindowHandle::Win32(handle)) => handle.hwnd.get() as isize,
+                    Ok(RawWindowHandle::Win32(handle)) => handle.hwnd.get(),
                     _ => 0,
                 }
             })

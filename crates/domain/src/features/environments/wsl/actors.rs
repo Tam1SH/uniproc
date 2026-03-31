@@ -8,7 +8,6 @@ use app_contracts::features::environments::{
 use app_core::actor::traits::Message;
 use app_core::actor::traits::{Context, Handler};
 use app_core::app::Window;
-use slint::ComponentHandle;
 use std::fmt::Debug;
 use tracing::{error, info, instrument};
 

@@ -26,6 +26,15 @@ pub struct TableLayout<ID> {
     pub widths: HashMap<ID, Arc<Signal<u64>>>,
 }
 
+impl<ID> Default for TableLayout<ID>
+where
+    ID: Hash + Eq + Clone + Send + Sync + 'static,
+ {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<ID> TableLayout<ID>
 where
     ID: Hash + Eq + Clone + Send + Sync + 'static,

@@ -1,5 +1,5 @@
 use app_core::app::Window;
-use app_core::app::{Feature, FromUiWeak};
+use app_core::app::Feature;
 use app_core::reactor::Reactor;
 
 use crate::features::processes::application::actor::*;
@@ -47,7 +47,7 @@ where
         ui: &TWindow,
         shared: &SharedState,
     ) -> anyhow::Result<()> {
-        let settings = ProcessSettings::new(&shared)?;
+        let settings = ProcessSettings::new(shared)?;
         let ui_port = (self.make_ui_port)(ui);
         let scan_interval_ms = settings.scan_interval_ms();
 

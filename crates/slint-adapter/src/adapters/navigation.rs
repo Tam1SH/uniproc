@@ -81,7 +81,7 @@ impl NavigationUiBindings for NavigationUiAdapter {
     {
         self.with_ui(move |ui| {
             ui.global::<Navigation>()
-                .on_request_tab_switch(move |i| handler(i));
+                .on_request_tab_switch(handler);
         });
     }
 

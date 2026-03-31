@@ -25,12 +25,12 @@ impl AgentBackend for WslBackend {
 
     async fn connect(timeout: u64) -> anyhow::Result<Self::Client> {
         register_vm_default("WSL").ok();
-        Ok(Node::new()?
+        Node::new()?
             .connect::<LinuxCodec, _>(VsockTransport::client(VsockAddr::SelfManaged))
             .wait_for(services::LINUX_AGENT)
             .timeout(timeout)
             .start()
-            .await?)
+            .await
     }
 
     async fn ping(client: &Self::Client) -> anyhow::Result<i32> {
@@ -69,7 +69,7 @@ impl AgentBackend for WslBackend {
         latency: Option<i32>,
     ) -> Self::RuntimeEvent {
         WslAgentRuntimeEvent {
-            state: state.into(),
+            state: state,
             latency_ms: latency,
         }
     }

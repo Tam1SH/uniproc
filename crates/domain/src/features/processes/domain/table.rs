@@ -104,11 +104,10 @@ impl ProcessTable {
             |vm| vm.pid as u32,
             |vm| vm.is_dead = true,
             |vm, col_id, _width| {
-                if let Some(f) = vm.fields.iter_mut().find(|f| f.id == *col_id) {
-                    if f.numeric >= 0.0 {
+                if let Some(f) = vm.fields.iter_mut().find(|f| f.id == *col_id)
+                    && f.numeric >= 0.0 {
                         f.numeric = (f.numeric * 10.0).round() / 10.0;
                     }
-                }
             },
         );
         Ok(())
@@ -212,13 +211,13 @@ fn sort_nodes_inplace(
             let val_a =
                 a.vm.fields
                     .iter()
-                    .find(|f| &f.id == field_id)
+                    .find(|f| f.id == field_id)
                     .map(|f| f.numeric)
                     .unwrap_or(-1.0);
             let val_b =
                 b.vm.fields
                     .iter()
-                    .find(|f| &f.id == field_id)
+                    .find(|f| f.id == field_id)
                     .map(|f| f.numeric)
                     .unwrap_or(-1.0);
 

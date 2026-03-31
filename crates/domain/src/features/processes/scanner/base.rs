@@ -31,7 +31,6 @@ pub trait VisitorContext {
 
     fn tick(&self);
 
-    fn intern_stripped(&self, s: &str) -> SharedString;
     fn intern(&self, s: &str) -> SharedString;
 }
 

@@ -384,15 +384,12 @@ fn is_trivial_type(ty: &syn::Type) -> bool {
 
 fn parse_prefix_arg(args: &syn::punctuated::Punctuated<Meta, syn::Token![,]>) -> Option<String> {
     for meta in args {
-        if let Meta::NameValue(nv) = meta {
-            if nv.path.is_ident("prefix") {
-                if let Expr::Lit(lit) = &nv.value {
-                    if let Lit::Str(s) = &lit.lit {
+        if let Meta::NameValue(nv) = meta
+            && nv.path.is_ident("prefix")
+                && let Expr::Lit(lit) = &nv.value
+                    && let Lit::Str(s) = &lit.lit {
                         return Some(s.value());
                     }
-                }
-            }
-        }
     }
     None
 }
@@ -410,30 +407,27 @@ fn parse_setting_attr(attr: &Attribute, field_name: &Ident) -> (String, Option<E
             match item {
                 Meta::NameValue(nv) => {
                     if nv.path.is_ident("key") {
-                        if let Expr::Lit(lit) = &nv.value {
-                            if let Lit::Str(s) = &lit.lit {
+                        if let Expr::Lit(lit) = &nv.value
+                            && let Lit::Str(s) = &lit.lit {
                                 explicit_key = Some(s.value());
                             }
-                        }
                     } else if nv.path.is_ident("default") {
                         default = Some(nv.value.clone());
-                        if let Expr::Macro(mac) = &nv.value {
-                            if mac.mac.path.segments.last().map(|s| s.ident.to_string())
+                        if let Expr::Macro(mac) = &nv.value
+                            && mac.mac.path.segments.last().map(|s| s.ident.to_string())
                                 == Some("json".to_string())
                             {
                                 is_json = true;
                             }
-                        }
                     } else if nv.path.is_ident("default_json") {
                         default = Some(nv.value.clone());
                         is_json = true;
                     }
                 }
-                Meta::Path(p) => {
-                    if p.is_ident("nested") {
+                Meta::Path(p)
+                    if p.is_ident("nested") => {
                         is_nested = true;
                     }
-                }
                 _ => {}
             }
         }

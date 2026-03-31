@@ -17,7 +17,7 @@ use ogurpchik::discovery::Scope;
 use ogurpchik::transport::stream::adapters::uds::UdsTransport;
 use std::ops::Deref;
 use std::time::Instant;
-use tracing::{debug, error, instrument, trace, warn};
+use tracing::{error, instrument, warn};
 use uniproc_protocol::{WindowsCodec, WindowsRequest, WindowsResponse, services};
 
 pub struct WindowsBackend;
@@ -28,13 +28,13 @@ impl AgentBackend for WindowsBackend {
     const NAME: &'static str = "Windows";
 
     async fn connect(timeout: u64) -> anyhow::Result<Self::Client> {
-        Ok(ogurpchik::high::node::Node::new()?
+        ogurpchik::high::node::Node::new()?
             .scope(Scope::Internal)?
             .connect::<WindowsCodec, _>(UdsTransport::temp("uniproc-windows"))
             .wait_for(services::WINDOWS_AGENT)
             .timeout(timeout)
             .start()
-            .await?)
+            .await
     }
 
     async fn ping(client: &Self::Client) -> anyhow::Result<i32> {
@@ -68,7 +68,7 @@ impl AgentBackend for WindowsBackend {
         latency: Option<i32>,
     ) -> Self::RuntimeEvent {
         WindowsAgentRuntimeEvent {
-            state: state.into(),
+            state: state,
             latency_ms: latency,
         }
     }

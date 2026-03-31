@@ -10,7 +10,6 @@ use app_core::SharedState;
 use app_core::actor::addr::Addr;
 use app_core::app::Feature;
 use app_core::reactor::Reactor;
-use app_core::settings::{FeatureSettings, SettingsScope};
 
 pub struct ContextMenuFeature<F> {
     make_port: F,

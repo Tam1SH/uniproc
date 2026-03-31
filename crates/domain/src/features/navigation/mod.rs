@@ -9,7 +9,6 @@ use app_core::actor::event_bus::EventBus;
 use app_core::app::Feature;
 use app_core::app::Window;
 use app_core::reactor::Reactor;
-use app_core::settings::{FeatureSettings, SettingsScope};
 use std::cell::Cell;
 use std::rc::Rc;
 use std::time::{Duration, Instant};

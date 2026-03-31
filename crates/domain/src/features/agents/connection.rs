@@ -36,6 +36,12 @@ pub struct ConnectionMachine {
     max_retry_delay_secs: u64,
 }
 
+impl Default for ConnectionMachine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ConnectionMachine {
     pub fn new() -> Self {
         Self {

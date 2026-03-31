@@ -1,15 +1,12 @@
 use slint::{Image, Rgba8Pixel, SharedPixelBuffer};
 use std::ptr::null_mut;
 use tracing::{debug, error, info, info_span, warn};
-use windows::core::{w, Interface, HRESULT, HSTRING, PCWSTR, PWSTR};
+use windows::core::{Interface, HRESULT, HSTRING, PCWSTR, PWSTR};
 use windows::Win32::Foundation::*;
 use windows::Win32::Graphics::Gdi::*;
-use windows::Win32::Storage::FileSystem::{
-    GetFileVersionInfoSizeW, GetFileVersionInfoW, VerQueryValueW,
-};
+use windows::Win32::Storage::FileSystem::{GetFileVersionInfoW, VerQueryValueW};
 use windows::Win32::Storage::Packaging::Appx::{
-    ClosePackageInfo, GetPackageApplicationIds, OpenPackageInfoByFullName,
-    PackageFamilyNameFromFullName,
+    ClosePackageInfo, GetPackageApplicationIds, PackageFamilyNameFromFullName,
 };
 use windows::Win32::System::Com::{CoInitializeEx, COINIT_APARTMENTTHREADED};
 use windows::Win32::UI::Shell::*;
@@ -93,10 +90,9 @@ pub fn extract_appx_icon(package_full_name: &str, size: i32) -> Option<Image> {
 
         let h_aumid = HSTRING::from(&final_aumid);
 
-        if let HRESULT(e) = CoInitializeEx(None, COINIT_APARTMENTTHREADED) {
-            if e < 0 {
-                error!(error = e, "COM initialization failed");
-            }
+        let HRESULT(e) = CoInitializeEx(None, COINIT_APARTMENTTHREADED);
+        if e < 0 {
+            error!(error = e, "COM initialization failed");
         }
 
         let shell_item: IShellItem = match SHCreateItemInKnownFolder(
