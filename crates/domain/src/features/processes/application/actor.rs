@@ -2,13 +2,15 @@ use crate::features::processes::domain::table::ProcessTable;
 use crate::features::processes::services::metadata::ProcessMetadataService;
 use crate::processes_impl::application::process_snapshot_actor::ProcessSnapshotReady;
 use crate::processes_impl::domain::snapshot::BridgeSnapshot;
-use app_contracts::features::navigation::TabChanged;
+use app_contracts::features::navigation::{tab_ids, PageActivated};
 use app_contracts::features::processes::ProcessesUiPort;
 use app_core::actor::traits::{Context, Handler, Message, NoOp};
 use app_core::app::Window;
 use app_core::messages;
-use app_core::settings::SettingSubscription;
+use context::page_status::{PageId, PageStatus, PageStatusChanged, PageStatusRegistry};
+use context::settings::SettingSubscription;
 use slint::SharedString;
+use std::sync::Arc;
 use sysinfo::{Pid, ProcessesToUpdate, System};
 use tracing::{info, instrument};
 
@@ -23,8 +25,10 @@ messages! {
 }
 
 pub struct ProcessActor<P: ProcessesUiPort> {
+    pub page_id: PageId,
     pub table: ProcessTable,
     pub metadata: ProcessMetadataService,
+    pub page_status: Arc<PageStatusRegistry>,
     pub is_active: bool,
     pub ui_port: P,
     #[allow(unused)]
@@ -57,24 +61,30 @@ where
 
         self.ui_port
             .set_column_defs(self.table.get_header_columns());
-
         self.ui_port.set_loading(false);
         self.ui_port.set_column_widths(self.table.column_widths());
-        let meta = self.table.column_metadata();
-        self.ui_port.set_column_metadata(meta);
-
+        self.ui_port
+            .set_column_metadata(self.table.column_metadata());
         self.ui_port.set_total_processes_count(msg.total_count);
+
+        self.page_status.report_page(PageStatusChanged {
+            tab_id: tab_ids::MAIN, // TODO no only main, i think
+            page_id: self.page_id,
+            status: PageStatus::Ready,
+            error: None,
+        });
+
         self.push_batch();
     }
 }
 
-impl<P, TWindow> Handler<TabChanged, TWindow> for ProcessActor<P>
+impl<P, TWindow> Handler<PageActivated, TWindow> for ProcessActor<P>
 where
     P: ProcessesUiPort,
     TWindow: Window,
 {
-    fn handle(&mut self, msg: TabChanged, _ctx: &Context<Self, TWindow>) {
-        self.is_active = msg.name == "Processes";
+    fn handle(&mut self, msg: PageActivated, _ctx: &Context<Self, TWindow>) {
+        self.is_active = msg.page_id == self.page_id;
     }
 }
 
@@ -163,11 +173,10 @@ where
             tracing::warn!("resize_column failed: {e}");
             return;
         }
-
-        let widths = self.table.column_widths();
-        self.ui_port.set_column_widths(widths);
+        self.ui_port.set_column_widths(self.table.column_widths());
     }
 }
+
 impl<P, TWindow> Handler<GroupClicked, TWindow> for ProcessActor<P>
 where
     P: ProcessesUiPort,
@@ -179,7 +188,6 @@ where
         unsafe {
             LOL = !LOL;
         }
-
         unsafe {
             self.ui_port.set_is_grouped(LOL);
         }

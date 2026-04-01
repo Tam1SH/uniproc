@@ -1,14 +1,14 @@
 mod settings;
 
-use app_core::SharedState;
 use app_core::app::Feature;
 use app_core::app::Window;
 use app_core::reactor::Reactor;
+use app_core::SharedState;
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use crate::features::settings::settings::SettingsPersistenceSettings;
-pub use app_core::settings::*;
+pub use context::settings::*;
 
 #[derive(Default)]
 pub struct SettingsFeature {

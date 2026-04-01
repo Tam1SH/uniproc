@@ -27,7 +27,8 @@ pub fn ui_adapter(_args: TokenStream, input: TokenStream) -> TokenStream {
             }
 
             if let Some(idx) = ui_arg_idx {
-                let mut inputs = syn::punctuated::Punctuated::<syn::FnArg, syn::token::Comma>::new();
+                let mut inputs =
+                    syn::punctuated::Punctuated::<syn::FnArg, syn::token::Comma>::new();
                 for (i, arg) in method.sig.inputs.clone().into_iter().enumerate() {
                     if i != idx {
                         inputs.push(arg);
@@ -205,7 +206,7 @@ fn generate_root_settings(
                     #field_name: std::sync::Arc<#ty>,
                 }
             } else {
-                quote! { #field_name: app_core::settings::ReactiveSetting<#ty>, }
+                quote! { #field_name: context::settings::ReactiveSetting<#ty>, }
             }
         });
 
@@ -224,7 +225,7 @@ fn generate_root_settings(
                 quote! { #def }
             };
             quote! {
-                #field_name: app_core::settings::setting_or::<Self, #ty>(&store, #key, #default_value)?,
+                #field_name: context::settings::setting_or::<Self, #ty>(&store, #key, #default_value)?,
             }
         }
     });
@@ -240,7 +241,7 @@ fn generate_root_settings(
                 }
             } else {
                 quote! {
-                    pub fn #field_name(&self) -> app_core::settings::ReactiveSetting<#ty> {
+                    pub fn #field_name(&self) -> context::settings::ReactiveSetting<#ty> {
                         self.#field_name.clone()
                     }
                 }
@@ -260,7 +261,7 @@ fn generate_root_settings(
                 quote! { #def }
             };
             quote! {
-                <Self as app_core::settings::FeatureSettings>::ensure_default(settings, #key, #default_value)?;
+                <Self as context::settings::FeatureSettings>::ensure_default(settings, #key, #default_value)?;
             }
         }
     });
@@ -269,16 +270,16 @@ fn generate_root_settings(
         #[derive(Debug, Clone)]
         #(#original_attrs)*
         #struct_vis struct #wrapper_name {
-            store: std::sync::Arc<app_core::settings::store::SettingsStore>,
+            store: std::sync::Arc<context::settings::store::SettingsStore>,
             #(#struct_fields)*
         }
 
-        impl app_core::settings::SettingsScope for #wrapper_name {
+        impl context::settings::SettingsScope for #wrapper_name {
             const PREFIX: &'static str = #prefix_str;
         }
 
-        impl app_core::settings::FeatureSettings for #wrapper_name {
-            fn ensure_defaults(settings: &app_core::settings::store::SettingsStore) -> anyhow::Result<()> {
+        impl context::settings::FeatureSettings for #wrapper_name {
+            fn ensure_defaults(settings: &context::settings::store::SettingsStore) -> anyhow::Result<()> {
                 #(#ensure_calls)*
                 Ok(())
             }
@@ -286,8 +287,8 @@ fn generate_root_settings(
 
         impl #wrapper_name {
             pub fn new(shared: &app_core::shared_state::SharedState) -> anyhow::Result<Self> {
-                let store = app_core::settings::settings_from(shared);
-                <Self as app_core::settings::FeatureSettings>::ensure_defaults(&store)?;
+                let store = context::settings::settings_from(shared);
+                <Self as context::settings::FeatureSettings>::ensure_defaults(&store)?;
                 Ok(Self {
                     #(#init_fields)*
                     store,
@@ -297,7 +298,7 @@ fn generate_root_settings(
             #(#getters)*
             #(#patch_methods)*
 
-            pub fn store(&self) -> &std::sync::Arc<app_core::settings::store::SettingsStore> {
+            pub fn store(&self) -> &std::sync::Arc<context::settings::store::SettingsStore> {
                 &self.store
             }
         }
@@ -320,7 +321,7 @@ fn generate_nested_settings(
                 }
             } else {
                 quote! {
-                    #field_name: std::sync::Arc<app_core::settings::ReactiveSetting<#ty>>,
+                    #field_name: std::sync::Arc<context::settings::ReactiveSetting<#ty>>,
                 }
             }
         });
@@ -341,7 +342,7 @@ fn generate_nested_settings(
             };
             quote! {
                 #field_name: std::sync::Arc::new(
-                    app_core::settings::setting_or::<TScope, #ty>(
+                    context::settings::setting_or::<TScope, #ty>(
                         store,
                         &format!("{}.{}", namespace, #key),
                         #default_value,
@@ -360,7 +361,7 @@ fn generate_nested_settings(
             }
         } else {
             quote! {
-                pub fn #field_name(&self) -> std::sync::Arc<app_core::settings::ReactiveSetting<#ty>> {
+                pub fn #field_name(&self) -> std::sync::Arc<context::settings::ReactiveSetting<#ty>> {
                     self.#field_name.clone()
                 }
             }
@@ -393,8 +394,8 @@ fn generate_nested_settings(
         }
 
         impl #wrapper_name {
-            pub fn new<TScope: app_core::settings::FeatureSettings>(
-                store: &std::sync::Arc<app_core::settings::store::SettingsStore>,
+            pub fn new<TScope: context::settings::FeatureSettings>(
+                store: &std::sync::Arc<context::settings::store::SettingsStore>,
                 namespace: &str,
             ) -> anyhow::Result<Self> {
                 Ok(Self {
@@ -402,8 +403,8 @@ fn generate_nested_settings(
                 })
             }
 
-            pub fn ensure_defaults<TScope: app_core::settings::FeatureSettings>(
-                settings: &app_core::settings::store::SettingsStore,
+            pub fn ensure_defaults<TScope: context::settings::FeatureSettings>(
+                settings: &context::settings::store::SettingsStore,
                 namespace: &str,
             ) -> anyhow::Result<()> {
                 #(#ensure_calls)*

@@ -6,10 +6,10 @@ import {
     ComboBox,
 } from "std-widgets.slint";
 import { TitleBar } from "title/title-bar.slint";
-import { Content } from "content/index.slint";
+import { ContentContainer } from "content/index.slint";
 import { SideBar } from "features/navigation/sidebar/index.slint";
 import { ContextMenuProxy } from "features/processes/context-menu/globals.slint";
-import { ResizeHandler } from "utils/resize-area.slint";
+import { ResizeHandler } from "components/resize-area.slint";
 import { WslDistro } from "features/environments/globals.slint";
 import { WindowSize, WindowAdapter } from "window-adapter.slint";
 export * from "globals-export.slint";
@@ -53,9 +53,7 @@ export component AppWindow inherits Window {
         TitleBar { }
 
         HorizontalLayout {
-            SideBar { }
-
-            Content { }
+            ContentContainer { }
         }
     }
 

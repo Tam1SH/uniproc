@@ -10,6 +10,7 @@ path = "lib.rs"
 cfg-if = { workspace = true }
 anyhow = { workspace = true }
 app-core = { workspace = true }
+context.workspace = true
 app-contracts = { workspace = true }
 ogurpchik = { workspace = true }
 rkyv = { workspace = true }
@@ -20,3 +21,4 @@ uniproc-protocol = { workspace = true }
 macros.workspace = true
 serde.workspace = true
 async-trait.workspace = true
+uuid.workspace = true

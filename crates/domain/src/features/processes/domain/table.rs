@@ -5,13 +5,13 @@ use crate::processes_impl::settings::ProcessSettings;
 use app_contracts::features::processes::{
     FieldDefDto, FieldMetadata, ProcessEntryVm, ProcessNodeDto,
 };
-use app_core::settings::reactive::ReactiveSettingSubscription;
-use app_table::flow::{SortState, TableNode};
-use app_table::layout::TableSettingsProvider;
-use app_table::view::TableView;
-use app_table::window::TableBatch;
+use context::settings::reactive::ReactiveSettingSubscription;
 use dashmap::DashMap;
 use slint::SharedString;
+use widgets::table::flow::{SortState, TableNode};
+use widgets::table::layout::TableSettingsProvider;
+use widgets::table::view::TableView;
+use widgets::table::window::TableBatch;
 
 struct ProcessTableSettingsAdapter(ProcessSettings);
 
@@ -105,9 +105,10 @@ impl ProcessTable {
             |vm| vm.is_dead = true,
             |vm, col_id, _width| {
                 if let Some(f) = vm.fields.iter_mut().find(|f| f.id == *col_id)
-                    && f.numeric >= 0.0 {
-                        f.numeric = (f.numeric * 10.0).round() / 10.0;
-                    }
+                    && f.numeric >= 0.0
+                {
+                    f.numeric = (f.numeric * 10.0).round() / 10.0;
+                }
             },
         );
         Ok(())

@@ -1,5 +1,3 @@
-import { MainBodyState } from "content/globals.slint";
-
 import { TableCellData } from "table/index.slint";
 
 import { WindowAdapter, WindowSize } from "window-adapter.slint";
@@ -10,14 +8,10 @@ import {
     WslDistro,
 } from "features/environments/globals.slint";
 
-import {
-    Dashboard,
-    PageEntry,
-} from "features/navigation/globals/dashboard.slint";
 
+import { PageStatus, PageData, TabData } from "content/globals.slint";
 import {
     Navigation,
-    TabData,
 } from "features/navigation/globals/tabs-navigation.slint";
 
 import {
@@ -48,11 +42,12 @@ import { Theme } from "theme.slint";
 import { L10n } from "localization.slint";
 
 export { 
-    MainBodyState, EnvironmentsFeatureGlobal, EnvsLoading,
-    WslDistro, Navigation, TabData, TableColDef, TableColWidth,
+    EnvironmentsFeatureGlobal, EnvsLoading,
+    WslDistro, Navigation, TableColDef, TableColWidth,
     ProcessEntry, ProcessesFeatureGlobal, ProcessGroup,
     ContextMenuProxy, Theme, L10n, ProcessContextMenu,
-    PageEntry, TitleBarActions, WindowClickHandler,
-    RunEnv, RunTaskDialog, RunTaskProxy, Dashboard,
-    TableCellData, WindowAdapter, WindowSize
+    TitleBarActions, WindowClickHandler,
+    RunEnv, RunTaskDialog, RunTaskProxy,
+    TableCellData, WindowAdapter, WindowSize,
+    TabData, PageStatus, PageData
 }

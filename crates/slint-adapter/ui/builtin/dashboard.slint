@@ -1,0 +1,156 @@
+import { Theme } from "theme.slint";
+import { PageStatus, PageData, TabData } from "../content/globals.slint";
+import { SideBar } from "../features/navigation/sidebar/index.slint";
+import {
+    Navigation,
+} from "../features/navigation/globals/tabs-navigation.slint";
+import {
+    ProcessesPageBody,
+    ProcessesPageHeader,
+} from "../pages/dashboard/subpages/processes/index.slint";
+import {
+    PerformancePage,
+} from "../pages/dashboard/subpages/performance/index.slint";
+import { DiskPage } from "../pages/dashboard/subpages/disk/index.slint";
+import {
+    StatisticsPage,
+} from "../pages/dashboard/subpages/statistics/index.slint";
+import {
+    StartupAppsPage,
+} from "../pages/dashboard/subpages/startup-apps/index.slint";
+import { UsersPage } from "../pages/dashboard/subpages/users/index.slint";
+import { ServicesPage } from "../pages/dashboard/subpages/services/index.slint";
+import { LoadingSpinner } from "loader-area.slint";
+
+component PageHeader inherits Rectangle {
+    in property <string> title;
+    height: 60px;
+    HorizontalLayout {
+        padding: 12px;
+        Text {
+            text: root.title;
+            color: Theme.text_secondary;
+            font-size: Theme.font_size_body;
+            font-weight: 600;
+            vertical-alignment: center;
+        }
+    }
+}
+
+export component BuiltinDashboard inherits HorizontalLayout {
+
+    private property <TabData> tab_data: Navigation.tabs[0];
+    private property <int> cur: Navigation.active_page_index;
+    private property <PageData> current-page: root.tab_data.pages[root.cur];
+
+    private property <PageStatus> cur-status: root.current-page.status;
+    private property <string> cur-error: root.current-page.error_msg;
+    private property <bool> is-ready: root.cur-status == PageStatus.ready;
+
+    spacing: 0;
+
+    SideBar { }
+
+    Rectangle {
+        background: Theme.colorNeutralBackgroundAlpha;
+        border-width: 1px;
+        border-color: Theme.colorNeutralStrokeAlpha;
+        border-top-left-radius: Theme.border_radius_m;
+
+        VerticalLayout {
+
+            if (root.cur == 0): ProcessesPageHeader { }
+            if (root.cur != 0): PageHeader {
+                title: root.current-page.text;
+            }
+
+            page-body-layer := Rectangle {
+
+                vertical-stretch: 1;
+                clip: true;
+
+                if (root.cur-status == PageStatus.loading): LoadingSpinner { }
+
+                if (root.cur-status == PageStatus.error): Rectangle {
+                    VerticalLayout {
+                        alignment: center;
+                        spacing: 12px;
+                        Text {
+                            text: "⚠️";
+                            font-size: 24px;
+                            horizontal-alignment: center;
+                        }
+
+                        Text {
+                            text: root.cur-error;
+                            color: Theme.text_secondary;
+                            horizontal-alignment: center;
+                            font-size: Theme.font_size_body;
+                        }
+                    }
+                }
+
+                content-layer := Rectangle {
+                    width: 100%;
+                    height: 100%;
+                    opacity: 0;
+                    y: 30px;
+                    visible: root.is-ready;
+
+                    states [
+                        visible when Navigation.content-visible && root.is-ready: {
+                            opacity: 1;
+                            y: 0px;
+                            in {
+                                animate y {
+                                    duration: 400ms;
+                                    easing: cubic-bezier(0.1, 0.9, 0.2, 1.0);
+                                }
+                                animate opacity { duration: 250ms; }
+                            }
+                            out {
+                                animate opacity {
+                                    duration: 150ms;
+                                    easing: ease-in-out;
+                                }
+                                animate y {
+                                    duration: 0ms;
+                                    delay: 150ms;
+                                }
+                            }
+                        }
+                    ]
+
+                    if (root.current-page.id == 0): ProcessesPageBody {
+                        width: 100%;
+                        height: 100%;
+                    }
+                    if (root.current-page.id == 1): PerformancePage {
+                        width: 100%;
+                        height: 100%;
+                    }
+                    if (root.current-page.id == 2): DiskPage {
+                        width: 100%;
+                        height: 100%;
+                    }
+                    if (root.current-page.id == 3): StatisticsPage {
+                        width: 100%;
+                        height: 100%;
+                    }
+                    if (root.current-page.id == 4): StartupAppsPage {
+                        width: 100%;
+                        height: 100%;
+                    }
+                    if (root.current-page.id == 5): UsersPage {
+                        width: 100%;
+                        height: 100%;
+                    }
+                    if (root.current-page.id == 6): ServicesPage {
+                        width: 100%;
+                        height: 100%;
+                    }
+                }
+            }
+        }
+    }
+}

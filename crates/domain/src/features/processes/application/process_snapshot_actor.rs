@@ -5,7 +5,7 @@ use crate::processes_impl::scanner::ctx::StatefulContext;
 use crate::processes_impl::scanner::visitors::linux::WslScanResult;
 use crate::processes_impl::scanner::visitors::windows::WindowsScanResult;
 use app_contracts::features::agents::{RemoteScanResult, WindowsReportMessage};
-use app_contracts::features::navigation::TabChanged;
+use app_contracts::features::navigation::PageActivated;
 use app_contracts::features::processes::{
     FieldDefDto, ProcessFieldDto, ProcessNodeDto, ProcessesUiPort,
 };
@@ -14,6 +14,7 @@ use app_core::actor::traits::Message;
 use app_core::actor::traits::{Context, Handler};
 use app_core::app::Window;
 use app_core::{messages, ratelimit};
+use context::page_status::PageId;
 use slint::SharedString;
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
@@ -23,6 +24,8 @@ pub struct ProcessSnapshotActor<P: ProcessesUiPort, TWindow: Window> {
     pub snapshots: HashMap<&'static str, BridgeSnapshot>,
     pub contexts: HashMap<&'static str, Arc<StatefulContext>>,
     pub target: Addr<ProcessActor<P>, TWindow>,
+    /// ID страницы, которой принадлежит этот актор (для сравнения с PageActivated).
+    pub page_id: PageId,
     pub is_active: bool,
     pub scratch_processes: Arc<Mutex<Vec<ProcessNodeDto>>>,
     pub scratch_seen: HashSet<SharedString>,
@@ -86,15 +89,19 @@ impl<P: ProcessesUiPort, TWindow: Window> ProcessSnapshotActor<P, TWindow> {
     }
 }
 
-impl<P, TWindow> Handler<TabChanged, TWindow> for ProcessSnapshotActor<P, TWindow>
+// ─── PageActivated ────────────────────────────────────────────────────────────
+
+impl<P, TWindow> Handler<PageActivated, TWindow> for ProcessSnapshotActor<P, TWindow>
 where
     P: ProcessesUiPort,
     TWindow: Window,
 {
-    fn handle(&mut self, msg: TabChanged, _ctx: &Context<Self, TWindow>) {
-        self.is_active = msg.name == "Processes";
+    fn handle(&mut self, msg: PageActivated, _ctx: &Context<Self, TWindow>) {
+        self.is_active = msg.page_id == self.page_id;
     }
 }
+
+// ─── RemoteScanResult ─────────────────────────────────────────────────────────
 
 impl<P, TWindow> Handler<RemoteScanResult, TWindow> for ProcessSnapshotActor<P, TWindow>
 where
@@ -117,6 +124,8 @@ where
         self.rebuild_and_send();
     }
 }
+
+// ─── WindowsReportMessage ─────────────────────────────────────────────────────
 
 #[cfg(target_os = "windows")]
 impl<P, TWindow> Handler<WindowsReportMessage, TWindow> for ProcessSnapshotActor<P, TWindow>

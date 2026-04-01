@@ -1,13 +1,12 @@
-export struct TabData {
-    title: string,
-    active_page: int,
-}
+import { PageStatus, PageData, TabData } from "../../../content/globals.slint";
+
 
 export global Navigation {
-
-    in-out property <[TabData]> tabs: [{ title: "Dashboard 1", active_page: 0 }, { title: "Dashboard 2", active_page: 1 }];
+    in property <[TabData]> tabs;
 
     in-out property <int> active_tab_index: 0;
+    in-out property <int> active_page_index: 0;
+
     in-out property <int> switch_from_index: -1;
     in-out property <int> switch_to_index: -1;
     in-out property <float> switch_progress: 1.0;
@@ -16,6 +15,7 @@ export global Navigation {
     in-out property <bool> content_visible: true;
 
     callback side_bar_width_changed(length);
+    callback request_page_switch(int, int);
     callback request_tab_switch(int);
     callback request_tab_close(int);
     callback request_tab_add();

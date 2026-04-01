@@ -1,15 +1,17 @@
 import { Environments } from "../../environments/views/environments.slint";
 import { ScrollView } from "std-widgets.slint";
 import { Navigation } from "../globals/tabs-navigation.slint";
-import { Dashboard } from "../globals/dashboard.slint";
 import { WindowClickHandler } from "title/title-bar.slint";
 import { NavItem } from "components/nav-item.slint";
+import { PageData } from "content/globals.slint";
 import { Theme } from "theme.slint";
 import { Icons } from "icons.slint";
 import { ResizeHandle } from "resize-handle.slint";
 import { WindowAdapter, WindowSize } from "window-adapter.slint";
 
 export component SideBar inherits Rectangle {
+
+    private property <[PageData]> current-pages: Navigation.tabs[Navigation.active_tab_index].pages;
 
     private property <length> prop-min-width: 200px;
     private property <length> prop-max-width: 500px;
@@ -44,7 +46,9 @@ export component SideBar inherits Rectangle {
 
     private property <length> nav-item-height: 40px;
     private property <length> nav-item-spacing: 4px;
-    private property <int> active-sidebar-index: Dashboard.pages.length > 0 ? min(max(Navigation.active_tab_index, 0), Dashboard.pages.length - 1) : 0;
+
+    private property <int> active-sidebar-index: root.current-pages.length > 0 ? min(max(Navigation.active_page_index, 0), root.current-pages.length - 1) : 0;
+
     private property <float> indicator-progress: Navigation.switch_progress;
     private property <float> indicator-eased-progress: root.indicator-progress * root.indicator-progress * (3.0 - 2.0 * root.indicator-progress) - 0.38;
     private property <bool> indicator-transition-active: Navigation.switch_from_index >= 0 && Navigation.switch_to_index >= 0 && Navigation.switch_from_index != Navigation.switch_to_index && root.indicator-progress > 0.001 && root.indicator-progress < 0.999;
@@ -71,7 +75,6 @@ export component SideBar inherits Rectangle {
 
     VerticalLayout {
         padding: 6px;
-
         spacing: 4px;
 
         ScrollView {
@@ -79,7 +82,6 @@ export component SideBar inherits Rectangle {
             horizontal-stretch: 1;
 
             Rectangle {
-
                 VerticalLayout {
                     spacing: 4px;
                     alignment: start;
@@ -91,17 +93,17 @@ export component SideBar inherits Rectangle {
                     nav-pages := VerticalLayout {
                         spacing: root.nav-item-spacing;
 
-                        for page[idx] in Dashboard.pages: NavItem {
+                        for page[idx] in root.current-pages: NavItem {
                             icon: page.icon;
                             text: page.text;
-                            active: Navigation.active_tab_index == page.id;
+                            active: Navigation.active_page_index == idx;
                             colorize: false;
                             text-visible: !root.is-collapsed;
                             indicator-visible: root.indicator-transition-active ? ((idx == Navigation.switch_from_index && root.from-indicator-height > 10px) || (idx == Navigation.switch_to_index && root.to-indicator-height > 10px)) : (idx == root.active-sidebar-index);
                             indicator-height: root.indicator-transition-active ? (idx == Navigation.switch_from_index ? root.from-indicator-height : (idx == Navigation.switch_to_index ? root.to-indicator-height : Theme.selection_indicator_height)) : Theme.selection_indicator_height;
                             indicator-offset-y: root.indicator-transition-active ? (idx == Navigation.switch_from_index ? root.from-indicator-y : (idx == Navigation.switch_to_index ? root.to-indicator-y : root.indicator-center-y)) : root.indicator-center-y;
                             clicked => {
-                                Navigation.request_tab_switch(page.id);
+                                Navigation.request_page_switch(Navigation.active_tab_index, page.id);
                             }
                         }
                     }
@@ -121,7 +123,7 @@ export component SideBar inherits Rectangle {
             colorize: false;
             text-visible: !root.is-collapsed;
             clicked => {
-                Dashboard.request_page_switch(100);
+                Navigation.request_page_switch(0, 100);
             }
         }
     }

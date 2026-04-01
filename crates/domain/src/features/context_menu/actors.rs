@@ -2,7 +2,7 @@ use app_contracts::features::context_menu::ContextMenuUiPort;
 use app_core::actor::traits::{Context, Handler, Message};
 use app_core::app::Window;
 use app_core::messages;
-use app_core::settings::ReactiveSetting;
+use context::settings::ReactiveSetting;
 
 messages! {
     Show { x: f32, y: f32 },

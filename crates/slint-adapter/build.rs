@@ -19,12 +19,12 @@ fn main() {
 }
 
 fn generate_slint_l10n() {
-    let en_toml = Path::new("../domain/locales/en.toml");
+    let en_toml = Path::new("../context/locales/en.toml");
     let out_file = Path::new("ui/shared/localization.slint");
 
-    println!("cargo:rerun-if-changed=../domain/locales/");
+    println!("cargo:rerun-if-changed=../context/locales/");
 
-    let content = fs::read_to_string(en_toml).expect("../domain/locales/en.toml not found");
+    let content = fs::read_to_string(en_toml).expect("../context/locales/en.toml not found");
     let table: Table = content.parse().expect("Failed to parse en.toml");
 
     let mut keys: Vec<String> = table.keys().cloned().collect();
@@ -41,7 +41,7 @@ fn generate_slint_l10n() {
 
     let generated = format!(
         "// AUTO-GENERATED - do not edit manually\n\
-         // Based on ../domain/locales/en.toml\n\n\
+         // Based on ../context/locales/en.toml\n\n\
          export global L10n {{\n{properties}\n}}\n"
     );
 
@@ -137,7 +137,7 @@ fn generate_icons_slint() {
 
 fn generate_icons_rs() {
     let assets_dir = Path::new("ui/assets");
-    let out_file = Path::new("../app-core/src/icons.rs");
+    let out_file = Path::new("../core/src/icons.rs");
 
     let mut entries: Vec<String> = fs::read_dir(assets_dir)
         .expect("ui/assets not found")

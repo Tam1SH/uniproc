@@ -4,10 +4,15 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-slint = { workspace = true }
-anyhow = { workspace = true }
 app-core = { workspace = true }
 app-contracts = { workspace = true }
+context.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+slint = { workspace = true }
+anyhow = { workspace = true }
+
+tokio.workspace = true
 macros.workspace = true
 serde.workspace = true
 

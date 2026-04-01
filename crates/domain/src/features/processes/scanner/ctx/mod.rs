@@ -3,8 +3,8 @@ mod windows;
 
 use crate::processes_impl::scanner::base::{DisplayNameRequest, VisitorContext};
 use crate::processes_impl::scanner::field_value::{FieldValue, FieldValueKind};
+use context::caches::strings::StringsProvider;
 use dashmap::DashMap;
-use foundation_services::caches::strings::StringsProvider;
 use slint::SharedString;
 
 pub struct StatefulContext {

@@ -7,8 +7,9 @@ edition.workspace = true
 cfg-if = { workspace = true }
 slint = { workspace = true }
 app-contracts = { workspace = true }
+context.workspace = true
 app-core = { workspace = true }
-app-table.workspace = true
+widgets.workspace = true
 anyhow = { workspace = true }
 i-slint-backend-winit = { workspace = true }
 winit = { workspace = true }

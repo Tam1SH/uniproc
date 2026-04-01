@@ -7,14 +7,14 @@ use app_contracts::features::environments::{
 };
 use app_core::actor::event_bus::EventBus;
 use app_core::app::Window;
-use app_core::{SharedState, actor::addr::Addr, app::Feature, ratelimit, reactor::Reactor};
+use app_core::{actor::addr::Addr, app::Feature, ratelimit, reactor::Reactor, SharedState};
 use ogurpchik::discovery::register_vm_default;
 use ogurpchik::high::node::Node;
 use ogurpchik::transport::stream::adapters::vsock::{VsockAddr, VsockTransport};
 use std::ops::Deref;
 use std::time::Instant;
 use tracing::{error, instrument, warn};
-use uniproc_protocol::{LinuxCodec, LinuxRequest, LinuxResponse, services};
+use uniproc_protocol::{services, LinuxCodec, LinuxRequest, LinuxResponse};
 
 pub struct WslBackend;
 
@@ -84,7 +84,9 @@ impl<T: Window> Feature<T> for WslAgentFeature {
             ui.as_weak(),
         );
         let a = addr.clone();
-        reactor.add_dynamic_loop(&settings.ping_interval_ms(), move || a.send(Ping));
+        reactor.add_dynamic_loop(settings.ping_interval_ms().as_signal(), move || {
+            a.send(Ping)
+        });
         EventBus::subscribe::<GenericAgentActor<WslBackend>, ScanTick, T>(
             &ui.new_token(),
             addr.clone(),

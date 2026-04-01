@@ -1,17 +1,17 @@
 use crate::{
-    AppWindow, MainBodyState, ProcessEntry, ProcessesFeatureGlobal, TableCellData, TableColDef,
-    TableColMetadata, TableColWidth,
+    AppWindow, ProcessEntry, ProcessesFeatureGlobal, TableCellData, TableColDef, TableColMetadata,
+    TableColWidth,
 };
 use app_contracts::features::processes::{
     FieldDefDto, FieldMetadata, ProcessEntryVm, ProcessesUiBindings, ProcessesUiPort,
 };
 use app_core::app::FromUiWeak;
-use app_table::ui_cache::{SlintTableRowAdapter, UiTableCache};
 use macros::ui_adapter;
 use slint::{ComponentHandle, Model, SharedString, VecModel};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
+use widgets::table::ui_cache::{SlintTableRowAdapter, UiTableCache};
 
 struct AdapterModels {
     rows: Rc<VecModel<ProcessEntry>>,
@@ -152,11 +152,12 @@ impl ProcessesUiPort for ProcessesUiAdapter {
     }
 
     fn set_loading(&self, ui: &AppWindow, loading: bool) {
-        ui.global::<MainBodyState>().set_is_loading(loading);
+        // ui.global::<MainBodyState>().set_is_loading(loading);
     }
 
     fn set_is_grouped(&self, ui: &AppWindow, is_grouped: bool) {
-        ui.global::<ProcessesFeatureGlobal>().set_is_grouped(is_grouped);
+        ui.global::<ProcessesFeatureGlobal>()
+            .set_is_grouped(is_grouped);
     }
 
     #[default(-1)]
@@ -169,7 +170,8 @@ impl ProcessesUiPort for ProcessesUiAdapter {
     }
 
     fn set_selected_name(&self, ui: &AppWindow, name: SharedString) {
-        ui.global::<ProcessesFeatureGlobal>().set_selected_name(name);
+        ui.global::<ProcessesFeatureGlobal>()
+            .set_selected_name(name);
     }
 
     fn set_sort_state(&self, ui: &AppWindow, field: SharedString, descending: bool) {
@@ -212,7 +214,8 @@ impl ProcessesUiBindings for ProcessesUiAdapter {
     where
         F: Fn(i32, i32) + 'static,
     {
-        ui.global::<ProcessesFeatureGlobal>().on_select_process(handler);
+        ui.global::<ProcessesFeatureGlobal>()
+            .on_select_process(handler);
     }
 
     fn on_rows_viewport_changed<F>(&self, ui: &AppWindow, handler: F)
@@ -227,14 +230,16 @@ impl ProcessesUiBindings for ProcessesUiAdapter {
     where
         F: Fn(SharedString, f32) + 'static,
     {
-        ui.global::<ProcessesFeatureGlobal>().on_column_resized(handler);
+        ui.global::<ProcessesFeatureGlobal>()
+            .on_column_resized(handler);
     }
 
     fn on_group_clicked<F>(&self, ui: &AppWindow, handler: F)
     where
         F: Fn() + 'static,
     {
-        ui.global::<ProcessesFeatureGlobal>().on_group_clicked(handler);
+        ui.global::<ProcessesFeatureGlobal>()
+            .on_group_clicked(handler);
     }
 }
 

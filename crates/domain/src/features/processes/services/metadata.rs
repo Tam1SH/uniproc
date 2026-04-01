@@ -1,5 +1,5 @@
-use foundation_services::caches::icons::IconRequest;
-use foundation_services::caches::{icons::IconProvider, strings::StringsProvider};
+use context::caches::icons::IconRequest;
+use context::caches::{icons::IconProvider, strings::StringsProvider};
 use slint::{Image, SharedString};
 
 pub struct ProcessMetadataService;

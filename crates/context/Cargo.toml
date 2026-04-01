@@ -1,0 +1,21 @@
+[package]
+name = "context"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+slint = { workspace = true }
+tracing = { workspace = true }
+rust-i18n = { workspace = true }
+anyhow = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+ttl_cache = { workspace = true }
+bon = { workspace = true }
+app-core.workspace = true
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3.27.0"

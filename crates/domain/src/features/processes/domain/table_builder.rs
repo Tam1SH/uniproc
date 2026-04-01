@@ -1,9 +1,9 @@
 use crate::processes_impl::services::metadata::ProcessMetadataService;
 use app_contracts::features::processes::{ProcessEntryVm, ProcessFieldDto, ProcessNodeDto};
-use app_table::flow::{TableDataBuilder, TableNode};
-use foundation_services::caches::icons::IconRequest;
+use context::caches::icons::IconRequest;
 use slint::SharedString;
 use std::collections::HashSet;
+use widgets::table::flow::{TableDataBuilder, TableNode};
 
 pub struct ProcessTreeBuilder<'a> {
     pub metadata: &'a ProcessMetadataService,

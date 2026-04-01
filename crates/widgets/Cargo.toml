@@ -1,0 +1,12 @@
+[package]
+name = "widgets"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+app-core.workspace = true
+context.workspace = true
+anyhow = { workspace = true }
+slint = { workspace = true }
+dashmap = { workspace = true }
+tracing = { workspace = true }

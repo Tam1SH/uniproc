@@ -6,7 +6,7 @@ use app_core::actor::event_bus::EventBus;
 use app_core::actor::traits::{Context, Handler, Message, NoOp};
 use app_core::app::Window;
 use app_core::messages;
-use app_core::settings::ReactiveSetting;
+use context::settings::ReactiveSetting;
 use std::fmt::Debug;
 use tracing::{info, warn};
 
@@ -93,10 +93,11 @@ where
 {
     fn handle(&mut self, _: StartConnect, ctx: &Context<Self, T>) {
         if let Some(t) = self.apply(ConnectionEvent::BeginConnect)
-            && t.to == AgentConnectionState::Connecting {
-                self.publish_state(None);
-                self.spawn_connect(ctx);
-            }
+            && t.to == AgentConnectionState::Connecting
+        {
+            self.publish_state(None);
+            self.spawn_connect(ctx);
+        }
     }
 }
 
@@ -240,5 +241,49 @@ where
         self.ping_in_flight = false;
         self.publish_state(None);
         ctx.addr().send(StartConnect);
+    }
+}
+
+#[cfg(windows)]
+mod windows {
+    use crate::agents_impl::actor::GenericAgentActor;
+    use crate::agents_impl::providers::windows::WindowsBackend;
+    use app_contracts::features::agents::{WindowsActionRequest, WindowsActionResponse};
+    use app_core::actor::event_bus::EventBus;
+    use app_core::actor::traits::{Context, Handler};
+    use app_core::app::Window;
+    use std::ops::Deref;
+    use tracing::error;
+    use uniproc_protocol::WindowsResponse;
+
+    impl<T: Window> Handler<WindowsActionRequest, T> for GenericAgentActor<WindowsBackend> {
+        fn handle(&mut self, msg: WindowsActionRequest, _: &Context<Self, T>) {
+            let Some(client) = self.client.clone() else {
+                error!("Client not initialized");
+                return;
+            };
+
+            let correlation_id = msg.correlation_id;
+
+            tokio::spawn(async move {
+                match client.call(msg.request).await {
+                    Ok(resp_data) => {
+                        if let Ok(response) = rkyv::deserialize::<
+                            WindowsResponse,
+                            rkyv::rancor::Error,
+                        >(*resp_data.deref())
+                        {
+                            EventBus::publish(WindowsActionResponse {
+                                correlation_id,
+                                response,
+                            });
+                        }
+                    }
+                    Err(e) => {
+                        error!("Backend call failed: {:?}", e);
+                    }
+                }
+            });
+        }
     }
 }

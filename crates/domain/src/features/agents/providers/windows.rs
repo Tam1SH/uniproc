@@ -7,18 +7,18 @@ use app_contracts::features::environments::{
 };
 use app_core::app::Window;
 use app_core::{
-    SharedState,
     actor::{addr::Addr, event_bus::EventBus},
     app::Feature,
     ratelimit,
     reactor::Reactor,
+    SharedState,
 };
 use ogurpchik::discovery::Scope;
 use ogurpchik::transport::stream::adapters::uds::UdsTransport;
 use std::ops::Deref;
 use std::time::Instant;
 use tracing::{error, instrument, warn};
-use uniproc_protocol::{WindowsCodec, WindowsRequest, WindowsResponse, services};
+use uniproc_protocol::{services, WindowsCodec, WindowsRequest, WindowsResponse};
 
 pub struct WindowsBackend;
 
@@ -83,7 +83,9 @@ impl<T: Window> Feature<T> for WindowsAgentFeature {
             ui.as_weak(),
         );
         let a = addr.clone();
-        reactor.add_dynamic_loop(&settings.ping_interval_ms(), move || a.send(Ping));
+        reactor.add_dynamic_loop(settings.ping_interval_ms().as_signal(), move || {
+            a.send(Ping)
+        });
         EventBus::subscribe::<GenericAgentActor<WindowsBackend>, ScanTick, T>(
             &ui.new_token(),
             addr.clone(),

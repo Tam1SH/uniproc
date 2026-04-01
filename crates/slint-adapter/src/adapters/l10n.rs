@@ -1,5 +1,5 @@
 use crate::{AppWindow, L10n};
-use app_core::l10n::L10nPort;
+use context::l10n::L10nPort;
 use macros::ui_adapter;
 use slint::ComponentHandle;
 
