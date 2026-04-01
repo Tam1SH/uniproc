@@ -158,9 +158,6 @@ impl<P: NavigationUiPort + Clone> NavigationActor<P> {
         EventBus::publish(TabActivated { tab_id });
         EventBus::publish(PageActivated { tab_id, page_id });
 
-        self.ui_port.set_active_tab(tab_id);
-        self.ui_port.set_active_page(tab_id, page_id);
-
         let page_state = self.registry.get_page_state(tab_id, page_id);
         self.ui_port
             .set_page_status(tab_id, page_id, page_state.status);
@@ -188,6 +185,9 @@ impl<P: NavigationUiPort + Clone> NavigationActor<P> {
 
         slint::Timer::single_shot(h_delay, move || {
             let ui2 = ui.clone();
+
+            ui2.set_active_tab(tab_id);
+            ui2.set_active_page(tab_id, page_id);
             slint::Timer::single_shot(s_delay, move || {
                 debug!("Setting content visible after delay");
                 ui2.set_content_visible(true);
