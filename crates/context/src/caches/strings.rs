@@ -21,7 +21,7 @@ impl StringsProvider {
         }
     }
 
-    pub fn get(&self, s: &str) -> SharedString {
+    pub fn intern(&self, s: &str) -> SharedString {
         let mut cache = self.cache.lock().unwrap();
 
         if let Some(cached) = cache.get(s) {
@@ -39,6 +39,6 @@ impl StringsProvider {
             _ => raw,
         };
 
-        self.get(clean)
+        self.intern(clean)
     }
 }

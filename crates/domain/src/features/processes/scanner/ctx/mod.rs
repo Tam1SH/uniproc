@@ -130,6 +130,6 @@ impl VisitorContext for StatefulContext {
     }
 
     fn intern(&self, s: &str) -> SharedString {
-        StringsProvider::global().get(s)
+        StringsProvider::global().intern(s)
     }
 }

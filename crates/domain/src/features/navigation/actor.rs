@@ -200,7 +200,6 @@ impl<P: NavigationUiPort + Clone, TWindow: Window> Handler<RequestPageSwitch, TW
     for NavigationActor<P>
 {
     fn handle(&mut self, msg: RequestPageSwitch, _ctx: &Context<Self, TWindow>) {
-        info!("aya");
         self.perform_page_switch(msg.0, msg.1);
     }
 }

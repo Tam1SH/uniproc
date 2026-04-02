@@ -11,9 +11,15 @@ serde_json.workspace = true
 tracing.workspace = true
 slint = { workspace = true }
 anyhow = { workspace = true }
-
+uuid.workspace = true
 tokio.workspace = true
 macros.workspace = true
 serde.workspace = true
+widgets.workspace = true
+dashmap.workspace = true
+uniproc-protocol.workspace = true
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows.workspace = true
 
 

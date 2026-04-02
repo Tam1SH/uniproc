@@ -61,7 +61,7 @@ where
 
         self.ui_port
             .set_column_defs(self.table.get_header_columns());
-        self.ui_port.set_loading(false);
+
         self.ui_port.set_column_widths(self.table.column_widths());
         self.ui_port
             .set_column_metadata(self.table.column_metadata());

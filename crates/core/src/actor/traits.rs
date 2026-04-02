@@ -1,9 +1,8 @@
-use crate::actor::UiThreadGuard;
 use crate::actor::addr::{Addr, REGISTRY};
-use crate::actor::event_bus::EventBus;
 use crate::actor::event_bus::subscribe::Event;
+use crate::actor::event_bus::EventBus;
+use crate::actor::UiThreadGuard;
 use crate::app::Window;
-use crate::messages;
 
 pub trait Message: 'static {}
 
@@ -97,7 +96,10 @@ impl<A: 'static, TWindow: Window> Context<A, TWindow> {
     }
 }
 
-messages! { NoOp }
+#[derive(Debug, Clone)]
+pub struct NoOp;
+impl Message for NoOp {}
+
 impl<T: 'static, TWindow: Window> Handler<NoOp, TWindow> for T {
     fn handle(&mut self, _: NoOp, _: &Context<Self, TWindow>) {}
 }

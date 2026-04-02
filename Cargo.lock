@@ -1697,12 +1697,17 @@ dependencies = [
  "app-contracts",
  "app-core",
  "context",
+ "dashmap",
  "macros",
  "serde",
  "serde_json",
  "slint",
  "tokio",
  "tracing",
+ "uniproc-protocol",
+ "uuid",
+ "widgets",
+ "windows 0.61.3",
 ]
 
 [[package]]

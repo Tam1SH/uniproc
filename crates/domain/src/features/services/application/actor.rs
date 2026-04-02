@@ -1,0 +1,121 @@
+use crate::features::services::view::ServiceTable;
+use app_contracts::features::agents::{WindowsActionRequest, WindowsActionResponse};
+use app_contracts::features::navigation::{tab_ids, PageActivated};
+use app_contracts::features::services::{ServiceActionKind, ServiceSnapshot, ServicesUiPort};
+use app_core::actor::event_bus::EventBus;
+use app_core::actor::traits::{Context, Handler};
+use app_core::app::Window;
+use app_core::messages;
+use context::page_status::{PageId, PageStatus, PageStatusChanged, PageStatusRegistry};
+use slint::SharedString;
+use std::collections::HashSet;
+use std::sync::Arc;
+use uniproc_protocol::{ServiceCommand, WindowsRequest};
+use uuid::Uuid;
+
+messages! {
+    ServiceAction { name: String, kind: ServiceActionKind },
+    Sort(SharedString),
+    ViewportChanged { start: usize, count: usize },
+    ResizeCol { id: String, width: f32 },
+    OpenServices,
+}
+
+pub struct ServiceActor<P: ServicesUiPort> {
+    pub page_id: PageId,
+    pub table: ServiceTable,
+    pub ui_port: P,
+    pub page_status: Arc<PageStatusRegistry>,
+    pub is_active: bool,
+    pub pending: HashSet<Uuid>,
+}
+
+impl<P: ServicesUiPort, T: Window> Handler<ServiceSnapshot, T> for ServiceActor<P> {
+    fn handle(&mut self, m: ServiceSnapshot, _: &Context<Self, T>) {
+        self.table.update_data(m.services);
+        self.ui_port.set_column_widths(self.table.column_widths());
+
+        self.page_status.report_page(PageStatusChanged {
+            tab_id: tab_ids::MAIN,
+            page_id: self.page_id,
+            status: PageStatus::Ready,
+            error: None,
+        });
+
+        let b = self.table.batch();
+        self.ui_port
+            .set_service_rows_window(b.total_rows, b.start, b.rows);
+    }
+}
+
+impl<P: ServicesUiPort, T: Window> Handler<ServiceAction, T> for ServiceActor<P> {
+    fn handle(&mut self, m: ServiceAction, _: &Context<Self, T>) {
+        let id = Uuid::new_v4();
+        let cmd = match m.kind {
+            ServiceActionKind::Start => ServiceCommand::Start { name: m.name },
+            ServiceActionKind::Stop => ServiceCommand::Stop { name: m.name },
+            ServiceActionKind::Restart => ServiceCommand::Restart { name: m.name },
+            ServiceActionKind::Pause => ServiceCommand::Pause { name: m.name },
+            ServiceActionKind::Resume => ServiceCommand::Resume { name: m.name },
+        };
+        self.pending.insert(id);
+        EventBus::publish(WindowsActionRequest {
+            correlation_id: id,
+            request: WindowsRequest::ServiceCommand(cmd),
+        });
+    }
+}
+
+impl<P: ServicesUiPort, T: Window> Handler<WindowsActionResponse, T> for ServiceActor<P> {
+    fn handle(&mut self, m: WindowsActionResponse, _: &Context<Self, T>) {
+        self.pending.remove(&m.correlation_id);
+    }
+}
+
+impl<P: ServicesUiPort, T: Window> Handler<ResizeCol, T> for ServiceActor<P> {
+    fn handle(&mut self, m: ResizeCol, _: &Context<Self, T>) {
+        let _ = self.table.resize_column(m.id, m.width as u64);
+        self.ui_port.set_column_widths(self.table.column_widths());
+    }
+}
+
+impl<P: ServicesUiPort, T: Window> Handler<OpenServices, T> for ServiceActor<P> {
+    fn handle(&mut self, _: OpenServices, _: &Context<Self, T>) {
+        #[cfg(target_os = "windows")]
+        let _ = std::process::Command::new("mmc.exe")
+            .arg("services.msc")
+            .spawn();
+    }
+}
+
+impl<P: ServicesUiPort, T: Window> Handler<PageActivated, T> for ServiceActor<P> {
+    fn handle(&mut self, m: PageActivated, _: &Context<Self, T>) {
+        self.is_active = m.page_id == self.page_id;
+    }
+}
+
+impl<P: ServicesUiPort, T: Window> Handler<Sort, T> for ServiceActor<P> {
+    fn handle(&mut self, m: Sort, _: &Context<Self, T>) {
+        let s = &mut self.table.view.flow.sort;
+        if s.field_id.as_ref() == Some(&m.0) {
+            s.descending = !s.descending;
+        } else {
+            s.field_id = Some(m.0.clone());
+            s.descending = false;
+        }
+        self.ui_port.set_sort_state(m.0, s.descending);
+        self.table.refresh();
+        let b = self.table.batch();
+        self.ui_port
+            .set_service_rows_window(b.total_rows, b.start, b.rows);
+    }
+}
+
+impl<P: ServicesUiPort, T: Window> Handler<ViewportChanged, T> for ServiceActor<P> {
+    fn handle(&mut self, m: ViewportChanged, _: &Context<Self, T>) {
+        self.table.view.rows.set_viewport(m.start, m.count);
+        let b = self.table.batch();
+        self.ui_port
+            .set_service_rows_window(b.total_rows, b.start, b.rows);
+    }
+}

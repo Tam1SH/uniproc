@@ -3,13 +3,13 @@ use context::page_status::{PageId, PageStatus, TabId};
 
 pub mod page_ids {
     use super::PageId;
-    pub const PROCESSES: PageId = PageId(0);
-    pub const PERFORMANCE: PageId = PageId(1);
-    pub const DISK: PageId = PageId(2);
-    pub const STATISTICS: PageId = PageId(3);
-    pub const STARTUP_APPS: PageId = PageId(4);
-    pub const USERS: PageId = PageId(5);
-    pub const SERVICES: PageId = PageId(6);
+    pub const PROCESSES: PageId = PageId(1);
+    pub const PERFORMANCE: PageId = PageId(2);
+    pub const DISK: PageId = PageId(3);
+    pub const STATISTICS: PageId = PageId(4);
+    pub const STARTUP_APPS: PageId = PageId(5);
+    pub const USERS: PageId = PageId(6);
+    pub const SERVICES: PageId = PageId(7);
 }
 
 pub mod tab_ids {

@@ -5,4 +5,5 @@ pub mod environments;
 pub mod navigation;
 pub mod processes;
 pub mod run_task;
+pub mod services;
 pub mod window_actions;

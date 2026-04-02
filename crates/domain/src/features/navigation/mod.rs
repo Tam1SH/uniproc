@@ -48,7 +48,7 @@ where
 
         let default_page = settings.default_page().get();
         ui_port.set_navigation_tree(tabs.clone());
-        ui_port.set_active_page(default_page.0, default_page.1);
+
         ui_port.set_side_bar_width(settings.side_bar_width().get());
 
         let actor = NavigationActor::new(
@@ -58,6 +58,8 @@ where
             &settings,
         );
         let addr = Addr::new(actor, ui.as_weak());
+
+        addr.send(RequestPageSwitch(default_page.0, default_page.1));
 
         let a = addr.clone();
         ui_port.on_request_page_switch(move |t_id, p_id| a.send(RequestPageSwitch(t_id, p_id)));

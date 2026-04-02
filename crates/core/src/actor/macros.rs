@@ -11,18 +11,18 @@ macro_rules! messages {
         pub struct $name {
             $( pub $f_name : $f_typ ),*
         }
-        impl Message for $name {}
+        impl app_core::actor::traits::Message for $name {}
     };
 
     (@dispatch $name:ident ( $first:ty $(, $rest:ty)* $(,)? ) ) => {
         #[derive(Debug, Clone)]
         pub struct $name(pub $first, $(pub $rest),*);
-        impl Message for $name {}
+        impl app_core::actor::traits::Message for $name {}
     };
 
     (@dispatch $name:ident $($_:tt)? ) => {
         #[derive(Debug, Clone)]
         pub struct $name;
-        impl Message for $name {}
+        impl app_core::actor::traits::Message for $name {}
     };
 }
