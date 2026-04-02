@@ -1,0 +1,61 @@
+import {
+    TableColDef,
+    TableColWidth,
+    TableColMetadata,
+    TableCellData,
+} from "../../components/table/index.slint";
+
+export struct ServiceEntry {
+    name: string,
+    display-name: string,
+    pid: int,
+    status: string,
+    group: string,
+    description: string,
+    cells: [TableCellData],
+}
+
+export global ServicesFeatureGlobal {
+
+    in property <[TableColDef]> column-defs:[
+        { id: "name", label: "Name" },
+        { id: "pid", label: "PID" },
+        { id: "status", label: "Status" },
+        { id: "group", label: "Group" },
+        { id: "description", label: "Description" },
+    ];
+
+    in-out property <[TableColMetadata]> column-metadatas:[
+        { is-text: true },
+        { is-text: true },
+        { is-text: true },
+        { is-text: true },
+        { is-text: true }
+    ];
+
+    in-out property <[TableColWidth]> column-widths:[
+        { id: "name", width-px: 150 },
+        { id: "pid", width-px: 80 },
+        { id: "status", width-px: 100 },
+        { id: "group", width-px: 120 },
+        { id: "description", width-px: 100 },
+    ];
+
+    in property <[ServiceEntry]> service-rows:[];
+    in property <string> selected-name;
+    in property <string> current-sort;
+    in property <bool> current-sort-descending;
+    in property <int> total-services-count;
+    in property <bool> is-loading;
+
+    in property <bool> start-button-active;
+    in property <bool> stop-button-active;
+    in property <bool> restart-button-active;
+
+    callback sort-by(string);
+    callback select-service(string, int);
+    callback rows-viewport-changed(int, int);
+    callback column-resized(string, float);
+    callback service-action(string, string);
+    callback open-system-services();
+}

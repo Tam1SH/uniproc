@@ -7,6 +7,7 @@ use domain::features::l10n::L10nFeature;
 use domain::features::navigation::NavigationFeature;
 use domain::features::page_status::PageStatusFeature;
 use domain::features::run_task::RunTaskFeature;
+use domain::features::services::ServicesFeature;
 use domain::features::settings::SettingsFeature;
 use domain::features::window_actions::WindowActionsFeature;
 use domain_agents::features::agents::AgentsFeature;
@@ -20,6 +21,7 @@ use slint_adapter::adapters::l10n::SlintL10nPort;
 use slint_adapter::adapters::navigation::NavigationUiAdapter;
 use slint_adapter::adapters::processes::ProcessesUiAdapter;
 use slint_adapter::adapters::run_task::RunTaskAdapter;
+use slint_adapter::adapters::services::ServicesUiAdapter;
 use slint_adapter::adapters::window_actions::WindowActionsAdapter;
 use slint_adapter::AppWindow;
 use tracing::Level;
@@ -67,6 +69,7 @@ fn main() -> anyhow::Result<()> {
         .feature(with_adapter!(EnvironmentsFeature => EnvironmentsUiAdapter))?
         .feature(with_adapter!(NavigationFeature => NavigationUiAdapter))?
         .feature(with_adapter!(L10nFeature => SlintL10nPort))?
+        .feature(with_adapter!(ServicesFeature => ServicesUiAdapter))?
         .feature(with_adapter!(ProcessFeature => ProcessesUiAdapter))?;
 
     app.run()

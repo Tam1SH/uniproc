@@ -1,7 +1,12 @@
-import { PlaceholderPage } from "../shared/placeholder-page.slint";
+import {
+    ServiceViewHeader,
+    ServiceViewBody,
+} from "../../../../features/services/service-view.slint";
 
-export component ServicesPage inherits Rectangle {
-    PlaceholderPage {
-        title: "Services";
-    }
+export component ServicesPageHeader {
+    ServiceViewHeader { }
+}
+
+export component ServicesPageBody {
+    ServiceViewBody { }
 }

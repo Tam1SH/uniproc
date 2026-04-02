@@ -61,7 +61,6 @@ pub trait ProcessesUiPort: Debug + 'static {
     fn set_column_metadata(&self, data: Vec<FieldMetadata>);
     fn set_process_rows_window(&self, total_rows: usize, start: usize, rows: &[ProcessEntryVm]);
     fn set_column_defs(&self, defs: Vec<FieldDefDto>);
-    fn set_loading(&self, loading: bool);
     fn set_is_grouped(&self, is_grouped: bool);
     fn get_selected_pid(&self) -> i32;
     fn set_selected_pid(&self, pid: i32);

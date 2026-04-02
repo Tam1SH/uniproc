@@ -3,6 +3,7 @@ import { Theme } from "theme.slint";
 component ControlBtn inherits Rectangle {
     in property <image> icon;
     in property <bool> is-close: false;
+    in property <length> image-size: 16px;
     callback clicked();
 
     width: Theme.title_control_width;
@@ -17,8 +18,8 @@ component ControlBtn inherits Rectangle {
 
     Image {
         source: root.icon;
-        width: Theme.icon_size_m;
-        height: Theme.icon_size_m;
+        width: root.image-size;
+        height: root.image-size;
         colorize: (is-close && touch.has-hover) ? Theme.title_icon_active : Theme.title_icon;
     }
 }
@@ -43,6 +44,7 @@ export component WindowControls inherits HorizontalLayout {
 
     if (maximizable): ControlBtn {
         icon: root.is-maximized ? Icons.restore : Icons.maximize;
+        image-size: 14px;
         clicked => {
             root.maximize()
         }

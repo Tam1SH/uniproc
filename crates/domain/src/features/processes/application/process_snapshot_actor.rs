@@ -24,7 +24,7 @@ pub struct ProcessSnapshotActor<P: ProcessesUiPort, TWindow: Window> {
     pub snapshots: HashMap<&'static str, BridgeSnapshot>,
     pub contexts: HashMap<&'static str, Arc<StatefulContext>>,
     pub target: Addr<ProcessActor<P>, TWindow>,
-    /// ID страницы, которой принадлежит этот актор (для сравнения с PageActivated).
+
     pub page_id: PageId,
     pub is_active: bool,
     pub scratch_processes: Arc<Mutex<Vec<ProcessNodeDto>>>,
@@ -89,8 +89,6 @@ impl<P: ProcessesUiPort, TWindow: Window> ProcessSnapshotActor<P, TWindow> {
     }
 }
 
-// ─── PageActivated ────────────────────────────────────────────────────────────
-
 impl<P, TWindow> Handler<PageActivated, TWindow> for ProcessSnapshotActor<P, TWindow>
 where
     P: ProcessesUiPort,
@@ -100,8 +98,6 @@ where
         self.is_active = msg.page_id == self.page_id;
     }
 }
-
-// ─── RemoteScanResult ─────────────────────────────────────────────────────────
 
 impl<P, TWindow> Handler<RemoteScanResult, TWindow> for ProcessSnapshotActor<P, TWindow>
 where
@@ -124,8 +120,6 @@ where
         self.rebuild_and_send();
     }
 }
-
-// ─── WindowsReportMessage ─────────────────────────────────────────────────────
 
 #[cfg(target_os = "windows")]
 impl<P, TWindow> Handler<WindowsReportMessage, TWindow> for ProcessSnapshotActor<P, TWindow>

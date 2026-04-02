@@ -1,3 +1,10 @@
 apps-list:https://api.iconify.design/fluent-color:apps-list-24.svg
 group-list-filled:https://api.iconify.design/fluent:tab-group-24-filled.svg
 group-list-regular:https://api.iconify.design/fluent:tab-group-24-regular.svg
+gears:https://api.iconify.design/carbon:gears.svg
+dismiss:https://api.iconify.design/fluent:dismiss-20-regular.svg
+maximize:https://api.iconify.design/fluent:maximize-16-regular.svg
+stop:https://api.iconify.design/fluent:stop-24-regular.svg
+play:https://api.iconify.design/fluent:play-24-regular.svg
+refresh:https://api.iconify.design/fluent:arrow-sync-24-regular.svg
+image-search:https://api.iconify.design/fluent:image-search-20-regular.svg

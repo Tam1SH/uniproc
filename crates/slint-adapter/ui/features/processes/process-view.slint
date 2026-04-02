@@ -26,12 +26,13 @@ component ProcessItem inherits GenericTableRow {
     is-alternate: Math.mod(idx, 2) != 0;
     column-defs: ProcessesFeatureGlobal.column-defs;
     column-widths: ProcessesFeatureGlobal.column-widths;
-
+    column-metadatas: ProcessesFeatureGlobal.column-metadatas;
     master-text: entry.name;
     master-icon: entry.icon;
     depth: entry.depth;
     has-children: entry.has-children;
     is-expanded: entry.is-expanded;
+    is-expandable: true;
     master-color: entry.is-dead ? Theme.text_disabled : white;
 
     cells: entry.cells;

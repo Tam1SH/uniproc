@@ -5,7 +5,7 @@ use app_core::reactor::Reactor;
 use app_core::SharedState;
 
 use crate::features::services::application::actor::{
-    OpenServices, ServiceAction, ServiceActor, Sort, ViewportChanged,
+    OpenServices, ResizeCol, SelectedService, ServiceAction, ServiceActor, Sort, ViewportChanged,
 };
 use crate::features::services::application::snapshot_actor::ServiceSnapshotActor;
 use crate::features::services::settings::ServiceSettings;
@@ -90,12 +90,17 @@ where
             kind: action.into(),
         });
     });
+    let a = addr.clone();
+    ui_port.on_select_service(move |s_name, idx| a.send(SelectedService(s_name, idx)));
 
     let a = addr.clone();
     ui_port.on_open_system_services(move || a.send(OpenServices));
 
     let a = addr.clone();
     ui_port.on_sort_by(move |field| a.send(Sort(field)));
+
+    let a = addr.clone();
+    ui_port.on_column_resized(move |id, width| a.send(ResizeCol { id, width }));
 
     let a = addr.clone();
     ui_port.on_viewport_changed(move |start, count| {

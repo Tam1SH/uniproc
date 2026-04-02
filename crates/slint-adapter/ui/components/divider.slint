@@ -1,0 +1,34 @@
+import { Theme } from "theme.slint";
+
+export component Divider inherits Rectangle {
+    in property <bool> vertical: false;
+    in property <length> inset: 0px;
+
+    background: transparent;
+
+    if (!root.vertical): Rectangle {
+        width: 100%;
+        height: Theme.strokeWidthThin;
+        background: transparent;
+
+        Rectangle {
+            background: Theme.colorNeutralBackgroundAlpha2;
+            x: root.inset;
+            width: parent.width - root.inset * 2;
+            height: parent.height;
+        }
+    }
+
+    if (root.vertical): Rectangle {
+        width: Theme.strokeWidthThin;
+        height: 100%;
+        background: transparent;
+
+        Rectangle {
+            background: Theme.colorNeutralBackgroundAlpha2;
+            y: root.inset;
+            height: parent.height - root.inset * 2;
+            width: parent.width;
+        }
+    }
+}

@@ -65,6 +65,10 @@ impl ServiceTable {
         self.refresh();
     }
 
+    pub fn get_by_name(&self, name: &str) -> Option<&ServiceEntryDto> {
+        self.view.flow.find(|dto| dto.name == name)
+    }
+
     pub fn refresh(&mut self) {
         let mut builder = ServiceTableBuilder;
         let sort = self.view.flow.sort.clone();
@@ -86,10 +90,22 @@ impl ServiceTable {
         );
     }
 
-    pub fn resize_column(&mut self, id: String, width: u64) -> anyhow::Result<()> {
-        self.settings.columns().patch_widths_px(|w| {
-            w.insert(id, width);
-        })
+    pub fn resize_column(&mut self, id: String, new_width: u64) -> anyhow::Result<()> {
+        let def_width = self.settings.columns().default_width_px().get();
+        let min_w = self
+            .settings
+            .columns()
+            .min_widths_px()
+            .get()
+            .get(&id)
+            .map(|r| *r.value())
+            .unwrap_or(def_width);
+
+        self.settings.columns().patch_widths_px(|widths| {
+            widths.insert(id, new_width.max(min_w));
+        })?;
+
+        Ok(())
     }
 
     pub fn column_widths(&self) -> Vec<(SharedString, u64)> {

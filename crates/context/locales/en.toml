@@ -3,3 +3,8 @@ settings_save_btn = "Save"
 search_placeholder = "Search processes..."
 error_connection_lost = "Connection lost"
 environments = "Environments"
+[services]
+stop = "Stop"
+start = "Start"
+restart = "Restart"
+open_services = "Open services"

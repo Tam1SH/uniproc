@@ -44,6 +44,9 @@ pub trait ServicesUiPort: Debug + 'static {
     fn set_selected_name(&self, name: SharedString);
     fn set_sort_state(&self, field: SharedString, descending: bool);
     fn set_total_services_count(&self, count: usize);
+    fn set_active_start_button(&self, flag: bool);
+    fn set_active_stop_button(&self, flag: bool);
+    fn set_active_restart_button(&self, flag: bool);
 }
 
 pub trait ServicesUiBindings: 'static {
@@ -52,7 +55,7 @@ pub trait ServicesUiBindings: 'static {
         F: Fn(SharedString) + 'static;
     fn on_select_service<F>(&self, handler: F)
     where
-        F: Fn(SharedString) + 'static;
+        F: Fn(SharedString, usize) + 'static;
     fn on_viewport_changed<F>(&self, handler: F)
     where
         F: Fn(usize, usize) + 'static;

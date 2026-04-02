@@ -151,10 +151,6 @@ impl ProcessesUiPort for ProcessesUiAdapter {
         self.models.columns.set_vec(defs);
     }
 
-    fn set_loading(&self, ui: &AppWindow, loading: bool) {
-        // ui.global::<MainBodyState>().set_is_loading(loading);
-    }
-
     fn set_is_grouped(&self, ui: &AppWindow, is_grouped: bool) {
         ui.global::<ProcessesFeatureGlobal>()
             .set_is_grouped(is_grouped);

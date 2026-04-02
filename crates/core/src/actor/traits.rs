@@ -1,7 +1,4 @@
 use crate::actor::addr::{Addr, REGISTRY};
-use crate::actor::event_bus::subscribe::Event;
-use crate::actor::event_bus::EventBus;
-use crate::actor::UiThreadGuard;
 use crate::app::Window;
 
 pub trait Message: 'static {}
@@ -13,7 +10,6 @@ pub trait Handler<M: Message, TWindow: Window>: 'static {
 }
 
 pub struct Context<A: 'static, TWindow: Window> {
-    pub(super) guard: UiThreadGuard,
     pub(super) addr: Addr<A, TWindow>,
     pub ui_weak: slint::Weak<TWindow>,
 }
@@ -21,26 +17,6 @@ pub struct Context<A: 'static, TWindow: Window> {
 impl<A: 'static, TWindow: Window> Context<A, TWindow> {
     pub fn addr(&self) -> Addr<A, TWindow> {
         self.addr.clone()
-    }
-
-    pub fn with_ui<F, R>(&self, f: F) -> Option<R>
-    where
-        F: FnOnce(&TWindow) -> R,
-    {
-        self.ui_weak.upgrade().map(|ui| f(&ui))
-    }
-
-    pub fn subscribe<M>(&self)
-    where
-        M: Event,
-        A: Handler<M, TWindow>,
-    {
-        let addr = self.addr();
-        EventBus::subscribe::<A, M, TWindow>(&self.guard, addr);
-    }
-
-    pub fn publish<M: Event + Send>(&self, msg: M) {
-        EventBus::publish(msg);
     }
 
     pub fn spawn_task<M, Fut, S>(&self, fut: Fut, mut loading_setter: S)

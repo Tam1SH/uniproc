@@ -76,6 +76,10 @@ where
         }
     }
 
+    pub fn find(&self, f: impl Fn(&T) -> bool) -> Option<&T> {
+        self.last_items.iter().find(|&item| f(item))
+    }
+
     pub fn select(&mut self, id: ID, idx: usize) {
         self.selected_id = Some(id);
         self.frozen_index = Some(idx);

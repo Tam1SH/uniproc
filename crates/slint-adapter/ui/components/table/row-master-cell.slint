@@ -3,9 +3,12 @@ import { Icons } from "icons.slint";
 export component GenericMasterCell inherits Rectangle {
     in property <string> text;
     in property <image> icon;
+    in property <color> icon-color;
+    in property <bool> has-icon-color;
     in property <int> depth: 0;
     in property <bool> has-children: false;
     in property <bool> is-expanded: false;
+    in property <bool> is-expandable: false;
     in property <color> text-color: white;
 
     callback toggle-expand();
@@ -31,14 +34,16 @@ export component GenericMasterCell inherits Rectangle {
                 }
             }
         }
-        if (!root.has-children): Rectangle {
+        if (!root.has-children && root.is-expandable): Rectangle {
             width: 12px;
         }
 
         VerticalLayout {
             alignment: center;
+
             Image {
                 source: root.icon;
+                colorize: root.has-icon-color ? root.icon-color : transparent;
                 width: 16px;
                 height: 16px;
                 image-fit: contain;

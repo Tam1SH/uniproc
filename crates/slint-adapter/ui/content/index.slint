@@ -6,7 +6,6 @@ import {
 } from "../features/navigation/globals/tabs-navigation.slint";
 export component ContentContainer inherits Rectangle {
     clip: true;
-
     private property <TabData> active_tab: Navigation.tabs[Navigation.active_tab_index];
 
     if (root.active_tab.id == 0): BuiltinDashboard { }

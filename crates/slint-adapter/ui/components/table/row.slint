@@ -1,5 +1,5 @@
 import { Theme } from "theme.slint";
-import { TableColWidth, TableColDef, TableCellData } from "types.slint";
+import { TableColWidth, TableColDef, TableCellData, TableColMetadata } from "types.slint";
 import { GenericMasterCell } from "row-master-cell.slint";
 import { GenericTableCell } from "row-cell.slint";
 export component GenericTableRow inherits Rectangle {
@@ -8,12 +8,17 @@ export component GenericTableRow inherits Rectangle {
 
     in property <[TableColDef]> column-defs;
     in property <[TableColWidth]> column-widths;
+    in property <[TableColMetadata]> column-metadatas;
+
 
     in property <string> master-text;
     in property <image> master-icon;
+    in property <color> master-icon-color;
+    in property <bool> has-master-icon-color;
     in property <int> depth: 0;
     in property <bool> has-children: false;
     in property <bool> is-expanded: false;
+    in property <bool> is-expandable: false;
     in property <color> master-color: white;
 
     in property <[TableCellData]> cells;
@@ -39,15 +44,19 @@ export component GenericTableRow inherits Rectangle {
             if (idx == 0) : GenericMasterCell {
                 text: root.master-text;
                 icon: root.master-icon;
+                has-icon-color: root.has-master-icon-color;
+                icon-color: root.master-icon-color;
                 depth: root.depth;
                 has-children: root.has-children;
                 is-expanded: root.is-expanded;
+                is-expandable: root.is-expandable;
                 text-color: root.master-color;
                 toggle-expand => { root.toggle-expand(); }
             }
 
             if (idx > 0) : GenericTableCell {
                 data: root.cells[idx - 1];
+                is-simple-text: root.column-metadatas[idx].is-text;
             }
         }
     }

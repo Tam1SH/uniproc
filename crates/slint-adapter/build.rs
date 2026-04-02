@@ -1,12 +1,13 @@
 use std::fs;
 use std::path::Path;
-use toml::Table;
+use toml::{Table, Value};
 
 fn main() {
     download_missing_assets();
     generate_icons_slint();
     generate_slint_l10n();
     generate_icons_rs();
+
     let config = slint_build::CompilerConfiguration::new()
         .with_style("fluent".into())
         .with_include_paths(vec![
@@ -18,6 +19,65 @@ fn main() {
     slint_build::compile_with_config("ui/app-window.slint", config).expect("Slint build failed");
 }
 
+fn collect_keys(prefix: &str, table: &Table, acc: &mut Vec<String>) {
+    for (key, value) in table {
+        let full_key = if prefix.is_empty() {
+            key.to_string()
+        } else {
+            format!("{}.{}", prefix, key)
+        };
+
+        match value {
+            Value::Table(sub_table) => collect_keys(&full_key, sub_table, acc),
+            _ => acc.push(full_key),
+        }
+    }
+}
+
+fn generate_slint_l10n_adapter(flat_keys: &[String]) {
+    let out_file = Path::new("src/adapters/l10n.rs");
+
+    let methods = flat_keys
+        .iter()
+        .map(|key| {
+            let name = key.replace(['.', '-'], "_");
+            format!(
+                "    fn set_{name}(&self, ui: &AppWindow, value: String) {{\n\
+                 \t    ui.global::<L10n>().set_{name}(value.into());\n\
+                 \t}}"
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n\n");
+
+    let content = format!(
+        r#"// AUTO-GENERATED — do not edit manually
+use crate::{{AppWindow, L10n}};
+use context::l10n::L10nPort;
+use macros::ui_adapter;
+use slint::ComponentHandle;
+
+#[derive(Clone)]
+pub struct SlintL10nPort {{
+    ui: slint::Weak<AppWindow>,
+}}
+
+impl SlintL10nPort {{
+    pub fn new(ui: slint::Weak<AppWindow>) -> Self {{
+        Self {{ ui }}
+    }}
+}}
+
+#[ui_adapter]
+impl L10nPort for SlintL10nPort {{
+{methods}
+}}
+"#
+    );
+
+    write_if_changed(out_file, &content);
+}
+
 fn generate_slint_l10n() {
     let en_toml = Path::new("../context/locales/en.toml");
     let out_file = Path::new("ui/shared/localization.slint");
@@ -27,31 +87,31 @@ fn generate_slint_l10n() {
     let content = fs::read_to_string(en_toml).expect("../context/locales/en.toml not found");
     let table: Table = content.parse().expect("Failed to parse en.toml");
 
-    let mut keys: Vec<String> = table.keys().cloned().collect();
-    keys.sort();
+    let mut flat_keys = Vec::new();
+    collect_keys("", &table, &mut flat_keys);
+    flat_keys.sort();
 
-    let properties = keys
+    let properties = flat_keys
         .iter()
         .map(|key| {
-            let slint_name = key.replace('_', "-");
+            let slint_name = key.replace(['.', '_'], "-");
             format!("    in property <string> {slint_name};")
         })
         .collect::<Vec<_>>()
         .join("\n");
 
     let generated = format!(
-        "// AUTO-GENERATED - do not edit manually\n\
-         // Based on ../context/locales/en.toml\n\n\
-         export global L10n {{\n{properties}\n}}\n"
+        "// AUTO-GENERATED — do not edit manually\nexport global L10n {{\n{properties}\n}}\n"
     );
 
     write_if_changed(out_file, &generated);
+
+    generate_slint_l10n_adapter(&flat_keys);
 }
 
 fn download_missing_assets() {
     let urls_file = Path::new("ui/assets/download.txt");
     let assets_dir = Path::new("ui/assets");
-
     println!("cargo:rerun-if-changed=ui/assets/download.txt");
 
     let Ok(content) = fs::read_to_string(urls_file) else {
@@ -68,53 +128,29 @@ fn download_missing_assets() {
         };
         let name = line[..colon_pos].trim();
         let url = line[colon_pos + 1..].trim();
-
-        if name.is_empty() || url.is_empty() {
-            eprintln!("cargo:warning=Invalid line: {line}");
-            continue;
-        }
-
         let dest = assets_dir.join(format!("{name}.svg"));
+
         if dest.exists() {
             continue;
         }
 
-        println!("cargo:warning=Downloading {name}.svg...");
-
-        let output = std::process::Command::new("curl")
+        let _ = std::process::Command::new("curl")
             .args(["-fsSL", "-o", dest.to_str().unwrap(), url])
             .output();
-
-        match output {
-            Ok(o) if o.status.success() => println!("cargo:warning=Downloaded {name}.svg"),
-            Ok(o) => eprintln!(
-                "cargo:warning=Failed to download {name}.svg: {}",
-                String::from_utf8_lossy(&o.stderr)
-            ),
-            Err(e) => eprintln!("cargo:warning=curl failed: {e}"),
-        }
     }
 }
 
 fn generate_icons_slint() {
     let assets_dir = Path::new("ui/assets");
     let out_file = Path::new("ui/shared/icons.slint");
-
     println!("cargo:rerun-if-changed=ui/assets");
 
     let mut entries: Vec<String> = fs::read_dir(assets_dir)
         .expect("ui/assets not found")
         .filter_map(|e| e.ok())
-        .filter_map(|e| {
-            let name = e.file_name().to_string_lossy().to_string();
-            if name.ends_with(".svg") {
-                Some(name)
-            } else {
-                None
-            }
-        })
+        .map(|e| e.file_name().to_string_lossy().to_string())
+        .filter(|n| n.ends_with(".svg"))
         .collect();
-
     entries.sort();
 
     let properties = entries
@@ -122,16 +158,15 @@ fn generate_icons_slint() {
         .map(|filename| {
             format!(
                 "    out property <image> {}: @image-url(\"assets/{filename}\");",
-                filename.trim_end_matches(".svg")
+                filename.trim_end_matches(".svg").replace(['.', '_'], "-")
             )
         })
         .collect::<Vec<_>>()
         .join("\n");
 
     let generated = format!(
-        "// AUTO-GENERATED - do not edit manually\n\nexport global Icons {{\n{properties}\n}}\n"
+        "// AUTO-GENERATED — do not edit manually\nexport global Icons {{\n{properties}\n}}\n"
     );
-
     write_if_changed(out_file, &generated);
 }
 
@@ -142,16 +177,9 @@ fn generate_icons_rs() {
     let mut entries: Vec<String> = fs::read_dir(assets_dir)
         .expect("ui/assets not found")
         .filter_map(|e| e.ok())
-        .filter_map(|e| {
-            let name = e.file_name().to_string_lossy().to_string();
-            if name.ends_with(".svg") {
-                Some(name)
-            } else {
-                None
-            }
-        })
+        .map(|e| e.file_name().to_string_lossy().to_string())
+        .filter(|n| n.ends_with(".svg"))
         .collect();
-
     entries.sort();
 
     let arms = entries
@@ -165,8 +193,8 @@ fn generate_icons_rs() {
 
     let content = format!(
         r#"// AUTO-GENERATED — do not edit manually
-
 use slint::Image;
+
 
 pub struct Icons;
 
@@ -174,30 +202,23 @@ impl Icons {{
     pub fn get(name: &str) -> Image {{
         let bytes: &[u8] = match name {{
 {arms}
-            _ => {{
-                tracing::warn!(target: "internal", "Unknown icon: {{name}}");
-                return Image::default();
-            }}
+            _ => return Image::default(),
         }};
-
-        Image::load_from_svg_data(bytes).unwrap_or_else(|e| {{
-            tracing::error!(target: "internal", "Failed to decode icon '{{name}}': {{e}}");
-            Image::default()
-        }})
+        Image::load_from_svg_data(bytes).unwrap_or_default()
     }}
 }}
 "#
     );
 
-    let existing = fs::read_to_string(out_file).unwrap_or_default();
-    if existing != content {
-        fs::write(out_file, content).expect("Failed to write icons.rs");
-    }
+    write_if_changed(out_file, &content);
 }
 
 fn write_if_changed(path: &Path, content: &str) {
     let existing = fs::read_to_string(path).unwrap_or_default();
     if existing != content {
-        fs::write(path, content).unwrap_or_else(|_| panic!("Failed to write {:?}", path));
+        if let Some(p) = path.parent() {
+            let _ = fs::create_dir_all(p);
+        }
+        fs::write(path, content).ok();
     }
 }

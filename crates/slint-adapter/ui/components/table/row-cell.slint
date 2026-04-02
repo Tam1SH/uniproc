@@ -40,7 +40,7 @@ export component MetricSplitBar inherits Rectangle {
 
 export component GenericTableCell inherits Rectangle {
     in property <TableCellData> data;
-
+    in property <bool> is-simple-text;
     HorizontalLayout {
         padding-left: 8px;
         padding-right: 8px;
@@ -54,17 +54,17 @@ export component GenericTableCell inherits Rectangle {
             }
         }
 
-        Rectangle {
-            horizontal-stretch: 1;
-        }
+        //        Rectangle {
+//            horizontal-stretch: 1;
+//        }
 
         Text {
             text: root.data.text;
-            color: TableUtils.threshold-color(root.data.value, root.data.threshold, root.data.dead);
+            color: root.is-simple-text ? white : TableUtils.threshold-color(root.data.value, root.data.threshold, root.data.dead);
             font-size: 12px;
             font-weight: 600;
             vertical-alignment: center;
-            horizontal-alignment: right;
+            horizontal-alignment: root.is-simple-text ? left : right;
         }
     }
 }

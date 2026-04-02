@@ -1,4 +1,12 @@
-import { ProcessViewBody, ProcessViewHeader } from "../../../../features/processes/process-view.slint";
+import {
+    ProcessViewBody,
+    ProcessViewHeader,
+} from "../../../../features/processes/process-view.slint";
 
-export component ProcessesPageHeader inherits ProcessViewHeader {}
-export component ProcessesPageBody inherits ProcessViewBody {}
+export component ProcessesPageBody {
+    ProcessViewBody { }
+}
+
+export component ProcessesPageHeader {
+    ProcessViewHeader { }
+}

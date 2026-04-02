@@ -1,0 +1,170 @@
+import { ListView } from "std-widgets.slint";
+import { Button } from "button/index.slint";
+import { Divider } from "divider.slint";
+import { Theme } from "theme.slint";
+import { L10n } from "localization.slint";
+import { Icons } from "icons.slint";
+import { ServicesFeatureGlobal, ServiceEntry } from "globals.slint";
+import {
+    GenericTableRow,
+    TableHeader,
+    TableUtils,
+} from "table/index.slint";
+import { Icons } from "icons.slint";
+
+component ServiceItem inherits GenericTableRow {
+    in property <ServiceEntry> entry;
+    in property <int> idx;
+
+    selected: entry.name == ServicesFeatureGlobal.selected-name;
+    is-alternate: Math.mod(idx, 2) != 0;
+    column-defs: ServicesFeatureGlobal.column-defs;
+    column-widths: ServicesFeatureGlobal.column-widths;
+    column-metadatas: ServicesFeatureGlobal.column-metadatas;
+
+    master-icon: Icons.gears;
+    has-master-icon-color: true;
+    master-icon-color: white;
+    master-text: entry.name;
+    depth: 0;
+    has-children: false;
+
+    cells: entry.cells;
+
+    clicked => {
+        ServicesFeatureGlobal.select-service(entry.name, idx);
+    }
+}
+
+export component ServiceViewBody inherits Rectangle {
+    in property <length> row-height: 32px;
+
+    function emit-viewport() {
+        ServicesFeatureGlobal.rows-viewport-changed(
+            TableUtils.viewport-first(list.viewport-y, root.row-height),
+            TableUtils.viewport-visible(list.visible-height, root.row-height),
+        );
+    }
+
+    VerticalLayout {
+        TableHeader {
+            column-defs: ServicesFeatureGlobal.column-defs;
+            column-widths: ServicesFeatureGlobal.column-widths;
+            column-metadatas: ServicesFeatureGlobal.column-metadatas;
+            current-sort: ServicesFeatureGlobal.current-sort;
+            current-sort-descending: ServicesFeatureGlobal.current-sort-descending;
+            is-grouped: false;
+            resized(id, width) => {
+                ServicesFeatureGlobal.column-resized(id, width);
+            }
+            sort-by(id) => {
+                ServicesFeatureGlobal.sort-by(id);
+            }
+        }
+
+        Rectangle {
+            height: 1px;
+            background: Theme.colorNeutralStrokeAlpha;
+        }
+
+        list := ListView {
+            changed viewport-y => {
+                root.emit-viewport();
+            }
+            changed visible-height => {
+                root.emit-viewport();
+            }
+
+            for entry[idx] in ServicesFeatureGlobal.service-rows: ServiceItem {
+                entry: entry;
+                idx: idx;
+            }
+        }
+
+        Rectangle {
+            height: 32px;
+            background: Theme.colorNeutralBackgroundAlpha;
+            Rectangle {
+                width: 100%;
+                height: 1px;
+                y: 0;
+                background: Theme.colorNeutralStrokeAlpha;
+            }
+
+            HorizontalLayout {
+                padding-left: 8px;
+                alignment: start;
+                Text {
+                    text: "Services: \{ServicesFeatureGlobal.total-services-count}";
+                    color: Theme.text_secondary;
+                    font-size: 12px;
+                    vertical-alignment: center;
+                }
+            }
+        }
+    }
+}
+
+export component ServiceViewHeader inherits Rectangle {
+    property <bool> has-selection: ServicesFeatureGlobal.selected-name != "";
+    height: 60px;
+
+    HorizontalLayout {
+        padding: 12px;
+        spacing: 8px;
+
+        Text {
+            text: root.has-selection ? ServicesFeatureGlobal.selected-name : "Services";
+            font-size: 14px;
+            font-weight: 600;
+            color: Theme.text_primary;
+            vertical-alignment: center;
+        }
+
+        HorizontalLayout {
+            spacing: 4px;
+            alignment: end;
+            accessible-role: groupbox;
+            accessible-label: "SettingsButtonsGroup";
+
+            Button {
+                is-transparent: true;
+                icon: Icons.play;
+                enabled: ServicesFeatureGlobal.start-button-active;
+                has-icon-color: true;
+                icon-color: Theme.light-green;
+                icon-size: 18px;
+                text: L10n.services-start;
+                clicked => {
+                    ServicesFeatureGlobal.service-action(ServicesFeatureGlobal.selected-name, "Start");
+                }
+            }
+
+            Button {
+                is-transparent: true;
+                icon: Icons.stop;
+                enabled: ServicesFeatureGlobal.stop-button-active;
+                has-icon-color: true;
+                icon-color: Theme.soft-red;
+                icon-size: 18px;
+                text: L10n.services-stop;
+                clicked => {
+                    ServicesFeatureGlobal.service-action(ServicesFeatureGlobal.selected-name, "Stop");
+                }
+            }
+
+            Button {
+                is-transparent: true;
+                icon: Icons.refresh;
+                enabled: ServicesFeatureGlobal.restart-button-active;
+                text: L10n.services-restart;
+                has-icon-color: true;
+                icon-color: Theme.light-blue;
+                icon-size: 18px;
+                clicked => {
+                    ServicesFeatureGlobal.service-action(ServicesFeatureGlobal.selected-name, "Restart");
+                }
+            }
+        }
+    }
+}

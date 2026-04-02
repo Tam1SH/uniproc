@@ -1,6 +1,7 @@
 
 import { ProcessesFeatureGlobal } from "../features/processes/globals.slint";
 import { WindowControls } from "controls.slint";
+import { Theme } from "theme.slint";
 import { Icons } from "icons.slint";
 
 export global WindowClickHandler {
@@ -20,6 +21,7 @@ export global TitleBarActions {
 
 export component TitleBar {
 
+    height: Theme.title_bar_height;
     unfocus := TouchArea {
         pointer-event(evt) => {
             if (evt.kind == PointerEventKind.down) {
@@ -29,7 +31,7 @@ export component TitleBar {
     }
 
     Rectangle {
-        height: 32px;
+        height: 48px;
 
         TouchArea {
             moved => {
@@ -38,8 +40,8 @@ export component TitleBar {
         }
 
         HorizontalLayout {
-            spacing: 8px;
-            padding-left: 8px;
+            spacing: Theme.spacingHorizontalL;
+            padding-left: Theme.spacingHorizontalL;
 
             VerticalLayout {
                 alignment: center;
@@ -56,45 +58,6 @@ export component TitleBar {
                 color: white;
                 font-size: 12px;
                 text: "Uniproc";
-            }
-
-            HorizontalLayout {
-                alignment: end;
-                spacing: 12px;
-//                VerticalLayout {
-//                    alignment: center;
-//                    Rectangle {
-//                        width: 160px;
-//                        border-radius: 6px;
-//                        border-color: white.with-alpha(0.4);
-//                        height: 22px;
-//                        background: white.with-alpha(0.1);
-//                        TextInput {
-//                            vertical-alignment: center;
-//                            color: #aaa;
-//                        }
-//                    }
-//                }
-
-                VerticalLayout {
-                    alignment: center;
-
-                    Image {
-
-                        source: Icons.search;
-                        width: 18px;
-                        colorize: #aaa;
-                    }
-                }
-
-                VerticalLayout {
-                    alignment: center;
-                    Rectangle {
-                        width: 1px;
-                        height: 18px;
-                        background: white.with-alpha(0.1);
-                    }
-                }
             }
 
             WindowControls {

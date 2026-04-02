@@ -19,7 +19,10 @@ import {
     StartupAppsPage,
 } from "../pages/dashboard/subpages/startup-apps/index.slint";
 import { UsersPage } from "../pages/dashboard/subpages/users/index.slint";
-import { ServicesPage } from "../pages/dashboard/subpages/services/index.slint";
+import {
+    ServicesPageBody,
+    ServicesPageHeader,
+} from "../pages/dashboard/subpages/services/index.slint";
 import { LoadingSpinner } from "loader-area.slint";
 
 component PageHeader inherits Rectangle {
@@ -59,10 +62,8 @@ export component BuiltinDashboard inherits HorizontalLayout {
 
         VerticalLayout {
 
-            if (root.cur == 0): ProcessesPageHeader { }
-            if (root.cur != 0): PageHeader {
-                title: root.current-page.text;
-            }
+            if (root.current-page.id == 1): ProcessesPageHeader { }
+            if (root.current-page.id == 7): ServicesPageHeader { }
 
             page-body-layer := Rectangle {
 
@@ -121,31 +122,11 @@ export component BuiltinDashboard inherits HorizontalLayout {
                         }
                     ]
 
-                    if (root.current-page.id == 0): ProcessesPageBody {
+                    if (root.current-page.id == 1): ProcessesPageBody {
                         width: 100%;
                         height: 100%;
                     }
-                    if (root.current-page.id == 1): PerformancePage {
-                        width: 100%;
-                        height: 100%;
-                    }
-                    if (root.current-page.id == 2): DiskPage {
-                        width: 100%;
-                        height: 100%;
-                    }
-                    if (root.current-page.id == 3): StatisticsPage {
-                        width: 100%;
-                        height: 100%;
-                    }
-                    if (root.current-page.id == 4): StartupAppsPage {
-                        width: 100%;
-                        height: 100%;
-                    }
-                    if (root.current-page.id == 5): UsersPage {
-                        width: 100%;
-                        height: 100%;
-                    }
-                    if (root.current-page.id == 6): ServicesPage {
+                    if (root.current-page.id == 7): ServicesPageBody {
                         width: 100%;
                         height: 100%;
                     }

@@ -1,0 +1,158 @@
+import { Theme } from "theme.slint";
+
+export component Button {
+    in property <string> text: "Button";
+    in property <bool> primary: false;
+    in property <bool> enabled: true;
+    in property <image> icon;
+    in property <color> icon-color;
+    in property <bool> has-icon-color;
+    in property <length> icon-size;
+    in property <bool> is-transparent;
+    callback clicked;
+    height: 32px;
+
+    accessible-role: button;
+    accessible-label: root.text;
+
+    pure callback get-background-color(is-enabled: bool, is-primary: bool, is-transparent: bool, is-pressed: bool, hover: bool) -> color;
+
+    pure callback get-foreground-color(is-enabled: bool, is-primary: bool, is-transparent: bool) -> color;
+
+    get-foreground-color(enabled, primary, transparent) => {
+        if (!enabled) {
+            return Theme.colorNeutralForegroundDisabled;
+        }
+        if (transparent) {
+            return Theme.colorNeutralForeground1;
+        }
+        if (primary) {
+            return Theme.colorNeutralForegroundOnBrand;
+        }
+        return Theme.colorNeutralForeground1;
+    }
+
+    get-background-color(enabled, primary, transparent, pressed, hover) => {
+        if (!enabled && transparent) {
+            return Colors.transparent;
+        }
+        if (!enabled && !transparent) {
+            return Theme.colorNeutralBackgroundDisabled;
+        }
+        if (transparent && !pressed && !hover) {
+            return Colors.transparent;
+        }
+        if (primary) {
+            if (pressed) {
+                return Theme.colorBrandBackgroundPressed;
+            }
+            if (hover) {
+                return Theme.colorBrandBackgroundHover;
+            }
+            return Theme.colorBrandBackground;
+        }
+        if (pressed) {
+            return Theme.colorSubtleBackgroundPressed;
+        }
+        if (hover) {
+            return Theme.colorNeutralBackgroundAlpha3;
+        }
+        return Theme.colorNeutralBackgroundAlpha2;
+    }
+
+    pure callback get-icon-color(is-enabled: bool, has-custom-color: bool, custom-color: color, text-color: color) -> color;
+
+    get-icon-color(is-enabled, has-custom, custom, text) => {
+        let base-color = has-custom ? custom : text;
+        return is-enabled ? base-color : base-color.with-alpha(0.8);
+    }
+
+    forward-focus: i-focus-scope;
+
+    i-container := Rectangle {
+        border-radius: Theme.borderRadiusLarge;
+        border-width: Theme.strokeWidthThin;
+        clip: true;
+
+        i-focus-border := Rectangle {
+            z: 10;
+            border-radius: Theme.borderRadiusXLarge;
+            border-width: 2px;
+            border-color: i-focus-scope.has-focus ? Theme.colorNeutralForeground1 : transparent;
+        }
+
+        animate background { duration: Theme.durationFaster; }
+
+        background: root.get-background-color(
+            root.enabled,
+            root.primary,
+            root.is-transparent,
+            i-touch.pressed,
+            i-touch.has-hover);
+        border-color: root.is-transparent ? transparent : Theme.colorNeutralStrokeAlpha2;
+
+        if (!root.is-transparent): Rectangle {
+            y: 0;
+            x: 0;
+            height: 1px;
+            width: 100%;
+            background: root.primary ? rgba(255, 255, 255, 0.2) : rgba(255, 255, 255, 0.05);
+            z: 5;
+        }
+
+        h-layout := HorizontalLayout {
+            padding-left: Theme.spacingHorizontalM;
+            padding-right: Theme.spacingHorizontalM;
+            spacing: Theme.spacingHorizontalS;
+            alignment: center;
+            VerticalLayout {
+                alignment: center;
+                if (root.icon.width > 0): Image {
+                    source: root.icon;
+                    width: root.icon-size > 0 ? root.icon-size : Theme.icon_size_m;
+                    height: root.icon-size > 0 ? root.icon-size : Theme.icon_size_m;
+                    colorize: root.get-icon-color(
+                        root.enabled,
+                        root.has-icon-color,
+                        root.icon-color,
+                        i-text.color);
+                }
+            }
+
+            i-text := Text {
+                text: root.text;
+                font-size: Theme.fontSizeBase300;
+                font-weight: root.primary ? 600 : 400;
+                vertical-alignment: center;
+
+                color: root.get-foreground-color(root.enabled, root.primary, root.is-transparent);
+                animate color { duration: Theme.durationFaster; }
+            }
+        }
+
+        i-touch := TouchArea {
+            enabled: root.enabled;
+
+            clicked => {
+                root.clicked();
+            }
+            mouse-cursor: self.has-hover ? pointer : default;
+        }
+
+        i-focus-scope := FocusScope {
+            focus-on-click: false;
+            enabled: root.enabled;
+            key-pressed(event) => {
+                if (event.text == " " || event.text == "\n") {
+                    root.clicked();
+                    return accept;
+                }
+                if (event.text == Key.Escape) {
+                    i-focus-scope.clear-focus();
+                    return accept;
+                }
+                return reject;
+            }
+        }
+    }
+}

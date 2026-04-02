@@ -17,8 +17,9 @@ messages! {
     ServiceAction { name: String, kind: ServiceActionKind },
     Sort(SharedString),
     ViewportChanged { start: usize, count: usize },
-    ResizeCol { id: String, width: f32 },
+    ResizeCol { id: SharedString, width: f32 },
     OpenServices,
+    SelectedService(SharedString, usize),
 }
 
 pub struct ServiceActor<P: ServicesUiPort> {
@@ -32,7 +33,10 @@ pub struct ServiceActor<P: ServicesUiPort> {
 
 impl<P: ServicesUiPort, T: Window> Handler<ServiceSnapshot, T> for ServiceActor<P> {
     fn handle(&mut self, m: ServiceSnapshot, _: &Context<Self, T>) {
+        self.ui_port.set_total_services_count(m.services.len());
+
         self.table.update_data(m.services);
+
         self.ui_port.set_column_widths(self.table.column_widths());
 
         self.page_status.report_page(PageStatusChanged {
@@ -41,7 +45,6 @@ impl<P: ServicesUiPort, T: Window> Handler<ServiceSnapshot, T> for ServiceActor<
             status: PageStatus::Ready,
             error: None,
         });
-
         let b = self.table.batch();
         self.ui_port
             .set_service_rows_window(b.total_rows, b.start, b.rows);
@@ -74,17 +77,20 @@ impl<P: ServicesUiPort, T: Window> Handler<WindowsActionResponse, T> for Service
 
 impl<P: ServicesUiPort, T: Window> Handler<ResizeCol, T> for ServiceActor<P> {
     fn handle(&mut self, m: ResizeCol, _: &Context<Self, T>) {
-        let _ = self.table.resize_column(m.id, m.width as u64);
+        let _ = self.table.resize_column(m.id.to_string(), m.width as u64);
         self.ui_port.set_column_widths(self.table.column_widths());
     }
 }
 
 impl<P: ServicesUiPort, T: Window> Handler<OpenServices, T> for ServiceActor<P> {
     fn handle(&mut self, _: OpenServices, _: &Context<Self, T>) {
-        #[cfg(target_os = "windows")]
-        let _ = std::process::Command::new("mmc.exe")
-            .arg("services.msc")
-            .spawn();
+        // info!("lol");
+        // #[cfg(target_os = "windows")]
+        // let _ = dbg!(
+        //     std::process::Command::new("mmc.exe")
+        //         .arg("services.msc")
+        //         .spawn()
+        // );
     }
 }
 
@@ -117,5 +123,28 @@ impl<P: ServicesUiPort, T: Window> Handler<ViewportChanged, T> for ServiceActor<
         let b = self.table.batch();
         self.ui_port
             .set_service_rows_window(b.total_rows, b.start, b.rows);
+    }
+}
+
+impl<P: ServicesUiPort, T: Window> Handler<SelectedService, T> for ServiceActor<P> {
+    fn handle(&mut self, m: SelectedService, _: &Context<Self, T>) {
+        if let Some(dto) = self.table.get_by_name(m.0.as_str()) {
+            match dto.status.as_str() {
+                "Running" => {
+                    self.ui_port.set_active_start_button(false);
+                    self.ui_port.set_active_stop_button(true);
+                    self.ui_port.set_active_restart_button(true);
+                }
+                "Stopped" => {
+                    self.ui_port.set_active_start_button(true);
+                    self.ui_port.set_active_stop_button(false);
+                    self.ui_port.set_active_restart_button(false);
+                }
+                _ => {}
+            }
+        }
+
+        self.table.select(m.0.clone(), m.1);
+        self.ui_port.set_selected_name(m.0);
     }
 }
