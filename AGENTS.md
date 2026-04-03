@@ -18,6 +18,7 @@ Architecture guide for AI agents. Read this before touching any code.
 
 - `core/src/icons.rs` — codegen'd icon registry
 - `crates/context/src/l10n.rs` — codegen'd from `.toml`
+- `crates/context/src/trace.rs` scope catalog section — codegen'd from `crates/context/trace-scopes.toml`
 - `slint-adapter/ui/shared/localization.slint` — codegen'd from `.toml`
 - `slint-adapter/ui/shared/icons.slint` — codegen'd from `download.txt`
 
@@ -26,6 +27,22 @@ Architecture guide for AI agents. Read this before touching any code.
 ## What is this project
 
 A task manager replacement. Rust, UI built with Slint.
+
+---
+
+## Architecture vocabulary
+
+Use these labels as shorthand for the current design. They are descriptive, not dogma.
+
+- **Ports & Adapters / Hexagonal** — `domain` does not know Slint; UI integration lives behind `contract` traits and
+  `slint-adapter`
+- **Actor-based application layer** — features organize behavior around actors, messages and local actor state
+- **Event-driven feature communication** — feature-to-feature interaction goes through `EventBus`, never direct calls
+- **CQRS-style UI flow** — UI sends intents/commands via `Bindings`; domain pushes read/view state back via `Port`
+- **Context as environment/infrastructure** — `context` owns settings, caches, page state, tracing policy and other
+  service/runtime concerns, not business logic
+- **UI-origin correlation** — user-initiated tracing/correlation starts in UI adapter callbacks; `app_core` only
+  propagates it through runtime hops
 
 ---
 
@@ -56,8 +73,7 @@ A task manager replacement. Rust, UI built with Slint.
 - Do not add `contract` or `slint-adapter` dependencies to `context` or `widgets`
 - Do not communicate with agents bypassing `AgentsFeature`
 - `SharedState` is for bootstrap only, not business logic
-- Tracing conventions are not yet established — do not invent them; use `#[instrument]` only where it already exists in
-  the codebase
+- Do not invent new tracing conventions ad hoc — use the scope/correlation model described below
 
 ---
 
@@ -77,6 +93,10 @@ in Rust or the codegen'd Slint binding.
 
 **Adding a locale string**
 Edit `context/locales/*.toml`, rebuild. Do not touch any generated files.
+
+**Adding a trace scope**
+Edit `crates/context/trace-scopes.toml`, rebuild. Do not hand-edit the generated scope catalog in
+`crates/context/src/trace.rs`.
 
 **Adding a UI feature**
 Create `slint-adapter/ui/features/my-feature/` with `index.slint` + `globals.slint`. Re-export the global from
@@ -168,6 +188,8 @@ Contains:
 - **Icon cache** — extracts icons from processes
 - **Locales** — `context/locales/*.toml`. To add new strings, edit only the `.toml` files. UI bindings and the Rust-side
   global are codegen'd automatically. The Rust side is currently unused.
+- **Trace catalog + policy** — owns named tracing scopes, default enable/disable policy, subscriber bootstrap and
+  buffered dump-on-warn/error behavior
 
 ### PageStatus
 
@@ -182,6 +204,26 @@ registry decides whether to publish to the bus.
 
 Binds a JSON store path to a `Signal<T>`. When the store changes, the signal updates and subscribers are notified.
 Calling `.set()` writes back to the store.
+
+### Tracing
+
+Tracing policy and scope naming live in `context`, not in `desktop` and not in feature crates.
+
+- Scope ids are stable dot-separated names: `ui.services.action`, `context.settings.save`, `core.bus.publish`
+- The scope catalog source of truth is `crates/context/trace-scopes.toml`
+- `crates/context/build.rs` codegens the scope catalog consumed by `context::trace`
+- `context::trace::init_subscriber(...)` is the only supported tracing bootstrap entry point
+- `desktop` may only provide sinks/writers (for example rolling log files); it should not own tracing policy
+- Scope enable/disable overrides come from settings/env and are resolved by prefix
+- Low-level trace/debug/info history is buffered and dumped when the same correlation/op flow emits warn/error
+
+Business/UI correlation rules:
+
+- Business correlation is born in UI adapter callbacks, not in domain actors
+- `#[ui_action(scope = \"ui.services.action\", ...)]` is the preferred way to create a correlated UI scope
+- `app_core` only carries correlation/runtime metadata through `send`, `publish` and `spawn_bg`
+- Domain code should reuse the current correlation id for external request/response protocols when one exists
+- Do not thread `correlation_id` manually through every internal actor message unless the protocol truly requires it
 
 ---
 
@@ -405,6 +447,24 @@ pub struct WindowsActionResponse {
 Implementations of `contract` traits for Slint. Each adapter holds a `slint::Weak<AppWindow>` and implements `Port` +
 `Bindings` via the Slint API.
 
+### UI callback tracing
+
+UI-originated actions should create correlation scopes via the `ui_adapter` macro support:
+
+```rust
+#[ui_action(scope = "ui.services.action", target = "name,kind")]
+fn on_service_action<F>(&self, ui: &AppWindow, handler: F)
+where
+    F: Fn(SharedString, ServiceActionKind) + 'static;
+```
+
+Rules:
+
+- Use dot-separated scope ids, never Rust module paths
+- Put product/UI scopes in `crates/context/trace-scopes.toml`
+- Prefer `#[ui_action(...)]` over manual `in_ui_action_scope(...)` wrappers
+- Noisy callbacks may be default-disabled in the scope catalog instead of inventing one-off logging logic
+
 ### Icons
 
 Icons live in `slint-adapter/ui/assets/`. To add a new icon:
@@ -474,7 +534,10 @@ When adding a new global, re-export it from `globals-export.slint`.
 
 ## desktop
 
-Entry point. Aggregation only — no logic. Creates `AppWindow`, installs all features in the correct order, calls
-`app.run()`.
+Entry point. Aggregation only — no logic.
+
+- `main.rs` should stay thin and delegate startup into a dedicated bootstrap module
+- `desktop` may create log directories / rolling file appenders and pass them into `context::trace`
+- Feature installation still happens here, in the required order, before `app.run()`
 
 Installation order matters: features that insert into `SharedState` must come before features that read from it.
