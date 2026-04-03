@@ -3,10 +3,10 @@ use app_contracts::features::navigation::{
     NavigationUiPort, PageActivated, TabActivated, TabDescriptor,
 };
 use app_core::actor::event_bus::EventBus;
-use app_core::actor::traits::Message;
 use app_core::actor::traits::{Context, Handler};
 use app_core::app::Window;
 use app_core::messages;
+use app_core::trace::{current_meta, install_current_meta};
 use context::page_status::{
     PageId, PageStatusChanged, PageStatusRegistry, TabId, TabStatusChanged,
 };
@@ -69,22 +69,6 @@ impl<P: NavigationUiPort + Clone> NavigationActor<P> {
         }
     }
 
-    fn sync_all_statuses(&self) {
-        for tab in &self.tabs {
-            let tab_state = self.registry.get_tab_state(tab.id);
-            self.ui_port.set_tab_status(tab.id, tab_state.status);
-            self.ui_port.set_tab_error(tab.id, tab_state.error_msg);
-
-            for page in &tab.pages {
-                let page_state = self.registry.get_page_state(tab.id, page.id);
-                self.ui_port
-                    .set_page_status(tab.id, page.id, page_state.status);
-                self.ui_port
-                    .set_page_error(tab.id, page.id, page_state.error_msg);
-            }
-        }
-    }
-
     fn run_animation_step(
         ui: P,
         token_ref: Arc<AtomicU64>,
@@ -92,7 +76,9 @@ impl<P: NavigationUiPort + Clone> NavigationActor<P> {
         start: Instant,
         duration: Duration,
     ) {
+        let meta = current_meta();
         slint::Timer::single_shot(Duration::from_millis(16), move || {
+            let _meta_guard = meta.clone().map(install_current_meta);
             if token_ref.load(Ordering::SeqCst) != target_token {
                 return;
             }
@@ -182,13 +168,17 @@ impl<P: NavigationUiPort + Clone> NavigationActor<P> {
         let h_delay = self.hide_delay;
         let s_delay = self.show_delay;
         let ui = self.ui_port.clone();
+        let meta = current_meta();
 
         slint::Timer::single_shot(h_delay, move || {
+            let _meta_guard = meta.clone().map(install_current_meta);
             let ui2 = ui.clone();
+            let inner_meta = current_meta();
 
             ui2.set_active_tab(tab_id);
             ui2.set_active_page(tab_id, page_id);
             slint::Timer::single_shot(s_delay, move || {
+                let _meta_guard = inner_meta.clone().map(install_current_meta);
                 debug!("Setting content visible after delay");
                 ui2.set_content_visible(true);
             });

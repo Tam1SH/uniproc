@@ -24,7 +24,7 @@ impl StatefulContext {
         }
     }
 
-    //TODO: just use it
+    #[allow(dead_code)]
     pub fn clear_dead_processes(&self, active_pids: &[u32]) {
         self.cache
             .retain(|(pid, _), _| *pid == 0 || active_pids.contains(pid));

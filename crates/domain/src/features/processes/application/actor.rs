@@ -4,7 +4,7 @@ use crate::processes_impl::application::process_snapshot_actor::ProcessSnapshotR
 use crate::processes_impl::domain::snapshot::BridgeSnapshot;
 use app_contracts::features::navigation::{tab_ids, PageActivated};
 use app_contracts::features::processes::ProcessesUiPort;
-use app_core::actor::traits::{Context, Handler, Message, NoOp};
+use app_core::actor::traits::{Context, Handler, NoOp};
 use app_core::app::Window;
 use app_core::messages;
 use context::page_status::{PageId, PageStatus, PageStatusChanged, PageStatusRegistry};
@@ -30,6 +30,7 @@ pub struct ProcessActor<P: ProcessesUiPort> {
     pub metadata: ProcessMetadataService,
     pub page_status: Arc<PageStatusRegistry>,
     pub is_active: bool,
+    pub is_grouped: bool,
     pub ui_port: P,
     #[allow(unused)]
     pub subs: Vec<SettingSubscription>,
@@ -184,12 +185,7 @@ where
 {
     fn handle(&mut self, _msg: GroupClicked, _ctx: &Context<Self, TWindow>) {
         info!("clicked");
-        static mut LOL: bool = true;
-        unsafe {
-            LOL = !LOL;
-        }
-        unsafe {
-            self.ui_port.set_is_grouped(LOL);
-        }
+        self.is_grouped = !self.is_grouped;
+        self.ui_port.set_is_grouped(self.is_grouped);
     }
 }

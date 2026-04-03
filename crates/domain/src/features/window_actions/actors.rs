@@ -2,7 +2,7 @@ use app_contracts::features::window_actions::{
     ResizeEdge, WindowActionsPort, WindowBreakpoint, WindowConfigChanged,
 };
 use app_core::actor::event_bus::EventBus;
-use app_core::actor::traits::{Context, Handler, Message};
+use app_core::actor::traits::{Context, Handler};
 use app_core::app::Window;
 use app_core::messages;
 

@@ -25,21 +25,6 @@ import {
 } from "../pages/dashboard/subpages/services/index.slint";
 import { LoadingSpinner } from "loader-area.slint";
 
-component PageHeader inherits Rectangle {
-    in property <string> title;
-    height: 60px;
-    HorizontalLayout {
-        padding: 12px;
-        Text {
-            text: root.title;
-            color: Theme.text_secondary;
-            font-size: Theme.font_size_body;
-            font-weight: 600;
-            vertical-alignment: center;
-        }
-    }
-}
-
 export component BuiltinDashboard inherits HorizontalLayout {
 
     private property <TabData> tab_data: Navigation.tabs[0];

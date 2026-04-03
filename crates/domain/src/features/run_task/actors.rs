@@ -1,5 +1,5 @@
 use app_contracts::features::run_task::{RunTaskPort, RunTaskRequest};
-use app_core::actor::traits::{Context, Handler, Message};
+use app_core::actor::traits::{Context, Handler};
 use app_core::app::Window;
 use app_core::messages;
 

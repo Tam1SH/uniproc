@@ -60,7 +60,7 @@ where
     P: ServicesUiPort,
     TWindow: Window,
 {
-    fn handle(&mut self, result: ServiceSnapshotResult, ctx: &Context<Self, TWindow>) {
+    fn handle(&mut self, result: ServiceSnapshotResult, _ctx: &Context<Self, TWindow>) {
         if let ServiceSnapshotResult::Snapshot(services) = result {
             self.target.send(ServiceSnapshot { services })
         }

@@ -121,17 +121,6 @@ impl ServiceTable {
         self.view.flow.select(name, idx);
     }
 
-    pub fn toggle_sort(&mut self, field_id: SharedString) {
-        let current = &mut self.view.flow.sort;
-        if current.field_id.as_ref() == Some(&field_id) {
-            current.descending = !current.descending;
-        } else {
-            current.field_id = Some(field_id);
-            current.descending = false;
-        }
-        self.refresh();
-    }
-
     pub fn batch(&self) -> TableBatch<'_, ServiceEntryVm> {
         self.view.rows.batch()
     }

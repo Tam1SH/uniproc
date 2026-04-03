@@ -10,6 +10,7 @@ struct SharedVectorHeader {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub enum FieldValueKind {
     U64(u64),
     F32(f32),

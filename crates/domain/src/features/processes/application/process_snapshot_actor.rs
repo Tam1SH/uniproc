@@ -10,7 +10,6 @@ use app_contracts::features::processes::{
     FieldDefDto, ProcessFieldDto, ProcessNodeDto, ProcessesUiPort,
 };
 use app_core::actor::addr::Addr;
-use app_core::actor::traits::Message;
 use app_core::actor::traits::{Context, Handler};
 use app_core::app::Window;
 use app_core::{messages, ratelimit};

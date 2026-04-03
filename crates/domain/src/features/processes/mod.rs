@@ -58,6 +58,7 @@ where
             metadata: ProcessMetadataService,
             page_status: shared.get::<PageStatusRegistry>().unwrap(),
             is_active: true,
+            is_grouped: false,
             ui_port: ui_port.clone(),
             subs: vec![],
         };

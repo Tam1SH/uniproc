@@ -5,7 +5,6 @@ use crate::messages;
 use app_contracts::features::environments::{
     EnvironmentsUiPort, WslAgentRuntimeEvent, WslConnectionState, WslDistroDto,
 };
-use app_core::actor::traits::Message;
 use app_core::actor::traits::{Context, Handler};
 use app_core::app::Window;
 use std::fmt::Debug;
