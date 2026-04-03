@@ -1,7 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use app_core::app::App;
-use domain::features::context_menu::ContextMenuFeature;
 use domain::features::cosmetics::CosmeticsFeature;
 use domain::features::l10n::L10nFeature;
 use domain::features::navigation::NavigationFeature;
@@ -14,7 +13,6 @@ use domain_agents::features::agents::AgentsFeature;
 use domain_environments::features::environments::EnvironmentsFeature;
 use domain_processes::processes_impl::ProcessFeature;
 use slint::ComponentHandle;
-use slint_adapter::adapters::context_menu::ContextMenuUiAdapter;
 use slint_adapter::adapters::cosmetics::CosmeticsAdapter;
 use slint_adapter::adapters::environments::EnvironmentsUiAdapter;
 use slint_adapter::adapters::l10n::SlintL10nPort;
@@ -65,7 +63,6 @@ fn main() -> anyhow::Result<()> {
         .feature(with_adapter!(CosmeticsFeature => CosmeticsAdapter))?
         .feature(with_adapter!(WindowActionsFeature => WindowActionsAdapter))?
         .feature(with_adapter!(RunTaskFeature => RunTaskAdapter))?
-        .feature(with_adapter!(ContextMenuFeature => ContextMenuUiAdapter))?
         .feature(with_adapter!(EnvironmentsFeature => EnvironmentsUiAdapter))?
         .feature(with_adapter!(NavigationFeature => NavigationUiAdapter))?
         .feature(with_adapter!(L10nFeature => SlintL10nPort))?

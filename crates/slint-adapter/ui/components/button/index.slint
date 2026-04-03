@@ -67,18 +67,18 @@ export component Button {
         return is-enabled ? base-color : base-color.with-alpha(0.8);
     }
 
-    forward-focus: i-focus-scope;
+    forward-focus: focus-scope;
 
-    i-container := Rectangle {
+    container := Rectangle {
         border-radius: Theme.borderRadiusLarge;
         border-width: Theme.strokeWidthThin;
         clip: true;
 
-        i-focus-border := Rectangle {
+        focus-border := Rectangle {
             z: 10;
             border-radius: Theme.borderRadiusXLarge;
             border-width: 2px;
-            border-color: i-focus-scope.has-focus ? Theme.colorNeutralForeground1 : transparent;
+            border-color: focus-scope.has-focus ? Theme.colorNeutralForeground1 : transparent;
         }
 
         animate background { duration: Theme.durationFaster; }
@@ -87,8 +87,8 @@ export component Button {
             root.enabled,
             root.primary,
             root.is-transparent,
-            i-touch.pressed,
-            i-touch.has-hover);
+            touch.pressed,
+            touch.has-hover);
         border-color: root.is-transparent ? transparent : Theme.colorNeutralStrokeAlpha2;
 
         if (!root.is-transparent): Rectangle {
@@ -100,7 +100,7 @@ export component Button {
             z: 5;
         }
 
-        h-layout := HorizontalLayout {
+        layout := HorizontalLayout {
             padding-left: Theme.spacingHorizontalM;
             padding-right: Theme.spacingHorizontalM;
             spacing: Theme.spacingHorizontalS;
@@ -115,11 +115,11 @@ export component Button {
                         root.enabled,
                         root.has-icon-color,
                         root.icon-color,
-                        i-text.color);
+                        text.color);
                 }
             }
 
-            i-text := Text {
+            text := Text {
                 text: root.text;
                 font-size: Theme.fontSizeBase300;
                 font-weight: root.primary ? 600 : 400;
@@ -130,7 +130,7 @@ export component Button {
             }
         }
 
-        i-touch := TouchArea {
+        touch := TouchArea {
             enabled: root.enabled;
 
             clicked => {
@@ -139,7 +139,7 @@ export component Button {
             mouse-cursor: self.has-hover ? pointer : default;
         }
 
-        i-focus-scope := FocusScope {
+        focus-scope := FocusScope {
             focus-on-click: false;
             enabled: root.enabled;
             key-pressed(event) => {
@@ -148,7 +148,7 @@ export component Button {
                     return accept;
                 }
                 if (event.text == Key.Escape) {
-                    i-focus-scope.clear-focus();
+                    focus-scope.clear-focus();
                     return accept;
                 }
                 return reject;

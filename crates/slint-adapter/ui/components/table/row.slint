@@ -2,6 +2,7 @@ import { Theme } from "theme.slint";
 import { TableColWidth, TableColDef, TableCellData, TableColMetadata } from "types.slint";
 import { GenericMasterCell } from "row-master-cell.slint";
 import { GenericTableCell } from "row-cell.slint";
+import { ContextMenu, ContextMenuItem } from "context-menu.slint";
 export component GenericTableRow inherits Rectangle {
     in property <bool> selected;
     in property <bool> is-alternate;
@@ -23,6 +24,10 @@ export component GenericTableRow inherits Rectangle {
 
     in property <[TableCellData]> cells;
 
+    in property <[ContextMenuItem]> context-menu-items;
+    callback context-menu-action(string);
+    callback right-clicked(length, length);
+
     callback clicked();
     callback toggle-expand();
 
@@ -31,9 +36,52 @@ export component GenericTableRow inherits Rectangle {
                 (touch.has-hover ? rgba(255,255,255,0.05) :
                 (root.is-alternate ? Theme.fill_row_subtle : transparent));
 
+    property <bool> menu-entering: false;
+
+    menu-enter-timer := Timer {
+        interval: 1ms;
+        running: false;
+        triggered => {
+            menu-enter-timer.running = false;
+            root.menu-entering = true;
+        }
+    }
+
+    popup := ContextMenu {
+        items: root.context-menu-items;
+        x: touch.mouse-x;
+        y: touch.mouse-y;
+        is-entering: root.menu-entering;
+
+        changed visible => {
+            if (!self.visible) {
+                root.menu-entering = false;
+            }
+        }
+
+
+        action(id) => {
+            root.context-menu-action(id);
+        }
+    }
+
     touch := TouchArea {
         mouse-cursor: pointer;
-        clicked => { root.clicked(); }
+        pointer-event(event) => {
+            if (event.kind == PointerEventKind.up) {
+                if (event.button == PointerEventButton.left) {
+                    root.clicked();
+                } else if (event.button == PointerEventButton.right) {
+                    root.right-clicked(root.absolute-position.x + self.mouse-x, root.absolute-position.y + self.mouse-y);
+
+                    if (root.context-menu-items.length > 0) {
+                        root.menu-entering = false;
+                        menu-enter-timer.running = true;
+                        popup.show();
+                    }
+                }
+            }
+        }
     }
 
     HorizontalLayout {

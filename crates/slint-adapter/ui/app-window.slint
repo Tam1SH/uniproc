@@ -8,7 +8,6 @@ import {
 import { TitleBar } from "title/title-bar.slint";
 import { ContentContainer } from "content/index.slint";
 import { SideBar } from "features/navigation/sidebar/index.slint";
-import { ContextMenuProxy } from "features/processes/context-menu/globals.slint";
 import { ResizeHandler } from "components/resize-area.slint";
 import { WslDistro } from "features/environments/globals.slint";
 import { WindowSize, WindowAdapter } from "window-adapter.slint";
@@ -16,8 +15,8 @@ export * from "globals-export.slint";
 
 export component AppWindow inherits Window {
 
-    min-width: 400px;
-    min-height: 300px;
+    min-width: 500px;
+    min-height: 400px;
 
     no-frame: true;
     background: transparent;
@@ -57,15 +56,15 @@ export component AppWindow inherits Window {
         }
     }
 
-    if (ContextMenuProxy.is-open): TouchArea {
-        z: 9999;
-        pointer-event(evt) => {
-            if (evt.kind == PointerEventKind.down) {
-                ContextMenuProxy.is-open = false;
-                ContextMenuProxy.close-menu();
-            }
-        }
-    }
+//    if (ContextMenuProxy.is-open): TouchArea {
+//        z: 9999;
+//        pointer-event(evt) => {
+//            if (evt.kind == PointerEventKind.down) {
+//                ContextMenuProxy.is-open = false;
+//                ContextMenuProxy.close-menu();
+//            }
+//        }
+//    }
 
     ResizeHandler {
         resize_requested(dir) => {

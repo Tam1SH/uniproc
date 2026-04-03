@@ -31,6 +31,12 @@ component ServiceItem inherits GenericTableRow {
 
     cells: entry.cells;
 
+    context-menu-items: [
+        { id: "1", title: "Start", icon: Icons.play },
+        { id: "2", title: "Stop", icon: Icons.stop },
+        { id: "3", title: "Restart", icon: Icons.refresh, has-separator: true },
+        { id: "4", title: "Properties", icon: Icons.info }
+    ];
     clicked => {
         ServicesFeatureGlobal.select-service(entry.name, idx);
     }

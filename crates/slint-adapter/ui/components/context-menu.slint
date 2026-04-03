@@ -1,0 +1,87 @@
+import { Theme } from "theme.slint";
+
+export struct ContextMenuItem {
+    id: string,
+    title: string,
+    icon: image,
+    is-danger: bool,
+    has-separator: bool,
+}
+
+export component ContextMenu inherits PopupWindow {
+    in property <[ContextMenuItem]> items;
+    in property <length> menu-width: 220px;
+    callback action(string);
+
+    width: root.menu-width;
+    height: inner.preferred-height;
+    in property <bool> is-entering: false;
+
+
+    inner := Rectangle {
+        background: Theme.colorNeutralBackground2;
+        border-width: 1px;
+        border-color: Theme.colorNeutralStrokeAlpha;
+        border-radius: 8px;
+        drop-shadow-blur: 8px;
+        drop-shadow-offset-y: 8px;
+        drop-shadow-color: rgba(0, 0, 0, 0.3);
+
+        opacity: root.is-entering ? 1.0 : 0.0;
+        y: root.is-entering ? 0px : -4px;
+
+        animate opacity { duration: Theme.durationNormal; easing: cubic-bezier(0.1, 0.9, 0.2, 1.0); }
+        animate y { duration: Theme.durationNormal; easing: cubic-bezier(0.1, 0.9, 0.2, 1.0); }
+
+
+        VerticalLayout {
+            padding: 4px;
+            spacing: 2px;
+
+            for item in root.items: VerticalLayout {
+                spacing: 2px;
+
+                Rectangle {
+                    height: 32px;
+                    border-radius: 4px;
+                    background: item-touch.has-hover ? (item.is-danger ? #FF6060.with-alpha(0.1) : Theme.accent.with-alpha(0.1)) : transparent;
+
+                    item-touch := TouchArea {
+                        clicked => {
+                            root.action(item.id);
+                        }
+                    }
+
+                    HorizontalLayout {
+                        padding-left: 10px;
+                        padding-right: 10px;
+                        spacing: 12px;
+
+                        if (item.icon.width > 0): VerticalLayout {
+                            alignment: center;
+                            Image {
+                                source: item.icon;
+                                width: 20px;
+                                height: 20px;
+                                colorize: item.is-danger ? #FF6060 : (item-touch.has-hover ? Theme.accent : white);
+                                animate colorize { duration: 100ms; }
+                            }
+                        }
+                        Text {
+                            text: item.title;
+                            color: white;
+                            font-size: 14px;
+                            vertical-alignment: center;
+                        }
+                    }
+                }
+
+                if (item.has-separator): Rectangle {
+                    height: 1px;
+                    background: white.with-alpha(0.1);
+                }
+            }
+        }
+    }
+}
+

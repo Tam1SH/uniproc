@@ -1,0 +1,54 @@
+import { Theme } from "theme.slint";
+//import { Button } from "button.slint";
+
+export component ContentDialog {
+
+    in property <string> title: "Dialog Title";
+    in property <string> primary-button-text: "OK";
+    in property <string> close-button-text: "Cancel";
+    in property <bool> is-open: false;
+
+    callback primary-clicked;
+    callback close-clicked;
+
+    close-clicked => {
+        root.is-open = false;
+    }
+
+    if root.is-open: TouchArea {
+        z: 1000;
+
+        Rectangle {
+            background: Colors.black.with-alpha(0.4);
+
+            animate background { duration: Theme.durationFast; }
+        }
+
+        i-dialog-surface := Rectangle {
+            width: 400px;
+            height: self.preferred-height;
+            background: Theme.colorNeutralBackground1;
+            border-radius: Theme.borderRadiusXLarge;
+            border-width: 1px;
+            border-color: Theme.colorNeutralStroke1;
+            drop-shadow-blur: 20px;
+            drop-shadow-color: Colors.black.with-alpha(0.2);
+
+            TouchArea { }
+
+            VerticalLayout {
+                padding: Theme.spacingHorizontalL;
+                spacing: Theme.spacingVerticalL;
+
+                Text {
+                    text: root.title;
+                    font-size: Theme.fontSizeBase500;
+                    font-weight: 600;
+                    color: Theme.colorNeutralForeground1;
+                }
+
+                @children
+            }
+        }
+    }
+}
