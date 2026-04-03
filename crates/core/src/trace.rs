@@ -50,6 +50,8 @@ pub struct DispatchMeta {
 pub struct TracePolicy {
     pub enabled_prefixes: Vec<String>,
     pub disabled_prefixes: Vec<String>,
+    pub disabled_message_prefixes: Vec<String>,
+    pub disabled_target_prefixes: Vec<String>,
     pub dump_capacity: usize,
 }
 
@@ -58,6 +60,8 @@ impl Default for TracePolicy {
         Self {
             enabled_prefixes: Vec::new(),
             disabled_prefixes: Vec::new(),
+            disabled_message_prefixes: Vec::new(),
+            disabled_target_prefixes: Vec::new(),
             dump_capacity: 64,
         }
     }
@@ -154,6 +158,22 @@ pub fn is_scope_enabled(scope: &str) -> bool {
         .unwrap_or(true)
 }
 
+pub fn is_message_enabled(message: &str) -> bool {
+    !TRACE_POLICY
+        .read()
+        .disabled_message_prefixes
+        .iter()
+        .any(|prefix| matches_trace_value_prefix(message, prefix))
+}
+
+pub fn is_target_enabled(target: &str) -> bool {
+    !TRACE_POLICY
+        .read()
+        .disabled_target_prefixes
+        .iter()
+        .any(|prefix| matches_trace_value_prefix(target, prefix))
+}
+
 pub fn current_meta() -> Option<DispatchMeta> {
     CURRENT_META.with(|slot| slot.borrow().clone())
 }
@@ -203,7 +223,7 @@ pub fn format_ui_target_1<T>(value: &T) -> Option<String>
 where
     T: Debug + ?Sized,
 {
-    Some(format!("{value:?}"))
+    Some(format_target_part(value))
 }
 
 pub fn format_ui_target_2<A, B>(left: &A, right: &B) -> Option<String>
@@ -211,7 +231,11 @@ where
     A: Debug + ?Sized,
     B: Debug + ?Sized,
 {
-    Some(format!("{left:?} | {right:?}"))
+    Some(format!(
+        "{} | {}",
+        format_target_part(left),
+        format_target_part(right)
+    ))
 }
 
 pub struct MetaGuard {
@@ -244,6 +268,17 @@ fn matches_scope_prefix(scope: &str, prefix: &str) -> bool {
         || scope
             .strip_prefix(prefix)
             .is_some_and(|rest| rest.starts_with('.'))
+}
+
+fn matches_trace_value_prefix(value: &str, prefix: &str) -> bool {
+    value == prefix || value.starts_with(prefix)
+}
+
+fn format_target_part<T>(value: &T) -> String
+where
+    T: Debug + ?Sized,
+{
+    format!("{value:?}").trim_matches('"').to_string()
 }
 
 fn span_for_scope(

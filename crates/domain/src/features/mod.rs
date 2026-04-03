@@ -5,4 +5,5 @@ pub mod page_status;
 pub mod run_task;
 pub mod services;
 pub mod settings;
+pub mod trace_settings;
 pub mod window_actions;

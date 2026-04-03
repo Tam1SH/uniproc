@@ -16,13 +16,20 @@ impl UiThreadGuard {
 
 pub(crate) fn short_type_name<T: ?Sized>() -> &'static str {
     let full = std::any::type_name::<T>();
-    let mut parts = full.rsplitn(3, "::");
-    match (parts.next(), parts.next()) {
+    let raw = full.split('<').next().unwrap_or(full);
+    let mut parts = raw.rsplitn(3, "::");
+    let raw = match (parts.next(), parts.next()) {
         (Some(name), Some(ns)) => {
-            let ns_start = full.len() - ns.len() - name.len() - "::".len();
-            &full[ns_start..]
+            let ns_start = raw.len() - ns.len() - name.len() - "::".len();
+            &raw[ns_start..]
         }
         (Some(name), None) => name,
-        _ => full,
-    }
+        _ => raw,
+    };
+
+    raw.trim_end_matches('>')
+}
+
+pub(crate) fn should_trace_actor_message(message: &str) -> bool {
+    !matches!(message, "agents::ScanTick")
 }

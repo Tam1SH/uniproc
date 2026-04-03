@@ -10,6 +10,7 @@ use syn::{
 #[proc_macro_attribute]
 pub fn ui_adapter(_args: TokenStream, input: TokenStream) -> TokenStream {
     let mut item_impl = parse_macro_input!(input as ItemImpl);
+    let self_ty = (*item_impl.self_ty).clone();
 
     for item in &mut item_impl.items {
         if let ImplItem::Fn(method) = item {
@@ -60,11 +61,17 @@ pub fn ui_adapter(_args: TokenStream, input: TokenStream) -> TokenStream {
                 let handler_wrap = ui_action
                     .as_ref()
                     .map(|spec| build_ui_action_wrapper(method, spec));
+                let ui_port_wrap = if ui_action.is_none() {
+                    Some(build_ui_port_wrapper(&self_ty, method))
+                } else {
+                    None
+                };
                 let block = &method.block;
 
                 method.block = parse_quote! ({
                     let Some(ui) = self.ui.upgrade() else { #return_stmt };
                     #handler_wrap
+                    #ui_port_wrap
                     #block
                 });
             } else if let Some(spec) = ui_action.as_ref() {
@@ -175,6 +182,36 @@ fn build_ui_action_wrapper(
             };
         },
         _ => panic!("ui_action currently supports handlers with up to 2 arguments"),
+    }
+}
+
+fn build_ui_port_wrapper(
+    self_ty: &syn::Type,
+    method: &syn::ImplItemFn,
+) -> proc_macro2::TokenStream {
+    let method_name = method.sig.ident.to_string();
+    let adapter_name = quote! { stringify!(#self_ty) };
+
+    quote! {
+        if app_core::trace::is_scope_enabled("ui.adapter.call") {
+            let __ui_port_target_value = format!("{}::{}", #adapter_name, #method_name);
+            let __ui_port_scope_target = Some(__ui_port_target_value.clone());
+            let __ui_port_call = || {
+                tracing::debug!(
+                    adapter = #adapter_name,
+                    method = #method_name,
+                    "ui.adapter.call"
+                );
+            };
+            if app_core::trace::is_target_enabled(&__ui_port_target_value) {
+                app_core::trace::in_named_scope(
+                    "ui.adapter.call",
+                    Some("adapter,method"),
+                    __ui_port_scope_target,
+                    __ui_port_call,
+                );
+            }
+        }
     }
 }
 

@@ -1,5 +1,6 @@
 use crate::actor::UiThreadGuard;
 use crate::reactor::Reactor;
+use crate::trace::in_named_scope;
 use crate::SharedState;
 use slint::ComponentHandle;
 
@@ -55,18 +56,21 @@ impl<TWindow: Window> App<TWindow> {
             .last()
             .unwrap_or("Unknown");
 
-        let _span = tracing::info_span!("install", feature = %clean_name).entered();
-
-        match feature.install(&mut self.reactor, &self.ui, &self.shared) {
-            Ok(_) => {
-                tracing::info!("Success");
-                Ok(self)
-            }
-            Err(e) => {
-                tracing::error!(error = %e, "Failed");
-                Err(e)
-            }
-        }
+        in_named_scope(
+            "core.app.feature_install",
+            Some("feature,status"),
+            Some(clean_name.to_string()),
+            || match feature.install(&mut self.reactor, &self.ui, &self.shared) {
+                Ok(_) => {
+                    tracing::info!(feature = clean_name, status = "ok", "feature.install");
+                    Ok(self)
+                }
+                Err(e) => {
+                    tracing::error!(feature = clean_name, status = "error", error = %e, "feature.install");
+                    Err(e)
+                }
+            },
+        )
     }
 
     pub fn run(self) -> anyhow::Result<()> {

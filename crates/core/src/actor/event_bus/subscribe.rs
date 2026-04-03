@@ -2,7 +2,7 @@ use crate::actor::addr::Addr;
 use crate::actor::short_type_name;
 use crate::actor::traits::{Handler, Message};
 use crate::app::Window;
-use crate::trace::DispatchMeta;
+use crate::trace::{is_scope_enabled, DispatchMeta};
 
 use std::any::Any;
 use std::marker::PhantomData;
@@ -30,14 +30,16 @@ where
 {
     fn deliver(&self, msg: Box<dyn Any>, meta: DispatchMeta) {
         if let Ok(concrete_msg) = msg.downcast::<M>() {
-            tracing::debug!(
-                parent: &meta.span,
-                event = short_type_name::<M>(),
-                actor = short_type_name::<A>(),
-                op_id = meta.op_id,
-                correlation_id = meta.correlation_id.as_deref().unwrap_or(""),
-                "bus.deliver"
-            );
+            if is_scope_enabled("core.bus.deliver") {
+                tracing::debug!(
+                    parent: &meta.span,
+                    event = short_type_name::<M>(),
+                    actor = short_type_name::<A>(),
+                    op_id = meta.op_id,
+                    correlation_id = meta.correlation_id.as_deref().unwrap_or(""),
+                    "bus.deliver"
+                );
+            }
             self.addr
                 .send_with_meta((*concrete_msg).clone(), meta.child("core.bus.deliver", None, None));
         }

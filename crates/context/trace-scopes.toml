@@ -35,6 +35,9 @@ open = true
 drag = true
 submit = true
 
+[ui.adapter]
+call = true
+
 [context.settings]
 load = true
 save = true
@@ -43,3 +46,35 @@ diff = false
 
 [context.page_status]
 update = true
+
+[core.bus]
+publish = false
+deliver = false
+subscribe = false
+
+[core.actor]
+send = true
+bg = false
+result = false
+handle = true
+
+[core.app]
+feature_install = true
+
+[policy]
+disable_messages = [
+    "agents::ScanTick",
+    "actor::Ping",
+    "traits::NoOp",
+    "agents::WindowsReportMessage",
+    "process_snapshot_actor::ProcessSnapshotReady",
+    "snapshot_actor::ServiceSnapshotResult",
+    "services::ServiceSnapshot",
+]
+disable_targets = [
+    "ProcessesUiAdapter::set_column_widths",
+    "ProcessesUiAdapter::set_column_metadata",
+    "ProcessesUiAdapter::set_total_processes_count",
+    "ServicesUiAdapter::set_total_services_count",
+    "ServicesUiAdapter::set_column_widths",
+]

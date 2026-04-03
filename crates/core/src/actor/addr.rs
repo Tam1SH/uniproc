@@ -1,8 +1,9 @@
 use crate::actor::envelope::{Envelope, MessageEnvelope};
+use crate::actor::{short_type_name, should_trace_actor_message};
 use crate::actor::traits::{Context, Handler, Message};
 use crate::actor::UiThreadGuard;
 use crate::app::Window;
-use crate::trace::{current_meta, DispatchMeta};
+use crate::trace::{current_meta, is_message_enabled, is_scope_enabled, DispatchMeta};
 use std::any::{type_name, Any};
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, VecDeque};
@@ -122,6 +123,21 @@ impl<A: 'static, TWindow: Window> Addr<A, TWindow> {
         M: Message,
         A: Handler<M, TWindow>,
     {
+        let message_name = short_type_name::<M>();
+        if is_scope_enabled("core.actor.send")
+            && should_trace_actor_message(message_name)
+            && is_message_enabled(message_name)
+        {
+            tracing::debug!(
+                parent: &meta.span,
+                actor = short_type_name::<A>(),
+                message = message_name,
+                op_id = meta.op_id,
+                correlation_id = meta.correlation_id.as_deref().unwrap_or(""),
+                "actor.send"
+            );
+        }
+
         self.queue
             .borrow_mut()
             .push_back(Box::new(MessageEnvelope {

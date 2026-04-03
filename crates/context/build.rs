@@ -71,8 +71,16 @@ fn generate_trace_scopes() {
     let table: Table = content.parse().expect("Failed to parse trace-scopes.toml");
 
     let mut scopes = Vec::new();
-    collect_scope_entries(Vec::new(), &table, &mut scopes);
+    for root in ["ui", "context", "core"] {
+        if let Some(Value::Table(root_table)) = table.get(root) {
+            collect_scope_entries(vec![root.to_string()], root_table, &mut scopes);
+        }
+    }
     scopes.sort_by(|a, b| a.name.cmp(&b.name));
+
+    let builtin_enable_scopes = policy_strings(&table, "enable_scopes");
+    let builtin_disable_messages = policy_strings(&table, "disable_messages");
+    let builtin_disable_targets = policy_strings(&table, "disable_targets");
 
     let consts = scopes
         .iter()
@@ -96,6 +104,10 @@ fn generate_trace_scopes() {
         .collect::<Vec<_>>()
         .join(",\n    ");
 
+    let builtin_enable_scopes = string_slice_literal(&builtin_enable_scopes);
+    let builtin_disable_messages = string_slice_literal(&builtin_disable_messages);
+    let builtin_disable_targets = string_slice_literal(&builtin_disable_targets);
+
     let generated = format!(
         r#"// AUTO-GENERATED from ./trace-scopes.toml
 use app_core::trace::{{ScopeKind, ScopeSpec}};
@@ -105,6 +117,10 @@ use app_core::trace::{{ScopeKind, ScopeSpec}};
 pub const ALL_SCOPES: &[ScopeSpec] = &[
     {all_scopes}
 ];
+
+pub const BUILTIN_ENABLE_SCOPES: &[&str] = &{builtin_enable_scopes};
+pub const BUILTIN_DISABLE_MESSAGES: &[&str] = &{builtin_disable_messages};
+pub const BUILTIN_DISABLE_TARGETS: &[&str] = &{builtin_disable_targets};
 "#
     );
 
@@ -199,6 +215,31 @@ fn collect_scope_entries(path: Vec<String>, table: &Table, acc: &mut Vec<ScopeEn
             other => panic!("Unexpected trace scope entry for {:?}: {other:?}", next_path),
         }
     }
+}
+
+fn policy_strings(table: &Table, key: &str) -> Vec<String> {
+    table
+        .get("policy")
+        .and_then(Value::as_table)
+        .and_then(|policy| policy.get(key))
+        .and_then(Value::as_array)
+        .map(|values| {
+            values
+                .iter()
+                .filter_map(Value::as_str)
+                .map(str::to_string)
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default()
+}
+
+fn string_slice_literal(values: &[String]) -> String {
+    let items = values
+        .iter()
+        .map(|value| format!("{value:?}"))
+        .collect::<Vec<_>>()
+        .join(", ");
+    format!("[{items}]")
 }
 
 fn scope_kind(root: &str) -> &'static str {

@@ -10,6 +10,8 @@ Architecture guide for AI agents. Read this before touching any code.
 - Features communicate only via **`EventBus`** — never call each other directly
 - UI knows nothing about `domain` — only about `contract` (Port + Bindings traits)
 - `install()` is the only bootstrap entry point for a feature
+- Before build/check/run commands, inspect `.cargo/*.toml` for project aliases and toolchain config
+- Prefer project cargo aliases for verification; default check command is `cargo cdev`
 - When in doubt, copy `processes` or `services` as a reference
 
 ---
@@ -80,6 +82,16 @@ Use these labels as shorthand for the current design. They are descriptive, not 
 ---
 
 ## Common tasks
+
+**Build / check / run**
+Start by reading `.cargo/config.toml` and any companion `.cargo/*.toml` files to pick the repo-supported command/flags.
+Do not guess the command if the alias already exists.
+
+- Default verification: `cargo cdev`
+- Default dev build: `cargo bdev`
+- Default dev run: `cargo rdev`
+- Desktop build: `cargo bdesk`
+- Desktop run: `cargo rdesk`
 
 **Adding a feature**
 Create a folder in `domain/src/features/` (or a new crate for heavy features), implement `Feature<TWindow>`, register in
@@ -214,7 +226,11 @@ Tracing policy and scope naming live in `context`, not in `desktop` and not in f
 - `crates/context/build.rs` codegens the scope catalog consumed by `context::trace`
 - `context::trace::init_subscriber(...)` is the only supported tracing bootstrap entry point
 - `desktop` may only provide sinks/writers (for example rolling log files); it should not own tracing policy
-- Scope enable/disable overrides come from settings/env and are resolved by prefix
+- Scope default on/off lives in `crates/context/trace-scopes.toml` boolean entries (`true`/`false`)
+- `crates/context/trace-scopes.toml` may also contain `[policy]` arrays for default noisy-message / noisy-target
+  suppression; use that instead of hardcoding trace filters in feature code
+- Runtime overrides come from settings via `TraceSettingsFeature` and are resolved by prefix
+- Do not add env-based trace overrides
 - Low-level trace/debug/info history is buffered and dumped when the same correlation/op flow emits warn/error
 
 Business/UI correlation rules:
@@ -462,6 +478,8 @@ Rules:
 
 - Use dot-separated scope ids, never Rust module paths
 - Put product/UI scopes in `crates/context/trace-scopes.toml`
+- If a trace path is structurally useful but a few messages/targets are spammy, suppress them via `[policy]` in
+  `crates/context/trace-scopes.toml` or the trace settings feature, not by deleting the whole scope
 - Prefer `#[ui_action(...)]` over manual `in_ui_action_scope(...)` wrappers
 - Noisy callbacks may be default-disabled in the scope catalog instead of inventing one-off logging logic
 

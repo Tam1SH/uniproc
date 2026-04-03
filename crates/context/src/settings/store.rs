@@ -239,11 +239,6 @@ impl SettingsStore {
         let id = self.next_subscription_id.fetch_add(1, Ordering::Relaxed);
         if let Ok(mut subs) = self.subscriptions.write() {
             subs.push(SubscriptionEntry { id, kind, callback });
-            debug!(
-                subscription_id = id,
-                total = subs.len(),
-                "subscription registered"
-            );
         } else {
             error!(
                 subscription_id = id,

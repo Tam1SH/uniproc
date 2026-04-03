@@ -7,6 +7,7 @@ use domain::features::page_status::PageStatusFeature;
 use domain::features::run_task::RunTaskFeature;
 use domain::features::services::ServicesFeature;
 use domain::features::settings::SettingsFeature;
+use domain::features::trace_settings::TraceSettingsFeature;
 use domain::features::window_actions::WindowActionsFeature;
 use domain_agents::features::agents::AgentsFeature;
 use domain_environments::features::environments::EnvironmentsFeature;
@@ -22,6 +23,7 @@ use slint_adapter::adapters::services::ServicesUiAdapter;
 use slint_adapter::adapters::window_actions::WindowActionsAdapter;
 use slint_adapter::AppWindow;
 use tracing_appender::non_blocking::WorkerGuard;
+use tracing_subscriber::fmt::writer::{BoxMakeWriter, MakeWriterExt};
 
 macro_rules! with_adapter {
     ($feature:ident => $adapter:ident) => {
@@ -38,6 +40,7 @@ pub fn run() -> anyhow::Result<()> {
 
     let app = App::new(ui)
         .feature(SettingsFeature::default())?
+        .feature(TraceSettingsFeature)?
         .feature(AgentsFeature)?
         .feature(PageStatusFeature)?
         .feature(with_adapter!(CosmeticsFeature => CosmeticsAdapter))?
@@ -67,6 +70,10 @@ fn init_tracing() -> anyhow::Result<TracingRuntime> {
 
     let file_appender = tracing_appender::rolling::daily(logs_dir, "desktop.log");
     let (writer, guard) = tracing_appender::non_blocking(file_appender);
+    #[cfg(debug_assertions)]
+    let writer = BoxMakeWriter::new(writer.and(std::io::stderr));
+    #[cfg(not(debug_assertions))]
+    let writer = BoxMakeWriter::new(writer);
 
     context::trace::init_subscriber(&settings_path, writer)?;
 
