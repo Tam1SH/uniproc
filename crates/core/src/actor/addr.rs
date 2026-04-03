@@ -2,6 +2,7 @@ use crate::actor::envelope::{Envelope, MessageEnvelope};
 use crate::actor::traits::{Context, Handler, Message};
 use crate::actor::UiThreadGuard;
 use crate::app::Window;
+use crate::trace::{current_meta, DispatchMeta};
 use std::any::{type_name, Any};
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, VecDeque};
@@ -112,9 +113,21 @@ impl<A: 'static, TWindow: Window> Addr<A, TWindow> {
         M: Message,
         A: Handler<M, TWindow>,
     {
+        let meta = current_meta().unwrap_or_else(|| DispatchMeta::capture_or_root("core.actor.send"));
+        self.send_with_meta(msg, meta);
+    }
+
+    pub(crate) fn send_with_meta<M>(&self, msg: M, meta: DispatchMeta)
+    where
+        M: Message,
+        A: Handler<M, TWindow>,
+    {
         self.queue
             .borrow_mut()
-            .push_back(Box::new(MessageEnvelope { message: Some(msg) }));
+            .push_back(Box::new(MessageEnvelope {
+                message: Some(msg),
+                meta,
+            }));
 
         self.process_queue();
     }

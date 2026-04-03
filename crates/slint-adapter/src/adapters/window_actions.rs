@@ -18,6 +18,7 @@ impl WindowActionsAdapter {
 
 #[ui_adapter]
 impl WindowActionsPort for WindowActionsAdapter {
+    #[ui_action(scope = "ui.window.drag")]
     fn on_drag<F>(&self, ui: &AppWindow, handler: F)
     where
         F: Fn() + 'static,
@@ -25,6 +26,7 @@ impl WindowActionsPort for WindowActionsAdapter {
         ui.global::<TitleBarActions>().on_drag(handler);
     }
 
+    #[ui_action(scope = "ui.window.close")]
     fn on_close<F>(&self, ui: &AppWindow, handler: F)
     where
         F: Fn() + 'static,
@@ -32,6 +34,7 @@ impl WindowActionsPort for WindowActionsAdapter {
         ui.global::<TitleBarActions>().on_close(handler);
     }
 
+    #[ui_action(scope = "ui.window.minimize")]
     fn on_minimize<F>(&self, ui: &AppWindow, handler: F)
     where
         F: Fn() + 'static,
@@ -39,6 +42,7 @@ impl WindowActionsPort for WindowActionsAdapter {
         ui.global::<TitleBarActions>().on_minimize(handler);
     }
 
+    #[ui_action(scope = "ui.window.maximize")]
     fn on_maximize<F>(&self, ui: &AppWindow, handler: F)
     where
         F: Fn() + 'static,
@@ -46,6 +50,7 @@ impl WindowActionsPort for WindowActionsAdapter {
         ui.global::<TitleBarActions>().on_maximize(handler);
     }
 
+    #[ui_action(scope = "ui.window.start_resize", target = "edge")]
     fn on_start_resize<F>(&self, ui: &AppWindow, handler: F)
     where
         F: Fn(ResizeEdge) + 'static,

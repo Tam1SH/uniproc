@@ -12,4 +12,5 @@ context.workspace = true
 slint = { workspace = true }
 serde.workspace = true
 uuid.workspace = true
+rkyv.workspace = true
 

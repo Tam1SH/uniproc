@@ -264,19 +264,23 @@ mod windows {
             };
 
             let correlation_id = msg.correlation_id;
+            let request = match msg.decode_request() {
+                Ok(request) => request,
+                Err(err) => {
+                    error!("Failed to decode backend request: {:?}", err);
+                    return;
+                }
+            };
 
             tokio::spawn(async move {
-                match client.call(msg.request).await {
+                match client.call(request).await {
                     Ok(resp_data) => {
                         if let Ok(response) = rkyv::deserialize::<
                             WindowsResponse,
                             rkyv::rancor::Error,
                         >(*resp_data.deref())
                         {
-                            EventBus::publish(WindowsActionResponse {
-                                correlation_id,
-                                response,
-                            });
+                            EventBus::publish(WindowsActionResponse::new(correlation_id, &response));
                         }
                     }
                     Err(e) => {

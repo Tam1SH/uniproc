@@ -137,6 +137,7 @@ impl NavigationUiPort for NavigationUiAdapter {
 
 #[ui_adapter]
 impl NavigationUiBindings for NavigationUiAdapter {
+    #[ui_action(scope = "ui.navigation.page_switch", target = "tab_id,page_id")]
     fn on_request_page_switch<F>(&self, ui: &AppWindow, handler: F)
     where
         F: Fn(TabId, PageId) + 'static,
@@ -145,6 +146,7 @@ impl NavigationUiBindings for NavigationUiAdapter {
             .on_request_page_switch(move |t, p| handler(TabId(t as u32), PageId(p as u32)));
     }
 
+    #[ui_action(scope = "ui.navigation.sidebar_width", target = "width")]
     fn on_side_bar_width_changed<F>(&self, ui: &AppWindow, handler: F)
     where
         F: Fn(u64) + 'static,
@@ -153,6 +155,7 @@ impl NavigationUiBindings for NavigationUiAdapter {
             .on_side_bar_width_changed(move |w| handler(w as u64));
     }
 
+    #[ui_action(scope = "ui.navigation.tab_switch", target = "tab_id")]
     fn on_request_tab_switch<F>(&self, ui: &AppWindow, handler: F)
     where
         F: Fn(TabId) + 'static,
@@ -168,6 +171,7 @@ impl NavigationUiBindings for NavigationUiAdapter {
         });
     }
 
+    #[ui_action(scope = "ui.navigation.tab_close", target = "tab_id")]
     fn on_request_tab_close<F>(&self, ui: &AppWindow, handler: F)
     where
         F: Fn(TabId) + 'static,
@@ -183,6 +187,7 @@ impl NavigationUiBindings for NavigationUiAdapter {
         });
     }
 
+    #[ui_action(scope = "ui.navigation.tab_add")]
     fn on_request_tab_add<F>(&self, ui: &AppWindow, handler: F)
     where
         F: Fn() + 'static,

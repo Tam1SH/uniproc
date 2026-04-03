@@ -10,10 +10,12 @@ domain-environments.workspace = true
 domain-processes.workspace = true
 domain.workspace = true
 app-core = { workspace = true }
+context = { workspace = true }
 slint-adapter = { workspace = true }
 slint = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
+tracing-appender = { workspace = true }
 tracing-subscriber = { workspace = true }
 dhat = { workspace = true }
 

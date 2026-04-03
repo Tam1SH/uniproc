@@ -184,6 +184,7 @@ impl ProcessesUiPort for ProcessesUiAdapter {
 
 #[ui_adapter]
 impl ProcessesUiBindings for ProcessesUiAdapter {
+    #[ui_action(scope = "ui.processes.sort", target = "field")]
     fn on_sort_by<F>(&self, ui: &AppWindow, handler: F)
     where
         F: Fn(SharedString) + 'static,
@@ -191,6 +192,7 @@ impl ProcessesUiBindings for ProcessesUiAdapter {
         ui.global::<ProcessesFeatureGlobal>().on_sort_by(handler);
     }
 
+    #[ui_action(scope = "ui.processes.toggle_group", target = "group")]
     fn on_toggle_expand_group<F>(&self, ui: &AppWindow, handler: F)
     where
         F: Fn(SharedString) + 'static,
@@ -199,6 +201,7 @@ impl ProcessesUiBindings for ProcessesUiAdapter {
             .on_toggle_expand_group(handler);
     }
 
+    #[ui_action(scope = "ui.processes.terminate")]
     fn on_terminate<F>(&self, ui: &AppWindow, handler: F)
     where
         F: Fn() + 'static,
@@ -206,6 +209,7 @@ impl ProcessesUiBindings for ProcessesUiAdapter {
         ui.global::<ProcessesFeatureGlobal>().on_terminate(handler);
     }
 
+    #[ui_action(scope = "ui.processes.select", target = "pid,idx")]
     fn on_select_process<F>(&self, ui: &AppWindow, handler: F)
     where
         F: Fn(i32, i32) + 'static,
@@ -214,6 +218,7 @@ impl ProcessesUiBindings for ProcessesUiAdapter {
             .on_select_process(handler);
     }
 
+    #[ui_action(scope = "ui.processes.viewport", target = "start,count")]
     fn on_rows_viewport_changed<F>(&self, ui: &AppWindow, handler: F)
     where
         F: Fn(i32, i32) + 'static,
@@ -222,6 +227,7 @@ impl ProcessesUiBindings for ProcessesUiAdapter {
             .on_rows_viewport_changed(handler);
     }
 
+    #[ui_action(scope = "ui.processes.column_resized", target = "id,width")]
     fn on_column_resized<F>(&self, ui: &AppWindow, handler: F)
     where
         F: Fn(SharedString, f32) + 'static,
@@ -230,6 +236,7 @@ impl ProcessesUiBindings for ProcessesUiAdapter {
             .on_column_resized(handler);
     }
 
+    #[ui_action(scope = "ui.processes.group_clicked")]
     fn on_group_clicked<F>(&self, ui: &AppWindow, handler: F)
     where
         F: Fn() + 'static,

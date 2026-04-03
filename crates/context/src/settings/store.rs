@@ -1,6 +1,7 @@
 use anyhow::{anyhow, bail, Context};
 use app_core::actor::event_bus::subscribe::SubscriptionId;
 use app_core::ratelimit;
+use app_core::trace::in_named_scope;
 use serde_json::{Map, Value};
 use std::fmt::Debug;
 use std::path::{Path, PathBuf};
@@ -91,14 +92,21 @@ impl SettingsStore {
 
     #[instrument(fields(path = %path.display()))]
     pub fn load_or_default(path: PathBuf) -> anyhow::Result<Self> {
-        let initial = if path.exists() {
-            info!("loading existing settings file");
-            Self::load_map(&path)?
-        } else {
-            info!("settings file not found, starting with empty store");
-            Map::new()
-        };
-        Ok(Self::new(path, initial))
+        in_named_scope(
+            "context.settings.load",
+            Some("path"),
+            Some(path.display().to_string()),
+            || {
+                let initial = if path.exists() {
+                    info!("loading existing settings file");
+                    Self::load_map(&path)?
+                } else {
+                    info!("settings file not found, starting with empty store");
+                    Map::new()
+                };
+                Ok(Self::new(path, initial))
+            },
+        )
     }
 
     #[instrument(skip(self), fields(path))]
@@ -210,9 +218,16 @@ impl SettingsStore {
 
     #[instrument(skip(self), fields(path = %self.path.display()))]
     pub fn save_now(&self) -> anyhow::Result<()> {
-        info!("saving settings synchronously");
-        let snapshot = self.snapshot();
-        persist_atomic(&self.path, &snapshot)
+        in_named_scope(
+            "context.settings.save",
+            Some("path"),
+            Some(self.path.display().to_string()),
+            || {
+                info!("saving settings synchronously");
+                let snapshot = self.snapshot();
+                persist_atomic(&self.path, &snapshot)
+            },
+        )
     }
 
     pub fn get_u64(&self, path: &str) -> Option<u64> {
@@ -419,19 +434,26 @@ impl SettingsStore {
 
     #[instrument(fields(path = %path.display()))]
     fn load_map(path: &Path) -> anyhow::Result<Map<String, Value>> {
-        ratelimit!(3600, debug!("reading settings file from disk"));
-        let raw = std::fs::read(path)
-            .with_context(|| format!("failed to read settings file: {}", path.display()))?;
-        trace!(bytes = raw.len(), "read settings file");
-        let value: Value = serde_json::from_slice(&raw)
-            .with_context(|| format!("failed to parse settings file: {}", path.display()))?;
-        match value {
-            Value::Object(map) => {
-                ratelimit!(3600, debug!(keys = map.len(), "settings file loaded"));
-                Ok(map)
-            }
-            _ => bail!("settings root must be a JSON object: {}", path.display()),
-        }
+        in_named_scope(
+            "context.settings.load",
+            Some("path"),
+            Some(path.display().to_string()),
+            || {
+                ratelimit!(3600, debug!("reading settings file from disk"));
+                let raw = std::fs::read(path)
+                    .with_context(|| format!("failed to read settings file: {}", path.display()))?;
+                trace!(bytes = raw.len(), "read settings file");
+                let value: Value = serde_json::from_slice(&raw)
+                    .with_context(|| format!("failed to parse settings file: {}", path.display()))?;
+                match value {
+                    Value::Object(map) => {
+                        ratelimit!(3600, debug!(keys = map.len(), "settings file loaded"));
+                        Ok(map)
+                    }
+                    _ => bail!("settings root must be a JSON object: {}", path.display()),
+                }
+            },
+        )
     }
 
     fn schedule_save(&self) {

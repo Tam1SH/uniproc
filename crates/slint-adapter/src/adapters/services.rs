@@ -141,6 +141,7 @@ impl ServicesUiPort for ServicesUiAdapter {
 
 #[ui_adapter]
 impl ServicesUiBindings for ServicesUiAdapter {
+    #[ui_action(scope = "ui.services.sort", target = "field")]
     fn on_sort_by<F>(&self, ui: &AppWindow, handler: F)
     where
         F: Fn(SharedString) + 'static,
@@ -148,6 +149,7 @@ impl ServicesUiBindings for ServicesUiAdapter {
         ui.global::<ServicesFeatureGlobal>().on_sort_by(handler);
     }
 
+    #[ui_action(scope = "ui.services.select", target = "name,idx")]
     fn on_select_service<F>(&self, ui: &AppWindow, handler: F)
     where
         F: Fn(SharedString, usize) + 'static,
@@ -158,6 +160,7 @@ impl ServicesUiBindings for ServicesUiAdapter {
             });
     }
 
+    #[ui_action(scope = "ui.services.viewport", target = "start,count")]
     fn on_viewport_changed<F>(&self, ui: &AppWindow, handler: F)
     where
         F: Fn(usize, usize) + 'static,
@@ -168,6 +171,7 @@ impl ServicesUiBindings for ServicesUiAdapter {
             });
     }
 
+    #[ui_action(scope = "ui.services.column_resized", target = "id,width")]
     fn on_column_resized<F>(&self, ui: &AppWindow, handler: F)
     where
         F: Fn(SharedString, f32) + 'static,
@@ -176,6 +180,7 @@ impl ServicesUiBindings for ServicesUiAdapter {
             .on_column_resized(handler);
     }
 
+    #[ui_action(scope = "ui.services.action", target = "name,kind")]
     fn on_service_action<F>(&self, ui: &AppWindow, handler: F)
     where
         F: Fn(SharedString, ServiceActionKind) + 'static,
@@ -194,6 +199,7 @@ impl ServicesUiBindings for ServicesUiAdapter {
             });
     }
 
+    #[ui_action(scope = "ui.services.open_system")]
     fn on_open_system_services<F>(&self, ui: &AppWindow, handler: F)
     where
         F: Fn() + 'static,

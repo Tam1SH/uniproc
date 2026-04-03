@@ -1,5 +1,6 @@
 use app_core::actor::event_bus::EventBus;
 use app_core::actor::traits::Message;
+use app_core::trace::in_named_scope;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::RwLock;
@@ -130,14 +131,28 @@ impl PageStatusRegistry {
     }
 
     pub fn report_page(&self, msg: PageStatusChanged) {
-        if self.update_page(msg.tab_id, msg.page_id, msg.status, msg.error.clone()) {
-            EventBus::publish(msg);
-        }
+        in_named_scope(
+            "context.page_status.update",
+            Some("tab_id,page_id,status"),
+            Some(format!("{:?} | {:?} | {:?}", msg.tab_id, msg.page_id, msg.status)),
+            || {
+                if self.update_page(msg.tab_id, msg.page_id, msg.status, msg.error.clone()) {
+                    EventBus::publish(msg);
+                }
+            },
+        );
     }
 
     pub fn report_tab(&self, msg: TabStatusChanged) {
-        if self.update_tab(msg.tab_id, msg.status, msg.error.clone()) {
-            EventBus::publish(msg);
-        }
+        in_named_scope(
+            "context.page_status.update",
+            Some("tab_id,status"),
+            Some(format!("{:?} | {:?}", msg.tab_id, msg.status)),
+            || {
+                if self.update_tab(msg.tab_id, msg.status, msg.error.clone()) {
+                    EventBus::publish(msg);
+                }
+            },
+        );
     }
 }

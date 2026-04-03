@@ -13,6 +13,7 @@ pub fn ui_adapter(_args: TokenStream, input: TokenStream) -> TokenStream {
 
     for item in &mut item_impl.items {
         if let ImplItem::Fn(method) = item {
+            let ui_action = take_ui_action_attr(method);
             let mut ui_arg_idx = None;
 
             for (i, arg) in method.sig.inputs.iter().enumerate() {
@@ -56,10 +57,21 @@ pub fn ui_adapter(_args: TokenStream, input: TokenStream) -> TokenStream {
                     ReturnType::Type(_, _) => quote! { return #default_value },
                 };
 
+                let handler_wrap = ui_action
+                    .as_ref()
+                    .map(|spec| build_ui_action_wrapper(method, spec));
                 let block = &method.block;
 
                 method.block = parse_quote! ({
                     let Some(ui) = self.ui.upgrade() else { #return_stmt };
+                    #handler_wrap
+                    #block
+                });
+            } else if let Some(spec) = ui_action.as_ref() {
+                let handler_wrap = build_ui_action_wrapper(method, spec);
+                let block = &method.block;
+                method.block = parse_quote! ({
+                    #handler_wrap
                     #block
                 });
             }
@@ -69,6 +81,115 @@ pub fn ui_adapter(_args: TokenStream, input: TokenStream) -> TokenStream {
     TokenStream::from(quote!(#item_impl))
 }
 
+struct UiActionAttr {
+    scope: syn::LitStr,
+    target: Option<syn::LitStr>,
+}
+
+fn take_ui_action_attr(method: &mut syn::ImplItemFn) -> Option<UiActionAttr> {
+    let pos = method
+        .attrs
+        .iter()
+        .position(|attr| attr.path().is_ident("ui_action"))?;
+    let attr = method.attrs.remove(pos);
+    parse_ui_action_attr(&attr)
+}
+
+fn parse_ui_action_attr(attr: &Attribute) -> Option<UiActionAttr> {
+    let mut scope = None;
+    let mut target = None;
+
+    if let Ok(meta) =
+        attr.parse_args_with(syn::punctuated::Punctuated::<Meta, syn::Token![,]>::parse_terminated)
+    {
+        for item in meta {
+            if let Meta::NameValue(nv) = item
+                && let Expr::Lit(lit) = &nv.value
+                && let Lit::Str(value) = &lit.lit
+            {
+                if nv.path.is_ident("scope") {
+                    scope = Some(value.clone());
+                } else if nv.path.is_ident("target") {
+                    target = Some(value.clone());
+                }
+            }
+        }
+    }
+
+    scope.map(|scope| UiActionAttr { scope, target })
+}
+
+fn build_ui_action_wrapper(
+    method: &syn::ImplItemFn,
+    spec: &UiActionAttr,
+) -> proc_macro2::TokenStream {
+    let handler_ident = find_handler_ident(method)
+        .unwrap_or_else(|| panic!("ui_action requires a handler parameter"));
+    let scope = &spec.scope;
+    let target_fields = spec
+        .target
+        .as_ref()
+        .map(|value| quote! { Some(#value) })
+        .unwrap_or_else(|| quote! { None });
+    let arity = spec
+        .target
+        .as_ref()
+        .map(|value| value.value().split(',').filter(|part| !part.trim().is_empty()).count())
+        .unwrap_or(0);
+
+    match arity {
+        0 => quote! {
+            let handler = {
+                let handler = #handler_ident;
+                move || {
+                    app_core::trace::in_ui_action_scope(#scope, #target_fields, None, || handler())
+                }
+            };
+        },
+        1 => quote! {
+            let handler = {
+                let handler = #handler_ident;
+                move |__ui_arg0| {
+                    let __ui_target = app_core::trace::format_ui_target_1(&__ui_arg0);
+                    app_core::trace::in_ui_action_scope(
+                        #scope,
+                        #target_fields,
+                        __ui_target,
+                        || handler(__ui_arg0),
+                    )
+                }
+            };
+        },
+        2 => quote! {
+            let handler = {
+                let handler = #handler_ident;
+                move |__ui_arg0, __ui_arg1| {
+                    let __ui_target = app_core::trace::format_ui_target_2(&__ui_arg0, &__ui_arg1);
+                    app_core::trace::in_ui_action_scope(
+                        #scope,
+                        #target_fields,
+                        __ui_target,
+                        || handler(__ui_arg0, __ui_arg1),
+                    )
+                }
+            };
+        },
+        _ => panic!("ui_action currently supports handlers with up to 2 arguments"),
+    }
+}
+
+fn find_handler_ident(method: &syn::ImplItemFn) -> Option<Ident> {
+    for arg in &method.sig.inputs {
+        if let FnArg::Typed(pat_type) = arg
+            && let Pat::Ident(pat_ident) = pat_type.pat.as_ref()
+            && pat_ident.ident == "handler"
+        {
+            return Some(pat_ident.ident.clone());
+        }
+    }
+
+    None
+}
 #[proc_macro_attribute]
 pub fn feature_settings(args: TokenStream, input: TokenStream) -> TokenStream {
     let args = parse_macro_input!(args with syn::punctuated::Punctuated::<Meta, syn::Token![,]>::parse_terminated);

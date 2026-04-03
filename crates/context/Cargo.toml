@@ -6,6 +6,7 @@ edition.workspace = true
 [dependencies]
 slint = { workspace = true }
 tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
 rust-i18n = { workspace = true }
 anyhow = { workspace = true }
 serde = { workspace = true }

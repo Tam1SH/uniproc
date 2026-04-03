@@ -1,8 +1,10 @@
 use crate::actor::addr::Addr;
 use crate::actor::event_bus::subscribe::{Event, Subscriber, SubscriptionId, UntypedSubscriber};
+use crate::actor::short_type_name;
 use crate::actor::traits::Handler;
 use crate::actor::UiThreadGuard;
 use crate::app::Window;
+use crate::trace::{current_meta, DispatchMeta};
 use once_cell::sync::Lazy;
 use parking_lot::RwLock;
 use std::any::TypeId;
@@ -55,6 +57,12 @@ impl EventBus {
                 .push(subscriber);
         });
 
+        tracing::debug!(
+            event = short_type_name::<M>(),
+            actor = short_type_name::<A>(),
+            "bus.subscribe"
+        );
+
         id
     }
 
@@ -72,12 +80,23 @@ impl EventBus {
             return;
         }
 
+        let meta =
+            current_meta().unwrap_or_else(|| DispatchMeta::capture_or_root("core.bus.publish"));
+
+        tracing::debug!(
+            parent: &meta.span,
+            event = short_type_name::<M>(),
+            op_id = meta.op_id,
+            correlation_id = meta.correlation_id.as_deref().unwrap_or(""),
+            "bus.publish"
+        );
+
         let _ = slint::invoke_from_event_loop(move || {
             let type_id = TypeId::of::<M>();
             LOCAL_SUBSCRIBERS.with(|s| {
                 if let Some(subs) = s.borrow().get(&type_id) {
                     for sub in subs {
-                        sub.deliver(Box::new(msg.clone()));
+                        sub.deliver(Box::new(msg.clone()), meta.child("core.bus.publish", None, None));
                     }
                 }
             });

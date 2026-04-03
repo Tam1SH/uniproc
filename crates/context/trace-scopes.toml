@@ -1,0 +1,45 @@
+[ui.services]
+sort = true
+select = true
+viewport = false
+column_resized = false
+action = true
+open_system = true
+
+[ui.processes]
+sort = true
+toggle_group = true
+terminate = true
+select = true
+viewport = false
+column_resized = false
+group_clicked = true
+
+[ui.navigation]
+page_switch = true
+tab_switch = true
+tab_close = true
+tab_add = true
+sidebar_width = false
+
+[ui.window]
+drag = true
+close = true
+minimize = true
+maximize = true
+start_resize = true
+config_changed = false
+
+[ui.run_task]
+open = true
+drag = true
+submit = true
+
+[context.settings]
+load = true
+save = true
+watch = false
+diff = false
+
+[context.page_status]
+update = true

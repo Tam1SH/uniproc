@@ -6,6 +6,7 @@ use app_core::actor::event_bus::EventBus;
 use app_core::actor::traits::{Context, Handler};
 use app_core::app::Window;
 use app_core::messages;
+use app_core::trace::current_or_new_correlation_uuid;
 use context::page_status::{PageId, PageStatus, PageStatusChanged, PageStatusRegistry};
 use slint::SharedString;
 use std::collections::HashSet;
@@ -53,7 +54,7 @@ impl<P: ServicesUiPort, T: Window> Handler<ServiceSnapshot, T> for ServiceActor<
 
 impl<P: ServicesUiPort, T: Window> Handler<ServiceAction, T> for ServiceActor<P> {
     fn handle(&mut self, m: ServiceAction, _: &Context<Self, T>) {
-        let id = Uuid::new_v4();
+        let id = current_or_new_correlation_uuid();
         let cmd = match m.kind {
             ServiceActionKind::Start => ServiceCommand::Start { name: m.name },
             ServiceActionKind::Stop => ServiceCommand::Stop { name: m.name },
@@ -62,10 +63,10 @@ impl<P: ServicesUiPort, T: Window> Handler<ServiceAction, T> for ServiceActor<P>
             ServiceActionKind::Resume => ServiceCommand::Resume { name: m.name },
         };
         self.pending.insert(id);
-        EventBus::publish(WindowsActionRequest {
-            correlation_id: id,
-            request: WindowsRequest::ServiceCommand(cmd),
-        });
+        EventBus::publish(WindowsActionRequest::new(
+            id,
+            WindowsRequest::ServiceCommand(cmd),
+        ));
     }
 }
 

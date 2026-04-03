@@ -24,6 +24,7 @@ impl RunTaskAdapter {
 
 #[ui_adapter]
 impl RunTaskPort for RunTaskAdapter {
+    #[ui_action(scope = "ui.run_task.open")]
     fn on_open<F>(&self, ui: &AppWindow, handler: F)
     where
         F: Fn() + 'static,
@@ -31,6 +32,7 @@ impl RunTaskPort for RunTaskAdapter {
         ui.global::<RunTaskProxy>().on_open(handler);
     }
 
+    #[ui_action(scope = "ui.run_task.drag")]
     fn on_drag<F>(&self, handler: F)
     where
         F: Fn() + 'static,
@@ -38,6 +40,7 @@ impl RunTaskPort for RunTaskAdapter {
         self.dialog.global::<RunTaskProxy>().on_drag(handler);
     }
 
+    #[ui_action(scope = "ui.run_task.submit", target = "request")]
     fn on_run_task<F>(&self, handler: F)
     where
         F: Fn(RunTaskRequest) + 'static,
