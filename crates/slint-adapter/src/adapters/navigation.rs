@@ -1,6 +1,6 @@
 use crate::{AppWindow, Navigation, PageData, TabData};
 use app_contracts::features::navigation::{NavigationUiBindings, NavigationUiPort, TabDescriptor};
-use app_core::icons::Icons;
+use context::icons::Icons;
 use context::page_status::{PageId, PageStatus, TabId};
 use macros::ui_adapter;
 use slint::private_unstable_api::re_exports::Coord;

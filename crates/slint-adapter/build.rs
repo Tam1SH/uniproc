@@ -6,7 +6,6 @@ fn main() {
     download_missing_assets();
     generate_icons_slint();
     generate_slint_l10n();
-    generate_icons_rs();
 
     let config = slint_build::CompilerConfiguration::new()
         .with_style("fluent".into())
@@ -168,49 +167,6 @@ fn generate_icons_slint() {
         "// AUTO-GENERATED — do not edit manually\nexport global Icons {{\n{properties}\n}}\n"
     );
     write_if_changed(out_file, &generated);
-}
-
-fn generate_icons_rs() {
-    let assets_dir = Path::new("ui/assets");
-    let out_file = Path::new("../core/src/icons.rs");
-
-    let mut entries: Vec<String> = fs::read_dir(assets_dir)
-        .expect("ui/assets not found")
-        .filter_map(|e| e.ok())
-        .map(|e| e.file_name().to_string_lossy().to_string())
-        .filter(|n| n.ends_with(".svg"))
-        .collect();
-    entries.sort();
-
-    let arms = entries
-        .iter()
-        .map(|filename| {
-            let name = filename.trim_end_matches(".svg");
-            format!("            \"{name}\" => include_bytes!(\"../../slint-adapter/ui/assets/{filename}\"),")
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
-
-    let content = format!(
-        r#"// AUTO-GENERATED — do not edit manually
-use slint::Image;
-
-
-pub struct Icons;
-
-impl Icons {{
-    pub fn get(name: &str) -> Image {{
-        let bytes: &[u8] = match name {{
-{arms}
-            _ => return Image::default(),
-        }};
-        Image::load_from_svg_data(bytes).unwrap_or_default()
-    }}
-}}
-"#
-    );
-
-    write_if_changed(out_file, &content);
 }
 
 fn write_if_changed(path: &Path, content: &str) {

@@ -1,5 +1,5 @@
-use app_core::icons::Icons;
 use bon::Builder;
+use crate::icons::Icons;
 use slint::Image;
 use std::cell::RefCell;
 use std::time::Duration;

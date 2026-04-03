@@ -16,7 +16,7 @@ Architecture guide for AI agents. Read this before touching any code.
 
 ## Never edit manually
 
-- `core/src/icons.rs` — codegen'd icon registry
+- `crates/context/src/icons.rs` — codegen'd icon registry from `slint-adapter/ui/assets`
 - `crates/context/src/l10n.rs` — codegen'd from `.toml`
 - `crates/context/src/trace.rs` scope catalog section — codegen'd from `crates/context/trace-scopes.toml`
 - `slint-adapter/ui/shared/localization.slint` — codegen'd from `.toml`
@@ -27,6 +27,8 @@ Architecture guide for AI agents. Read this before touching any code.
 ## What is this project
 
 A task manager replacement. Rust, UI built with Slint.
+
+Longer-term, treat it as a hub for system observability tools rather than only a task manager clone.
 
 ---
 
@@ -88,8 +90,8 @@ Add a field to `settings.rs` with `#[setting(default = ...)]`, rebuild. Use the 
 Reference: `domain/src/features/processes/settings.rs`.
 
 **Adding an icon**
-Add a line to `slint-adapter/ui/assets/download.txt` in the format `name:url`, rebuild. Access via `Icons::get("name")`
-in Rust or the codegen'd Slint binding.
+Add a line to `slint-adapter/ui/assets/download.txt` in the format `name:url`, rebuild. Access via
+`context::icons::Icons::get("name")` in Rust or the codegen'd Slint binding.
 
 **Adding a locale string**
 Edit `context/locales/*.toml`, rebuild. Do not touch any generated files.
@@ -133,9 +135,6 @@ Contains:
 - **`App<TWindow>`** — container into which features are installed
 - **`Feature<TWindow>`** trait — the contract every feature implements
 - **`UiThreadGuard`** — token for UI-thread operations
-- **`Icons::get(name)`** — codegen'd icon access (`Icons::get("apps-list")` → `Image`). See `core/src/icons.rs`. Do not
-  edit manually.
-
 ### Feature trait
 
 ```rust
@@ -190,6 +189,7 @@ Contains:
   global are codegen'd automatically. The Rust side is currently unused.
 - **Trace catalog + policy** — owns named tracing scopes, default enable/disable policy, subscriber bootstrap and
   buffered dump-on-warn/error behavior
+- **Icons registry** — codegen'd Rust icon access backed by `slint-adapter/ui/assets`
 
 ### PageStatus
 
@@ -478,7 +478,7 @@ dismiss:https://api.iconify.design/fluent:dismiss-20-regular.svg
 
 2. The build script watches this file and downloads icons into the same folder automatically.
 
-Nothing else is needed — `Icons::get("name")` access is codegen'd in `core/src/icons.rs`.
+Nothing else is needed — `context::icons::Icons::get("name")` access is codegen'd in `crates/context/src/icons.rs`.
 
 ---
 
