@@ -1,20 +1,25 @@
 import { ListView } from "std-widgets.slint";
 import { Button } from "button/index.slint";
-import { Divider } from "divider.slint";
 import { Theme } from "theme.slint";
 import { L10n } from "localization.slint";
 import { Icons } from "icons.slint";
 import { ServicesFeatureGlobal, ServiceEntry } from "globals.slint";
+import { ServicePropertiesDialogContent } from "service-properties-dialog.slint";
+import {
+    ContentDialogInline,
+    ContentDialogMode,
+    ContentDialogButtonFooter,
+} from "../../components/content-dialog/index.slint";
 import {
     GenericTableRow,
     TableHeader,
     TableUtils,
 } from "table/index.slint";
-import { Icons } from "icons.slint";
 
 component ServiceItem inherits GenericTableRow {
     in property <ServiceEntry> entry;
     in property <int> idx;
+    callback properties-requested(int);
 
     selected: entry.name == ServicesFeatureGlobal.selected-name;
     is-alternate: Math.mod(idx, 2) != 0;
@@ -40,78 +45,23 @@ component ServiceItem inherits GenericTableRow {
     clicked => {
         ServicesFeatureGlobal.select-service(entry.name, idx);
     }
-}
+    context-menu-action(action) => {
+        ServicesFeatureGlobal.select-service(entry.name, idx);
 
-export component ServiceViewBody inherits Rectangle {
-    in property <length> row-height: 32px;
-
-    function emit-viewport() {
-        ServicesFeatureGlobal.rows-viewport-changed(
-            TableUtils.viewport-first(list.viewport-y, root.row-height),
-            TableUtils.viewport-visible(list.visible-height, root.row-height),
-        );
-    }
-
-    VerticalLayout {
-        TableHeader {
-            column-defs: ServicesFeatureGlobal.column-defs;
-            column-widths: ServicesFeatureGlobal.column-widths;
-            column-metadatas: ServicesFeatureGlobal.column-metadatas;
-            current-sort: ServicesFeatureGlobal.current-sort;
-            current-sort-descending: ServicesFeatureGlobal.current-sort-descending;
-            is-grouped: false;
-            resized(id, width) => {
-                ServicesFeatureGlobal.column-resized(id, width);
-            }
-            sort-by(id) => {
-                ServicesFeatureGlobal.sort-by(id);
-            }
-        }
-
-        Rectangle {
-            height: 1px;
-            background: Theme.colorNeutralStrokeAlpha;
-        }
-
-        list := ListView {
-            changed viewport-y => {
-                root.emit-viewport();
-            }
-            changed visible-height => {
-                root.emit-viewport();
-            }
-
-            for entry[idx] in ServicesFeatureGlobal.service-rows: ServiceItem {
-                entry: entry;
-                idx: idx;
-            }
-        }
-
-        Rectangle {
-            height: 32px;
-            background: Theme.colorNeutralBackgroundAlpha;
-            Rectangle {
-                width: 100%;
-                height: 1px;
-                y: 0;
-                background: Theme.colorNeutralStrokeAlpha;
-            }
-
-            HorizontalLayout {
-                padding-left: 8px;
-                alignment: start;
-                Text {
-                    text: "Services: \{ServicesFeatureGlobal.total-services-count}";
-                    color: Theme.text_secondary;
-                    font-size: 12px;
-                    vertical-alignment: center;
-                }
-            }
+        if (action == "1") {
+            ServicesFeatureGlobal.service-action(entry.name, "Start");
+        } else if (action == "2") {
+            ServicesFeatureGlobal.service-action(entry.name, "Stop");
+        } else if (action == "3") {
+            ServicesFeatureGlobal.service-action(entry.name, "Restart");
+        } else if (action == "4") {
+            root.properties-requested(idx);
         }
     }
 }
 
 export component ServiceViewHeader inherits Rectangle {
+    in property <ContentDialogMode> properties-dialog-mode: ContentDialogMode.inline;
     property <bool> has-selection: ServicesFeatureGlobal.selected-name != "";
     height: 60px;
 
@@ -125,6 +75,10 @@ export component ServiceViewHeader inherits Rectangle {
             font-weight: 600;
             color: Theme.text_primary;
             vertical-alignment: center;
+        }
+
+        Rectangle {
+            horizontal-stretch: 1;
         }
 
         HorizontalLayout {
@@ -169,6 +123,102 @@ export component ServiceViewHeader inherits Rectangle {
                 icon-size: 18px;
                 clicked => {
                     ServicesFeatureGlobal.service-action(ServicesFeatureGlobal.selected-name, "Restart");
+                }
+            }
+        }
+    }
+}
+
+export component ServicePropertiesInlineOverlay inherits Rectangle {
+    in property <ContentDialogMode> properties-dialog-mode: ContentDialogMode.inline;
+
+    inline-dialog := ContentDialogInline {
+        is-open <=> ServicesFeatureGlobal.properties-inline-open;
+        visible: root.properties-dialog-mode == ContentDialogMode.inline;
+        dialog-width: 440px;
+        has-footer: true;
+        
+        ServicePropertiesDialogContent {
+            close-requested => {
+                ServicesFeatureGlobal.properties-inline-open = false;
+            }
+        }
+    }
+}
+
+export component ServiceViewBody inherits Rectangle {
+    in property <length> row-height: 32px;
+    in property <ContentDialogMode> properties-dialog-mode: ContentDialogMode.inline;
+
+    function emit-viewport() {
+        ServicesFeatureGlobal.rows-viewport-changed(
+            TableUtils.viewport-first(list.viewport-y, root.row-height),
+            TableUtils.viewport-visible(list.visible-height, root.row-height),
+        );
+    }
+
+    VerticalLayout {
+        TableHeader {
+            column-defs: ServicesFeatureGlobal.column-defs;
+            column-widths: ServicesFeatureGlobal.column-widths;
+            column-metadatas: ServicesFeatureGlobal.column-metadatas;
+            current-sort: ServicesFeatureGlobal.current-sort;
+            current-sort-descending: ServicesFeatureGlobal.current-sort-descending;
+            is-grouped: false;
+            resized(id, width) => {
+                ServicesFeatureGlobal.column-resized(id, width);
+            }
+            sort-by(id) => {
+                ServicesFeatureGlobal.sort-by(id);
+            }
+        }
+
+        Rectangle {
+            height: 1px;
+            background: Theme.colorNeutralStrokeAlpha;
+        }
+
+        list := ListView {
+            enabled: root.properties-dialog-mode != ContentDialogMode.inline || !ServicesFeatureGlobal.properties-inline-open;
+            changed viewport-y => {
+                root.emit-viewport();
+            }
+            changed visible-height => {
+                root.emit-viewport();
+            }
+
+            for entry[idx] in ServicesFeatureGlobal.service-rows: ServiceItem {
+                entry: entry;
+                idx: idx;
+                properties-requested(item_idx) => {
+                    ServicesFeatureGlobal.select-service(entry.name, item_idx);
+                    if (root.properties-dialog-mode == ContentDialogMode.inline) {
+                        ServicesFeatureGlobal.properties-inline-open = true;
+                    } else {
+                        ServicesFeatureGlobal.open-properties-window();
+                    }
+                }
+            }
+        }
+
+        Rectangle {
+            height: 32px;
+            background: Theme.colorNeutralBackgroundAlpha;
+            Rectangle {
+                width: 100%;
+                height: 1px;
+                y: 0;
+                background: Theme.colorNeutralStrokeAlpha;
+            }
+
+            HorizontalLayout {
+                padding-left: 8px;
+                alignment: start;
+                Text {
+                    text: "Services: \{ServicesFeatureGlobal.total-services-count}";
+                    color: Theme.text_secondary;
+                    font-size: 12px;
+                    vertical-alignment: center;
                 }
             }
         }

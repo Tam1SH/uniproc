@@ -42,6 +42,14 @@ pub trait ServicesUiPort: Debug + 'static {
     fn set_service_rows_window(&self, total_rows: usize, start: usize, rows: &[ServiceEntryVm]);
     fn set_loading(&self, loading: bool);
     fn set_selected_name(&self, name: SharedString);
+    fn set_selected_service_details(
+        &self,
+        display_name: SharedString,
+        pid: i32,
+        status: SharedString,
+        group: SharedString,
+        description: SharedString,
+    );
     fn set_sort_state(&self, field: SharedString, descending: bool);
     fn set_total_services_count(&self, count: usize);
     fn set_active_start_button(&self, flag: bool);

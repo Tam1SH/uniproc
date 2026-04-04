@@ -1,7 +1,7 @@
 import { Theme } from "theme.slint";
 
 export component Button {
-    in property <string> text: "Button";
+    in property <string> text;
     in property <bool> primary: false;
     in property <bool> enabled: true;
     in property <image> icon;
@@ -9,6 +9,9 @@ export component Button {
     in property <bool> has-icon-color;
     in property <length> icon-size;
     in property <bool> is-transparent;
+    in property <length> prop-padding-left: Theme.spacingHorizontalM;
+    in property <length> prop-padding-right: Theme.spacingHorizontalM;
+    in property <length> icon-offset-x;
     callback clicked;
     height: 32px;
 
@@ -18,6 +21,12 @@ export component Button {
     pure callback get-background-color(is-enabled: bool, is-primary: bool, is-transparent: bool, is-pressed: bool, hover: bool) -> color;
 
     pure callback get-foreground-color(is-enabled: bool, is-primary: bool, is-transparent: bool) -> color;
+    pure callback get-contrast-color(background: color) -> color;
+
+    get-contrast-color(background) => {
+        let luminance = 0.2126 * background.red + 0.7152 * background.green + 0.0722 * background.blue;
+        return luminance > 140 ? Colors.black : Colors.white;
+    }
 
     get-foreground-color(enabled, primary, transparent) => {
         if (!enabled) {
@@ -27,7 +36,7 @@ export component Button {
             return Theme.colorNeutralForeground1;
         }
         if (primary) {
-            return Theme.colorNeutralForegroundOnBrand;
+            return root.get-contrast-color(Theme.accent);
         }
         return Theme.colorNeutralForeground1;
     }
@@ -49,7 +58,7 @@ export component Button {
             if (hover) {
                 return Theme.colorBrandBackgroundHover;
             }
-            return Theme.colorBrandBackground;
+            return Theme.accent;
         }
         if (pressed) {
             return Theme.colorSubtleBackgroundPressed;
@@ -64,19 +73,19 @@ export component Button {
 
     get-icon-color(is-enabled, has-custom, custom, text) => {
         let base-color = has-custom ? custom : text;
-        return is-enabled ? base-color : base-color.with-alpha(0.8);
+        return is-enabled ? base-color : (root.is-transparent ? base-color.with-alpha(0.35) : base-color.with-alpha(0.8));
     }
 
     forward-focus: focus-scope;
 
     container := Rectangle {
-        border-radius: Theme.borderRadiusLarge;
+        border-radius: Theme.borderRadiusMedium;
         border-width: Theme.strokeWidthThin;
         clip: true;
 
         focus-border := Rectangle {
             z: 10;
-            border-radius: Theme.borderRadiusXLarge;
+            border-radius: Theme.borderRadiusLarge;
             border-width: 2px;
             border-color: focus-scope.has-focus ? Theme.colorNeutralForeground1 : transparent;
         }
@@ -101,28 +110,28 @@ export component Button {
         }
 
         layout := HorizontalLayout {
-            padding-left: Theme.spacingHorizontalM;
-            padding-right: Theme.spacingHorizontalM;
+            padding-left: root.prop-padding-left;
+            padding-right: root.prop-padding-right;
             spacing: Theme.spacingHorizontalS;
             alignment: center;
-            VerticalLayout {
+            if (root.icon.width > 0): VerticalLayout {
                 alignment: center;
-                if (root.icon.width > 0): Image {
+                Image {
                     source: root.icon;
                     width: root.icon-size > 0 ? root.icon-size : Theme.icon_size_m;
                     height: root.icon-size > 0 ? root.icon-size : Theme.icon_size_m;
+                    x: root.icon-offset-x;
                     colorize: root.get-icon-color(
                         root.enabled,
                         root.has-icon-color,
                         root.icon-color,
-                        text.color);
+                        root.get-foreground-color(root.enabled, root.primary, root.is-transparent));
                 }
             }
-
-            text := Text {
+            
+            if(root.text != ""): Text {
                 text: root.text;
                 font-size: Theme.fontSizeBase300;
-                font-weight: root.primary ? 600 : 400;
                 vertical-alignment: center;
 
                 color: root.get-foreground-color(root.enabled, root.primary, root.is-transparent);

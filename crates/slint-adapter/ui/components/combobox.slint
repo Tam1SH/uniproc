@@ -1,0 +1,249 @@
+import { Theme } from "theme.slint";
+import { Icons } from "icons.slint";
+
+export struct ComboBoxItem {
+    id: string,
+    text: string,
+    icon: image,
+    has-icon: bool,
+}
+
+component ComboBoxRow inherits Rectangle {
+    in property <ComboBoxItem> item;
+    in property <bool> selected: false;
+    in property <bool> menu-open: false;
+    in property <length> row-height: 32px;
+    callback clicked();
+
+    height: root.row-height;
+    clip: true;
+    border-radius: Theme.borderRadiusLarge;
+    background: (root.selected && touch.has-hover) ? Theme.colorNeutralBackgroundAlpha :
+        ((root.selected || touch.has-hover) ? Theme.colorNeutralBackgroundAlpha2 : Colors.transparent);
+    animate background { duration: Theme.durationFaster; }
+
+    left-indicator := Rectangle {
+        width: 2.5px;
+        height: Theme.selection_indicator_height;
+        x: Theme.spacingHorizontalXXS;
+        border-radius: Theme.borderRadiusCircular;
+        background: root.selected ? Theme.accent : Colors.transparent;
+    }
+
+    touch := TouchArea {
+        clicked => {
+            root.clicked();
+        }
+        mouse-cursor: pointer;
+    }
+
+    HorizontalLayout {
+        padding-left: Theme.spacingHorizontalM;
+        padding-right: Theme.spacingHorizontalM;
+        spacing: Theme.spacingHorizontalS;
+
+        if (root.item.has-icon): VerticalLayout {
+            alignment: center;
+
+            Image {
+                source: root.item.icon;
+                width: 16px;
+                height: 16px;
+                colorize: root.selected ? Theme.accent : Theme.colorNeutralForeground2;
+            }
+        }
+
+        Text {
+            text: root.item.text;
+            color: root.selected ? Theme.colorNeutralForeground1 : Theme.colorNeutralForeground2;
+            vertical-alignment: center;
+        }
+    }
+}
+
+component ComboBoxPopup inherits PopupWindow {
+    in property <[ComboBoxItem]> items: [];
+    in property <int> current-index: 0;
+    in property <length> row-height: 32px;
+    in property <length> menu-width: 220px;
+    in property <bool> is-entering: false;
+    callback choose(int);
+
+    width: root.menu-width;
+    height: inner.preferred-height;
+
+    inner := Rectangle {
+        background: Theme.colorNeutralBackground2;
+        border-width: 1px;
+        border-color: Theme.colorNeutralBackground3;
+        border-radius: 6px;
+        drop-shadow-blur: 12px;
+        drop-shadow-offset-y: 8px;
+        drop-shadow-color: rgba(0, 0, 0, 0.22);
+
+        VerticalLayout {
+            padding: Theme.spacingHorizontalSNudge;
+            spacing: Theme.spacingVerticalXXS;
+
+            for item[idx] in root.items: ComboBoxRow {
+                item: item;
+                row-height: root.row-height;
+                selected: idx == root.current-index;
+                menu-open: root.visible;
+                clicked => {
+                    root.choose(idx);
+                }
+            }
+        }
+    }
+}
+
+export component ComboBox inherits Rectangle {
+    in property <[ComboBoxItem]> items: [];
+    in property <int> current-index: 0;
+    in property <length> row-height: 32px;
+    in property <length> menu-width: 220px;
+    in property <string> placeholder-text: "";
+    in property <bool> enabled: true;
+    private property <bool> menu-open: false;
+
+    callback selected(int, string);
+
+    width: root.menu-width;
+    height: root.row-height;
+    accessible-role: combobox;
+    accessible-label: root.placeholder-text != "" ? root.placeholder-text : "Combo box";
+    accessible-value: root.selected-text(root.current-index, root.items.length, root.placeholder-text);
+    accessible-action-default => {
+        trigger.clicked();
+    }
+    accessible-action-expand => {
+        if (!root.menu-open && root.enabled && root.items.length > 0) {
+            popup.show();
+        }
+    }
+    border-radius: Theme.borderRadiusMedium;
+    border-width: Theme.strokeWidthThin;
+    border-color: Theme.colorNeutralStrokeAlpha2;
+    background: !root.enabled ? Theme.colorNeutralBackgroundDisabled :
+        (trigger.pressed ? Theme.colorSubtleBackgroundPressed :
+        (trigger.has-hover ? Theme.colorNeutralBackgroundAlpha3 : Theme.colorNeutralBackgroundAlpha2));
+    clip: true;
+
+    pure callback has-selection(index: int, count: int) -> bool;
+    pure callback selected-text(index: int, count: int, fallback: string) -> string;
+    pure callback popup-y(base-y: length, index: int, row-height: length) -> length;
+
+    has-selection(index, count) => {
+        return index >= 0 && index < count;
+    }
+
+    selected-text(index, count, fallback) => {
+        if (root.has-selection(index, count)) {
+            return root.items[index].text;
+        }
+        return fallback;
+    }
+
+    popup-y(base-y, index, item-height) => {
+        if (index < 0) {
+            return base-y;
+        }
+        return base-y - Theme.spacingHorizontalSNudge - index * (item-height + Theme.spacingVerticalXXS);
+    }
+
+    animate border-color { duration: Theme.durationFaster; }
+    animate background { duration: Theme.durationFaster; }
+
+    Rectangle {
+        y: 0px;
+        x: 0px;
+        width: parent.width;
+        height: 1px;
+        background: rgba(255, 255, 255, 0.05);
+        z: 5;
+    }
+
+    trigger := TouchArea {
+        enabled: root.enabled;
+        clicked => {
+            if (root.menu-open) {
+                popup.close();
+            } else if (root.items.length > 0) {
+                popup.show();
+            }
+        }
+        mouse-cursor: root.enabled ? pointer : default;
+    }
+
+    HorizontalLayout {
+        padding-left: Theme.spacingHorizontalM;
+        padding-right: 12px;
+        spacing: Theme.spacingHorizontalS;
+
+        Text {
+            text: root.selected-text(root.current-index, root.items.length, root.placeholder-text);
+            color: root.enabled ?
+                (root.has-selection(root.current-index, root.items.length) ? Theme.colorNeutralForeground1 : Theme.colorNeutralForeground3) :
+                Theme.colorNeutralForegroundDisabled;
+            vertical-alignment: center;
+        }
+
+        Rectangle {
+            horizontal-stretch: 1;
+        }
+
+        VerticalLayout {
+            alignment: center;
+
+            arrow-wrap := Rectangle {
+                width: 12px;
+                height: 16px;
+                background: Colors.transparent;
+                clip: false;
+
+                Image {
+                    source: Icons.arrow-up-regular;
+                    width: 10px;
+                    height: 10px;
+                    transform-rotation: 270deg;
+                    transform-origin: { x: 2.5px, y: 5px };
+                    colorize: root.enabled ? Theme.colorNeutralForeground2 : Theme.colorNeutralForegroundDisabled;
+                }
+            }
+        }
+    }
+
+    popup := ComboBoxPopup {
+        menu-width: Math.max(root.width, root.menu-width);
+        items: root.items;
+        current-index: root.current-index;
+        row-height: root.row-height;
+        x: 0px;
+        y: root.popup-y(0px, root.current-index, root.row-height);
+
+        changed visible => {
+            root.menu-open = self.visible;
+        }
+
+        choose(idx) => {
+            popup.close();
+            root.selected(idx, root.items[idx].id);
+        }
+    }
+
+    focus := FocusScope {
+        enabled: root.enabled;
+        key-pressed(event) => {
+            if (event.text == " " || event.text == "\n") {
+                trigger.clicked();
+                return accept;
+            }
+            if (event.text == Key.Escape && root.menu-open) {
+                popup.close();
+                return accept;
+            }
+            return reject;
+        }
+    }
+}

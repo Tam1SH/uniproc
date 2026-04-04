@@ -78,6 +78,9 @@ Use these labels as shorthand for the current design. They are descriptive, not 
 - Do not communicate with agents bypassing `AgentsFeature`
 - `SharedState` is for bootstrap only, not business logic
 - Do not invent new tracing conventions ad hoc — use the scope/correlation model described below
+- Platform-dependent code must live in a dedicated subfolder/module, with one file per platform in the same place
+- Prefer `windows.rs`, `linux.rs`, `macos.rs` (and similar) side-by-side over scattering `#[cfg(...)]` branches across unrelated files
+- Keep the cross-platform entry point thin: `mod.rs` should select the platform module and expose the shared API
 
 ---
 

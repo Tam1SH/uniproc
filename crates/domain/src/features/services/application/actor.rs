@@ -143,6 +143,14 @@ impl<P: ServicesUiPort, T: Window> Handler<SelectedService, T> for ServiceActor<
                 }
                 _ => {}
             }
+
+            self.ui_port.set_selected_service_details(
+                dto.display_name.clone().into(),
+                dto.pid,
+                dto.status.clone().into(),
+                dto.group.clone().into(),
+                dto.description.clone().into(),
+            );
         }
 
         self.table.select(m.0.clone(), m.1);

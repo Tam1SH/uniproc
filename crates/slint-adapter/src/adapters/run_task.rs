@@ -1,7 +1,7 @@
+use crate::native_windows::{NativeWindowConfig, NativeWindowManager};
 use crate::{AppWindow, RunTaskDialog, RunTaskProxy, Theme};
 use app_contracts::features::cosmetics::AccentColor;
 use app_contracts::features::run_task::{RunTaskPort, RunTaskRequest};
-use i_slint_backend_winit::WinitWindowAccessor;
 use macros::ui_adapter;
 use slint::ComponentHandle;
 use std::rc::Rc;
@@ -9,15 +9,18 @@ use std::rc::Rc;
 #[derive(Clone)]
 pub struct RunTaskAdapter {
     ui: slint::Weak<AppWindow>,
-    dialog: Rc<RunTaskDialog>,
+    dialog: NativeWindowManager<RunTaskDialog>,
 }
 
 impl RunTaskAdapter {
     pub fn new(ui: slint::Weak<AppWindow>) -> anyhow::Result<Self> {
-        let dialog = RunTaskDialog::new()?;
+        let dialog = Rc::new(RunTaskDialog::new()?);
         Ok(Self {
             ui,
-            dialog: Rc::new(dialog),
+            dialog: NativeWindowManager::with_config(
+                dialog,
+                NativeWindowConfig::win11_dialog(),
+            ),
         })
     }
 }
@@ -37,7 +40,7 @@ impl RunTaskPort for RunTaskAdapter {
     where
         F: Fn() + 'static,
     {
-        self.dialog.global::<RunTaskProxy>().on_drag(handler);
+        self.dialog.component().global::<RunTaskProxy>().on_drag(handler);
     }
 
     #[ui_action(scope = "ui.run_task.submit", target = "request")]
@@ -46,6 +49,7 @@ impl RunTaskPort for RunTaskAdapter {
         F: Fn(RunTaskRequest) + 'static,
     {
         self.dialog
+            .component()
             .global::<RunTaskProxy>()
             .on_run_task(move |env, cmd| {
                 handler(RunTaskRequest {
@@ -64,20 +68,16 @@ impl RunTaskPort for RunTaskAdapter {
     }
 
     fn drag_dialog_window(&self) {
-        self.dialog.window().with_winit_window(|w| {
-            let _ = w.drag_window();
-        });
+        self.dialog.drag_window();
     }
 
     fn apply_dialog_effects(&self) {
-        #[cfg(target_os = "windows")]
-        self.dialog.window().with_winit_window(|w| {
-            let _ = window_vibrancy::apply_mica(w, Some(true));
-        });
+        self.dialog.apply_effects();
     }
 
     fn set_dialog_accent(&self, accent: AccentColor) {
         self.dialog
+            .component()
             .global::<Theme>()
             .set_accent(slint::Color::from_argb_u8(
                 accent.a, accent.r, accent.g, accent.b,

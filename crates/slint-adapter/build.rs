@@ -18,7 +18,7 @@ fn main() {
     slint_build::compile_with_config("ui/app-window.slint", config).expect("Slint build failed");
 }
 
-fn collect_keys(prefix: &str, table: &Table, acc: &mut Vec<String>) {
+fn collect_string_entries(prefix: &str, table: &Table, acc: &mut Vec<(String, String)>) {
     for (key, value) in table {
         let full_key = if prefix.is_empty() {
             key.to_string()
@@ -27,10 +27,20 @@ fn collect_keys(prefix: &str, table: &Table, acc: &mut Vec<String>) {
         };
 
         match value {
-            Value::Table(sub_table) => collect_keys(&full_key, sub_table, acc),
-            _ => acc.push(full_key),
+            Value::Table(sub_table) => collect_string_entries(&full_key, sub_table, acc),
+            Value::String(text) => acc.push((full_key, text.clone())),
+            other => acc.push((full_key, other.to_string())),
         }
     }
+}
+
+fn escape_slint_string(value: &str) -> String {
+    value
+        .replace('\\', "\\\\")
+        .replace('\"', "\\\"")
+        .replace('\n', "\\n")
+        .replace('\r', "\\r")
+        .replace('\t', "\\t")
 }
 
 fn generate_slint_l10n_adapter(flat_keys: &[String]) {
@@ -86,15 +96,21 @@ fn generate_slint_l10n() {
     let content = fs::read_to_string(en_toml).expect("../context/locales/en.toml not found");
     let table: Table = content.parse().expect("Failed to parse en.toml");
 
-    let mut flat_keys = Vec::new();
-    collect_keys("", &table, &mut flat_keys);
-    flat_keys.sort();
+    let mut flat_entries = Vec::new();
+    collect_string_entries("", &table, &mut flat_entries);
+    flat_entries.sort_by(|a, b| a.0.cmp(&b.0));
 
-    let properties = flat_keys
+    let flat_keys = flat_entries
         .iter()
-        .map(|key| {
+        .map(|(key, _)| key.clone())
+        .collect::<Vec<_>>();
+
+    let properties = flat_entries
+        .iter()
+        .map(|(key, value)| {
             let slint_name = key.replace(['.', '_'], "-");
-            format!("    in property <string> {slint_name};")
+            let escaped = escape_slint_string(value);
+            format!("    in property <string> {slint_name}: \"{escaped}\";")
         })
         .collect::<Vec<_>>()
         .join("\n");
@@ -156,7 +172,7 @@ fn generate_icons_slint() {
         .iter()
         .map(|filename| {
             format!(
-                "    out property <image> {}: @image-url(\"assets/{filename}\");",
+                "    out property <image> {}: @image-url(\"../assets/{filename}\");",
                 filename.trim_end_matches(".svg").replace(['.', '_'], "-")
             )
         })

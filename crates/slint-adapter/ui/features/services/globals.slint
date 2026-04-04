@@ -42,15 +42,21 @@ export global ServicesFeatureGlobal {
     ];
 
     in property <[ServiceEntry]> service-rows:[];
-    in property <string> selected-name;
+    in property <string> selected-name: "AudioEndpointBuilder";
+    in property <string> selected-display-name: "Windows Audio Endpoint Builder";
+    in property <int> selected-pid: -1;
+    in property <string> selected-status: "Running";
+    in property <string> selected-group: "AudioGroup";
+    in property <string> selected-description: "Manages audio devices for the Windows audio service.";
     in property <string> current-sort;
     in property <bool> current-sort-descending;
     in property <int> total-services-count;
     in property <bool> is-loading;
 
-    in property <bool> start-button-active;
-    in property <bool> stop-button-active;
-    in property <bool> restart-button-active;
+    in property <bool> start-button-active: false;
+    in property <bool> stop-button-active: true;
+    in property <bool> restart-button-active: true;
+    in-out property <bool> properties-inline-open: false;
 
     callback sort-by(string);
     callback select-service(string, int);
@@ -58,4 +64,5 @@ export global ServicesFeatureGlobal {
     callback column-resized(string, float);
     callback service-action(string, string);
     callback open-system-services();
+    callback open-properties-window();
 }

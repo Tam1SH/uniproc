@@ -1,8 +1,13 @@
-use crate::{AppWindow, ServiceEntry, ServicesFeatureGlobal, TableCellData, TableColWidth};
+use crate::native_windows::{NativeWindowConfig, NativeWindowManager};
+use crate::{
+    AppWindow, ServiceEntry, ServicePropertiesDialogProxy, ServicePropertiesDialogWindow,
+    ServicesFeatureGlobal, TableCellData, TableColWidth,
+};
 use app_contracts::features::services::{
     ServiceActionKind, ServiceEntryVm, ServicesUiBindings, ServicesUiPort,
 };
 use app_core::app::FromUiWeak;
+use i_slint_backend_winit::WinitWindowAccessor;
 use macros::ui_adapter;
 use slint::{ComponentHandle, Model, SharedString, VecModel};
 use std::cell::RefCell;
@@ -21,6 +26,7 @@ pub struct ServicesUiAdapter {
     ui: slint::Weak<AppWindow>,
     models: Rc<AdapterModels>,
     cache: Rc<RefCell<UiTableCache<ServiceEntry, TableCellData>>>,
+    properties_dialog: NativeWindowManager<ServicePropertiesDialogWindow>,
 }
 
 impl ServicesUiAdapter {
@@ -31,16 +37,53 @@ impl ServicesUiAdapter {
             last_widths: Default::default(),
         });
 
+        let properties_dialog = Rc::new(
+            ServicePropertiesDialogWindow::new()
+                .expect("service properties dialog window should initialize"),
+        );
+
         if let Some(window) = ui.upgrade() {
             let bridge = window.global::<ServicesFeatureGlobal>();
             bridge.set_service_rows(models.rows.clone().into());
             bridge.set_column_widths(models.widths_model.clone().into());
+            bridge.on_open_properties_window({
+                let dialog = properties_dialog.clone();
+                move || {
+                    let _ = dialog.show();
+                }
+            });
         }
+
+        properties_dialog
+            .global::<ServicePropertiesDialogProxy>()
+            .on_close({
+                let dialog = properties_dialog.clone();
+                move || {
+                    let _ = dialog.hide();
+                }
+            });
+        properties_dialog
+            .global::<ServicePropertiesDialogProxy>()
+            .on_drag({
+                let dialog = properties_dialog.clone();
+                move || {
+                    dialog.window().with_winit_window(|w| {
+                        let _ = w.drag_window();
+                    });
+                }
+            });
+
+        let properties_dialog = NativeWindowManager::with_config(
+            properties_dialog,
+            NativeWindowConfig::win11_dialog(),
+        );
+        properties_dialog.apply_effects();
 
         Self {
             ui,
             models,
             cache: Default::default(),
+            properties_dialog,
         }
     }
 }
@@ -109,7 +152,37 @@ impl ServicesUiPort for ServicesUiAdapter {
     }
 
     fn set_selected_name(&self, ui: &AppWindow, name: SharedString) {
-        ui.global::<ServicesFeatureGlobal>().set_selected_name(name);
+        ui.global::<ServicesFeatureGlobal>()
+            .set_selected_name(name.clone());
+        self.properties_dialog
+            .component()
+            .global::<ServicesFeatureGlobal>()
+            .set_selected_name(name);
+    }
+
+    fn set_selected_service_details(
+        &self,
+        ui: &AppWindow,
+        display_name: SharedString,
+        pid: i32,
+        status: SharedString,
+        group: SharedString,
+        description: SharedString,
+    ) {
+        let global = ui.global::<ServicesFeatureGlobal>();
+        global.set_selected_display_name(display_name.clone());
+        global.set_selected_pid(pid);
+        global.set_selected_status(status.clone());
+        global.set_selected_group(group.clone());
+        global.set_selected_description(description.clone());
+
+        let dialog_component = self.properties_dialog.component();
+        let dialog_global = dialog_component.global::<ServicesFeatureGlobal>();
+        dialog_global.set_selected_display_name(display_name);
+        dialog_global.set_selected_pid(pid);
+        dialog_global.set_selected_status(status);
+        dialog_global.set_selected_group(group);
+        dialog_global.set_selected_description(description);
     }
 
     fn set_sort_state(&self, ui: &AppWindow, field: SharedString, descending: bool) {
