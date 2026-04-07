@@ -2,75 +2,72 @@
 version = "0.1.0"
 edition = "2024"
 
-
 [workspace]
+resolver = "2"
+default-members = ["crates/desktop"]
 members = [
     "crates/core",
     "crates/context",
-    "crates/widgets",
-    "crates/desktop",
     "crates/domain",
-    "crates/macros",
-    "crates/app-contracts",
-    "crates/slint-adapter",
     "crates/domain/src/features/agents",
     "crates/domain/src/features/environments",
     "crates/domain/src/features/processes",
+    "crates/app-contracts",
+    "crates/slint-adapter",
+    "crates/widgets",
+    "crates/macros",
+    "crates/desktop",
 ]
 
-default-members = ["crates/desktop"]
-
-resolver = "2"
-
 [workspace.dependencies]
+# --- Internal Crates (Project Architecture) ---
+app-contracts = { path = "crates/app-contracts" }
+app-core = { path = "crates/core" }
+context = { path = "crates/context" }
+domain = { path = "crates/domain" }
 domain-agents = { path = "crates/domain/src/features/agents" }
 domain-environments = { path = "crates/domain/src/features/environments" }
 domain-processes = { path = "crates/domain/src/features/processes" }
-domain = { path = "crates/domain" }
-app-core = { path = "crates/core" }
-context = { path = "crates/context" }
-widgets = { path = "crates/widgets" }
-app-contracts = { path = "crates/app-contracts" }
-slint-adapter = { path = "crates/slint-adapter" }
 macros = { path = "crates/macros" }
+slint-adapter = { path = "crates/slint-adapter" }
+widgets = { path = "crates/widgets" }
 
+# --- Custom & Git Dependencies ---
 ogurpchik = { git = "https://github.com/Tam1SH/oguRPChik", branch = "master", features = ["rkyv-codec", "vsock", "uds"] }
-rust-i18n = "3"
-
-slint = { version = "=1.14.1", features = ["renderer-skia"] }
 uniproc-protocol = { git = "https://github.com/Tam1SH/uniproc-protocol", branch = "master" }
 
-raw-window-handle = "0.6.2"
+# --- UI Stack (Slint & Windowing) ---
+slint = { version = "=1.14.1", features = ["renderer-skia"] }
+slint-build = "=1.14.1"
 i-slint-backend-winit = "=1.14.1"
-anyhow = "1.0.100"
-toml = "0.9.8"
+i-slint-compiler = "=1.14.1"
+winit = "0.30.12"
+window-vibrancy = "0.7.1"
+raw-window-handle = "0.6.2"
 
-dashmap = { version = "6.1.0", features = ["serde"] }
-flume = { version = "0.12.0", features = ["async"] }
-static_assertions = "1.1.0"
-sysinfo = "0.38.0"
-fxhash = "0.2.1"
-dhat = "0.3"
-ttl_cache = "0.5"
+# --- Async & Networking ---
 tokio = { version = "1.49.0", features = ["full"] }
+compio = { version = "0.18.0", features = ["net", "io-compat", "process", "macros", "time"] }
+futures = "0.3.31"
+async-trait = "0.1.89"
+flume = { version = "0.12.0", features = ["async"] }
+bytes = "1.11.1"
+socket2 = "0.6.2"
+
+# --- Serialization & Data ---
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.149"
+toml = "0.9.8"
+rkyv = { version = "0.8.14", features = ["bytecheck", "std"] }
+uuid = { version = "1.23.0", features = ["v4"] }
+
+# --- Logging & Diagnostics ---
 tracing = { version = "0.1.44", features = ["release_max_level_warn"] }
 tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
 tracing-appender = "0.2.3"
-smallvec = "1.15.1"
-rkyv = { version = "0.8.14", features = ["bytecheck", "std"] }
-lazy_static = "1.5.0"
-serde = { version = "1.0.228", features = ["derive"] }
-futures = "0.3.31"
-compio = { version = "0.18.0", features = ["net", "io-compat", "process", "macros", "time"] }
-bytes = "1.11.1"
-socket2 = "0.6.2"
-libc = "1.0.0-alpha.2"
-serde_json = "1.0.149"
-cfg-if = "1"
-arc-swap = "1.7.1"
-bon = "3.9.1"
-uuid = { version = "1.23.0", features = ["v4"] }
-winit = "0.30.12"
+dhat = "0.3"
+
+# --- System & Platform ---
 windows = { version = "0.61.3", features = [
     "Win32_UI_Controls", "Win32_Graphics_Dwm", "Win32_UI_Shell",
     "Win32_Storage", "Win32_Storage_FileSystem", "Win32_System_Performance",
@@ -78,16 +75,30 @@ windows = { version = "0.61.3", features = [
     "Win32_Networking_WinSock", "Win32_System_Threading", "UI",
     "UI_ViewManagement", "Win32_System_Hypervisor", "Management", "Management_Deployment",
     "ApplicationModel", "ApplicationModel_Core", "Win32_Storage_Packaging", "Win32_Storage_Packaging_Appx", "Win32_System_Services"] }
-window-vibrancy = "0.7.1"
-async-trait = "0.1.89"
+libc = "1.0.0-alpha.2"
+sysinfo = "0.38.0"
 
+# --- Utilities ---
+anyhow = "1.0.100"
+arc-swap = "1.7.1"
+bon = "3.9.1"
+cfg-if = "1"
+dashmap = { version = "6.1.0", features = ["serde"] }
+fxhash = "0.2.1"
+lazy_static = "1.5.0"
+rust-i18n = "3"
+smallvec = "1.15.1"
+static_assertions = "1.1.0"
+ttl_cache = "0.5"
+walkdir = "2.5.0"
 
+# --- Profiles ---
 [profile.release]
-split-debuginfo = "packed"
+opt-level = "s"
 lto = true
 codegen-units = 1
 strip = true
-opt-level = "s"
+split-debuginfo = "packed"
 
 [profile.dev]
 debug = 1

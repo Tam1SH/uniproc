@@ -66,8 +66,9 @@ pub fn generate_globals_export(ui_dir: &Path) {
                                             .children()
                                             .find(|n| n.kind() == SyntaxKind::QualifiedName)
                                             .map(|n| {
-                                                let t = n.text().to_string();
-                                                t == "Window" || t == "Dialog"
+                                                let base = n.text().to_string();
+                                                let base = base.trim();
+                                                base == "Window" || base == "Dialog"
                                             })
                                             .unwrap_or(false);
 

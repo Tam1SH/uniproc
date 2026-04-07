@@ -4,10 +4,6 @@ use crate::trace::in_named_scope;
 use crate::SharedState;
 use slint::ComponentHandle;
 
-pub trait FromUiWeak<TWindow: ComponentHandle + 'static>: Sized {
-    fn from_ui_weak(ui: slint::Weak<TWindow>) -> Self;
-}
-
 pub trait UiContext {
     fn new_token(&self) -> UiThreadGuard;
 }

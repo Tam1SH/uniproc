@@ -25,7 +25,7 @@ export global ServicesFeatureGlobal {
         { id: "description", label: "Description" },
     ];
 
-    in-out property <[TableColMetadata]> column-metadatas:[
+    in property <[TableColMetadata]> column-metadatas:[
         { is-text: true },
         { is-text: true },
         { is-text: true },
@@ -33,7 +33,7 @@ export global ServicesFeatureGlobal {
         { is-text: true }
     ];
 
-    in-out property <[TableColWidth]> column-widths:[
+    in property <[TableColWidth]> column-widths:[
         { id: "name", width-px: 150 },
         { id: "pid", width-px: 80 },
         { id: "status", width-px: 100 },
@@ -42,12 +42,16 @@ export global ServicesFeatureGlobal {
     ];
 
     in property <[ServiceEntry]> service-rows:[];
-    in property <string> selected-name: "AudioEndpointBuilder";
-    in property <string> selected-display-name: "Windows Audio Endpoint Builder";
-    in property <int> selected-pid: -1;
-    in property <string> selected-status: "Running";
-    in property <string> selected-group: "AudioGroup";
-    in property <string> selected-description: "Manages audio devices for the Windows audio service.";
+    in property <ServiceEntry> selected-entry: {
+        name: "AudioEndpointBuilder",
+        display-name: "Windows Audio Endpoint Builder",
+        pid: -1,
+        status: "Running",
+        group: "AudioGroup",
+        description: "Manages audio devices for the Windows audio service.",
+        cells: [],
+    };
+
     in property <string> current-sort;
     in property <bool> current-sort-descending;
     in property <int> total-services-count;
@@ -56,7 +60,7 @@ export global ServicesFeatureGlobal {
     in property <bool> start-button-active: false;
     in property <bool> stop-button-active: true;
     in property <bool> restart-button-active: true;
-    in-out property <bool> properties-inline-open: false;
+    in property <bool> properties-inline-open: false;
 
     callback sort-by(string);
     callback select-service(string, int);
@@ -64,5 +68,5 @@ export global ServicesFeatureGlobal {
     callback column-resized(string, float);
     callback service-action(string, string);
     callback open-system-services();
-    callback open-properties-window();
+    callback open-properties-window(ServiceEntry);
 }

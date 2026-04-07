@@ -8,3 +8,4 @@ stop:https://api.iconify.design/fluent:stop-24-regular.svg
 play:https://api.iconify.design/fluent:play-24-regular.svg
 refresh:https://api.iconify.design/fluent:arrow-sync-24-regular.svg
 image-search:https://api.iconify.design/fluent:image-search-20-regular.svg
+open:https://api.iconify.design/fluent:open-20-regular.svg

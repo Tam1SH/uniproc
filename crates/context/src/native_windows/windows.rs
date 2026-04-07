@@ -1,17 +1,17 @@
 use super::{NativeWindowConfig, NativeWindowTexture};
-use i_slint_backend_winit::WinitWindowAccessor;
+use i_slint_backend_winit::{winit, WinitWindowAccessor};
 use raw_window_handle::{HasWindowHandle, RawWindowHandle};
-use slint::ComponentHandle;
+use slint::{ComponentHandle, RgbaColor};
 use std::ptr::null_mut;
 use window_vibrancy::{apply_acrylic, apply_mica};
 use windows::Win32::Foundation::HWND;
 use windows::Win32::Graphics::Dwm::{
-    DWMWA_WINDOW_CORNER_PREFERENCE, DWMWCP_DEFAULT, DWMWCP_ROUND, DwmExtendFrameIntoClientArea,
-    DwmSetWindowAttribute,
+    DwmExtendFrameIntoClientArea, DwmSetWindowAttribute, DWMWA_WINDOW_CORNER_PREFERENCE, DWMWCP_DEFAULT,
+    DWMWCP_ROUND,
 };
 use windows::Win32::UI::Controls::MARGINS;
 
-pub(crate) fn apply_to_component<T: ComponentHandle + 'static>(
+pub fn apply_to_component<T: ComponentHandle + 'static>(
     component: slint::Weak<T>,
     config: NativeWindowConfig,
 ) {
@@ -65,6 +65,18 @@ pub(crate) fn apply_to_component<T: ComponentHandle + 'static>(
             }
         });
     });
+}
+
+pub fn get_system_accent() -> anyhow::Result<RgbaColor<u8>> {
+    use ::windows::UI::ViewManagement::{UIColorType, UISettings};
+    let settings = UISettings::new()?;
+    let color = settings.GetColorValue(UIColorType::AccentLight2)?;
+    Ok(RgbaColor {
+        alpha: color.A,
+        red: color.R,
+        green: color.G,
+        blue: color.B,
+    })
 }
 
 fn hwnd_from_winit(window: &winit::window::Window) -> HWND {

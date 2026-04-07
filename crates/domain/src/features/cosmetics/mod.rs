@@ -1,11 +1,12 @@
-use app_contracts::features::cosmetics::{AccentColor, CosmeticsPort};
-use app_core::SharedState;
+use app_contracts::features::cosmetics::CosmeticsPort;
 use app_core::app::Feature;
 use app_core::app::Window;
 use app_core::reactor::Reactor;
+use app_core::SharedState;
+use slint::RgbaColor;
 
 #[derive(Clone, Copy, Debug)]
-pub struct AccentState(pub AccentColor);
+pub struct AccentState(pub RgbaColor<u8>);
 
 pub struct CosmeticsFeature<F> {
     make_port: F,
@@ -30,15 +31,12 @@ where
         shared: &SharedState,
     ) -> anyhow::Result<()> {
         let port = (self.make_port)(ui);
-        if let Some(accent) = port.get_system_accent_color() {
+
+        if let Ok(accent) = context::native_windows::platform::get_system_accent() {
             port.set_main_window_accent(accent);
             shared.insert(AccentState(accent));
         }
         port.apply_main_window_effects();
         Ok(())
     }
-}
-
-pub fn accent_from(shared: &SharedState) -> Option<AccentColor> {
-    shared.get::<AccentState>().map(|x| x.0)
 }

@@ -1,9 +1,8 @@
 pub mod agents;
-pub mod context_menu;
 pub mod cosmetics;
 pub mod environments;
 pub mod navigation;
 pub mod processes;
-pub mod run_task;
 pub mod services;
 pub mod window_actions;
+pub mod windows_manager;

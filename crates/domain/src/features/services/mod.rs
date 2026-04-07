@@ -3,16 +3,22 @@ use app_core::actor::event_bus::EventBus;
 use app_core::app::{Feature, Window};
 use app_core::reactor::Reactor;
 use app_core::SharedState;
+use std::sync::Arc;
 
 use crate::features::services::application::actor::{
-    OpenServices, ResizeCol, SelectedService, ServiceAction, ServiceActor, Sort, ViewportChanged,
+    OpenPropertiesWindow, OpenServices, ResizeCol, SelectedService, ServiceAction, ServiceActor,
+    Sort, ViewportChanged,
 };
 use crate::features::services::application::snapshot_actor::ServiceSnapshotActor;
 use crate::features::services::settings::ServiceSettings;
 use crate::features::services::view::ServiceTable;
 use app_contracts::features::agents::{ScanTick, WindowsActionResponse};
 use app_contracts::features::navigation::{page_ids, PageActivated};
-use app_contracts::features::services::{ServicesUiBindings, ServicesUiPort};
+use app_contracts::features::services::{
+    ServicesUiBindings, ServicesUiPort, ServicesWindowRegister,
+};
+use app_contracts::features::windows_manager::OpenedWindow;
+use context::native_windows::slint_factory::SlintWindowRegistry;
 use context::page_status::PageStatusRegistry;
 
 mod application;
@@ -34,7 +40,7 @@ impl<TWindow, F, P> Feature<TWindow> for ServicesFeature<F>
 where
     TWindow: Window,
     F: Fn(&TWindow) -> P + 'static,
-    P: ServicesUiPort + ServicesUiBindings + Clone + 'static,
+    P: ServicesUiPort + ServicesUiBindings + ServicesWindowRegister + Clone + 'static,
 {
     fn install(
         self,
@@ -44,9 +50,11 @@ where
     ) -> anyhow::Result<()> {
         let settings = ServiceSettings::new(shared)?;
         let ui_port = (self.make_ui_port)(ui);
+        let reg = shared.get::<SlintWindowRegistry>().unwrap();
 
         let service_actor = ServiceActor {
             page_id: page_ids::SERVICES,
+            registry: reg.clone(),
             table: ServiceTable::new(settings.clone())?,
             ui_port: ui_port.clone(),
             page_status: shared.get::<PageStatusRegistry>().unwrap(),
@@ -68,20 +76,24 @@ where
             s_addr.send(ScanTick)
         });
 
-        bind_ui_events(addr.clone(), &ui_port);
+        bind_ui_events(addr.clone(), &ui_port, reg);
 
         EventBus::subscribe::<_, PageActivated, _>(&ui.new_token(), addr.clone());
         EventBus::subscribe::<_, PageActivated, _>(&ui.new_token(), snapshot_addr.clone());
         EventBus::subscribe::<_, WindowsActionResponse, _>(&ui.new_token(), addr.clone());
+        EventBus::subscribe::<_, OpenedWindow, _>(&ui.new_token(), addr.clone());
 
         Ok(())
     }
 }
 
-fn bind_ui_events<P, TWindow>(addr: Addr<ServiceActor<P>, TWindow>, ui_port: &P)
-where
+fn bind_ui_events<P, TWindow>(
+    addr: Addr<ServiceActor<P>, TWindow>,
+    ui_port: &P,
+    registry: Arc<SlintWindowRegistry>,
+) where
     TWindow: Window,
-    P: ServicesUiPort + ServicesUiBindings + Clone + 'static,
+    P: ServicesUiPort + ServicesUiBindings + ServicesWindowRegister + Clone + 'static,
 {
     let a = addr.clone();
     ui_port.on_service_action(move |name, action| {
@@ -106,4 +118,11 @@ where
     ui_port.on_viewport_changed(move |start, count| {
         a.send(ViewportChanged { start, count });
     });
+
+    let a = addr.clone();
+    ui_port.on_open_properties_window(move |service_entry| {
+        a.send(OpenPropertiesWindow(service_entry));
+    });
+
+    ui_port.register(&registry);
 }

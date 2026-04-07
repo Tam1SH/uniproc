@@ -4,7 +4,9 @@ import { Theme } from "theme.slint";
 import { L10n } from "localization.slint";
 import { Icons } from "icons.slint";
 import { ServicesFeatureGlobal, ServiceEntry } from "globals.slint";
-import { ServicePropertiesDialogContent } from "service-properties-dialog.slint";
+import {
+    ServicePropertiesDialogContent,
+} from "service-properties-dialog.slint";
 import {
     ContentDialogInline,
     ContentDialogMode,
@@ -20,8 +22,7 @@ component ServiceItem inherits GenericTableRow {
     in property <ServiceEntry> entry;
     in property <int> idx;
     callback properties-requested(int);
-
-    selected: entry.name == ServicesFeatureGlobal.selected-name;
+    selected: entry.name == ServicesFeatureGlobal.selected-entry.name;
     is-alternate: Math.mod(idx, 2) != 0;
     column-defs: ServicesFeatureGlobal.column-defs;
     column-widths: ServicesFeatureGlobal.column-widths;
@@ -62,7 +63,7 @@ component ServiceItem inherits GenericTableRow {
 
 export component ServiceViewHeader inherits Rectangle {
     in property <ContentDialogMode> properties-dialog-mode: ContentDialogMode.inline;
-    property <bool> has-selection: ServicesFeatureGlobal.selected-name != "";
+    property <bool> has-selection: ServicesFeatureGlobal.selected-entry.name != "";
     height: 60px;
 
     HorizontalLayout {
@@ -70,7 +71,7 @@ export component ServiceViewHeader inherits Rectangle {
         spacing: 8px;
 
         Text {
-            text: root.has-selection ? ServicesFeatureGlobal.selected-name : "Services";
+            text: root.has-selection ? ServicesFeatureGlobal.selected-entry.name : "Services";
             font-size: 14px;
             font-weight: 600;
             color: Theme.text_primary;
@@ -96,7 +97,7 @@ export component ServiceViewHeader inherits Rectangle {
                 icon-size: 18px;
                 text: L10n.services-start;
                 clicked => {
-                    ServicesFeatureGlobal.service-action(ServicesFeatureGlobal.selected-name, "Start");
+                    ServicesFeatureGlobal.service-action(ServicesFeatureGlobal.selected-entry.name, "Start");
                 }
             }
 
@@ -109,7 +110,7 @@ export component ServiceViewHeader inherits Rectangle {
                 icon-size: 18px;
                 text: L10n.services-stop;
                 clicked => {
-                    ServicesFeatureGlobal.service-action(ServicesFeatureGlobal.selected-name, "Stop");
+                    ServicesFeatureGlobal.service-action(ServicesFeatureGlobal.selected-entry.name, "Stop");
                 }
             }
 
@@ -122,7 +123,7 @@ export component ServiceViewHeader inherits Rectangle {
                 icon-color: Theme.light-blue;
                 icon-size: 18px;
                 clicked => {
-                    ServicesFeatureGlobal.service-action(ServicesFeatureGlobal.selected-name, "Restart");
+                    ServicesFeatureGlobal.service-action(ServicesFeatureGlobal.selected-entry.name, "Restart");
                 }
             }
         }
@@ -132,15 +133,23 @@ export component ServiceViewHeader inherits Rectangle {
 export component ServicePropertiesInlineOverlay inherits Rectangle {
     in property <ContentDialogMode> properties-dialog-mode: ContentDialogMode.inline;
 
-    inline-dialog := ContentDialogInline {
+    ContentDialogInline {
         is-open <=> ServicesFeatureGlobal.properties-inline-open;
         visible: root.properties-dialog-mode == ContentDialogMode.inline;
         dialog-width: 440px;
         has-footer: true;
-        
+
         ServicePropertiesDialogContent {
+            selected-entry: ServicesFeatureGlobal.selected-entry;
+
+            open-in-window(entry) => {
+                ServicesFeatureGlobal.open-properties-window(entry);
+            }
             close-requested => {
                 ServicesFeatureGlobal.properties-inline-open = false;
+            }
+            service-action(name, action) => {
+                ServicesFeatureGlobal.service-action(name, action);
             }
         }
     }
@@ -195,7 +204,7 @@ export component ServiceViewBody inherits Rectangle {
                     if (root.properties-dialog-mode == ContentDialogMode.inline) {
                         ServicesFeatureGlobal.properties-inline-open = true;
                     } else {
-                        ServicesFeatureGlobal.open-properties-window();
+                        ServicesFeatureGlobal.open-properties-window(entry);
                     }
                 }
             }

@@ -1,7 +1,7 @@
 use crate::actor::envelope::{Envelope, MessageEnvelope};
-use crate::actor::{short_type_name, should_trace_actor_message};
 use crate::actor::traits::{Context, Handler, Message};
 use crate::actor::UiThreadGuard;
+use crate::actor::{short_type_name, should_trace_actor_message};
 use crate::app::Window;
 use crate::trace::{current_meta, is_message_enabled, is_scope_enabled, DispatchMeta};
 use std::any::{type_name, Any};
@@ -58,27 +58,6 @@ impl<A: 'static, TWindow: Window> Addr<A, TWindow> {
         move |arg| addr.send(f(arg))
     }
 
-    pub fn handler_scoped<M, T, F>(&self, f: F) -> impl Fn(T) + 'static
-    where
-        F: Fn(&Addr<A, TWindow>, T) -> M + 'static,
-        M: Message,
-        A: Handler<M, TWindow>,
-    {
-        let addr = self.clone();
-        move |arg| {
-            let msg = f(&addr, arg);
-            addr.send(msg);
-        }
-    }
-
-    pub fn scope<T, F>(&self, f: F) -> impl Fn(T) + 'static
-    where
-        F: Fn(&Addr<A, TWindow>, T) + 'static,
-    {
-        let addr = self.clone();
-        move |arg| f(&addr, arg)
-    }
-
     pub fn new(state: A, ui_weak: slint::Weak<TWindow>) -> Self {
         let is_main_thread = ui_weak.upgrade().is_some();
 
@@ -109,12 +88,17 @@ impl<A: 'static, TWindow: Window> Addr<A, TWindow> {
         addr
     }
 
+    pub fn get_token(&self) -> UiThreadGuard {
+        self.guard.clone()
+    }
+
     pub fn send<M>(&self, msg: M)
     where
         M: Message,
         A: Handler<M, TWindow>,
     {
-        let meta = current_meta().unwrap_or_else(|| DispatchMeta::capture_or_root("core.actor.send"));
+        let meta =
+            current_meta().unwrap_or_else(|| DispatchMeta::capture_or_root("core.actor.send"));
         self.send_with_meta(msg, meta);
     }
 
@@ -138,12 +122,10 @@ impl<A: 'static, TWindow: Window> Addr<A, TWindow> {
             );
         }
 
-        self.queue
-            .borrow_mut()
-            .push_back(Box::new(MessageEnvelope {
-                message: Some(msg),
-                meta,
-            }));
+        self.queue.borrow_mut().push_back(Box::new(MessageEnvelope {
+            message: Some(msg),
+            meta,
+        }));
 
         self.process_queue();
     }

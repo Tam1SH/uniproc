@@ -1,7 +1,7 @@
 // AUTO-GENERATED — do not edit manually
 
 import { ComboBoxItem } from "components/combobox.slint";
-import { ContentDialogMode } from "components/content-dialog/index.slint";
+import { ContentDialogMode, ContentDialogWindow } from "components/content-dialog/index.slint";
 import { ContextMenuItem } from "components/context-menu.slint";
 import { TableCellData, TableColDef, TableColMetadata, TableColWidth } from "components/table/types.slint";
 import { TableUtils } from "components/table/utils.slint";
@@ -10,8 +10,9 @@ import { EnvironmentsFeatureGlobal, EnvsLoading, WslDistro } from "features/envi
 import { Navigation } from "features/navigation/globals/tabs-navigation.slint";
 import { ProcessEntry, ProcessGroup, ProcessesFeatureGlobal } from "features/processes/globals.slint";
 import { EnvironmentCount } from "features/processes/process-status-bar.slint";
-import { RunEnv, RunTaskProxy } from "features/processes/run-task-dialog.slint";
+import { RunEnv, RunTaskDialog, RunTaskProxy } from "features/processes/run-task-dialog.slint";
 import { ServiceEntry, ServicesFeatureGlobal } from "features/services/globals.slint";
+import { ServicePropertiesDialogWindow } from "features/services/service-properties-dialog.slint";
 import { Icons } from "shared/icons.slint";
 import { L10n } from "shared/localization.slint";
 import { Theme } from "shared/theme.slint";
@@ -21,6 +22,7 @@ import { WindowAdapter, WindowSize } from "window-adapter.slint";
 export {
     ComboBoxItem,
     ContentDialogMode,
+    ContentDialogWindow,
     ContextMenuItem,
     EnvironmentCount,
     EnvironmentsFeatureGlobal,
@@ -34,8 +36,10 @@ export {
     ProcessGroup,
     ProcessesFeatureGlobal,
     RunEnv,
+    RunTaskDialog,
     RunTaskProxy,
     ServiceEntry,
+    ServicePropertiesDialogWindow,
     ServicesFeatureGlobal,
     TabData,
     TableCellData,

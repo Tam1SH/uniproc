@@ -1,16 +1,15 @@
 import { Theme } from "theme.slint";
 import { Button } from "button/index.slint";
 import { Divider } from "divider.slint";
-import { ContentDialog, ContentDialogButtonFooter } from "content-dialog/index.slint";
+import {
+    ContentDialog,
+    ContentDialogButtonFooter,
+} from "content-dialog/index.slint";
 import { Icons } from "icons.slint";
 import { L10n } from "localization.slint";
-import { ServicesFeatureGlobal } from "globals.slint";
+import { ServicesFeatureGlobal, ServiceEntry } from "globals.slint";
 import { ComboBox, ComboBoxItem } from "combobox.slint";
 
-export global ServicePropertiesDialogProxy {
-    callback close();
-    callback drag();
-}
 
 component PropertyRow inherits Rectangle {
     in property <string> label;
@@ -25,7 +24,6 @@ component PropertyRow inherits Rectangle {
 
         Text {
             text: root.label;
-            // font-size: Theme.fontSizeBase200;
             color: Theme.colorNeutralForeground3;
             width: root.label-width;
             vertical-alignment: center;
@@ -35,7 +33,6 @@ component PropertyRow inherits Rectangle {
             text: root.value == "" ? L10n.services-not-available : root.value;
             wrap: word-wrap;
             color: Theme.colorNeutralForeground1;
-            // font-size: Theme.fontSizeBase300;
             vertical-alignment: center;
             horizontal-stretch: 1;
         }
@@ -43,260 +40,342 @@ component PropertyRow inherits Rectangle {
 }
 
 export component ServicePropertiesDialogContent inherits Rectangle {
+    in property <ServiceEntry> selected-entry;
+    
+    in property <bool> start-button-active;
+    in property <bool> stop-button-active;
+    in property <bool> restart-button-active;
+
+    in property <bool> is-windowed: false;
+
+    callback drag-requested();
     callback close-requested();
+    callback open-in-window(ServiceEntry);
     callback apply-requested();
+    callback service-action(string, string);
 
     private property <length> general-label-width:
         Math.max(
             general-name-label.preferred-width,
             Math.max(
                 general-display-label.preferred-width,
-                Math.max(general-description-label.preferred-width, general-group-label.preferred-width)
-            )
-        ) + Theme.spacingHorizontalL;
+                Math.max(general-description-label.preferred-width, general-group-label.preferred-width))) + Theme.spacingHorizontalL;
 
     private property <length> runtime-label-width:
         Math.max(
             runtime-path-label.preferred-width,
             Math.max(
                 runtime-startup-label.preferred-width,
-                Math.max(runtime-status-label.preferred-width, runtime-pid-label.preferred-width)
-            )
-        ) + Theme.spacingHorizontalL;
-    height: layout.preferred-height;
-    background: #2b2b2b00;
+                Math.max(runtime-status-label.preferred-width, runtime-pid-label.preferred-width))) + Theme.spacingHorizontalL;
+
+    background: is-windowed ? transparent : Theme.colorNeutralBackground2;
 
     Rectangle {
         visible: false;
         height: 0px;
         width: 0px;
 
-        general-name-label := Text { text: L10n.services-service-name; }
-        general-display-label := Text { text: L10n.services-display-name; }
-        general-description-label := Text { text: L10n.services-description; }
-        general-group-label := Text { text: L10n.services-group; }
-        runtime-path-label := Text { text: L10n.services-path-to-executable; }
-        runtime-startup-label := Text { text: "Startup type"; }
-        runtime-status-label := Text { text: "Status"; }
-        runtime-pid-label := Text { text: L10n.services-pid; }
+        general-name-label := Text {
+            text: L10n.services-service-name;
+        }
+
+        general-display-label := Text {
+            text: L10n.services-display-name;
+        }
+
+        general-description-label := Text {
+            text: L10n.services-description;
+        }
+
+        general-group-label := Text {
+            text: L10n.services-group;
+        }
+
+        runtime-path-label := Text {
+            text: L10n.services-path-to-executable;
+        }
+
+        runtime-startup-label := Text {
+            text: "Startup type";
+        }
+
+        runtime-status-label := Text {
+            text: "Status";
+        }
+
+        runtime-pid-label := Text {
+            text: L10n.services-pid;
+        }
     }
 
-    layout := VerticalLayout {
-        padding-top: Theme.spacingVerticalL;
-        padding-bottom: Theme.spacingVerticalL;
-        padding: Theme.spacingHorizontalL;
-        spacing: Theme.spacingVerticalXXL;
-
-        Rectangle {
-            height: header.preferred-height;
-            background: transparent;
-
-            header := HorizontalLayout {
-                spacing: Theme.spacingHorizontalS;
-                height: Theme.title_bar_height;
-                padding-left: 0px;
-                padding-bottom: Theme.spacingVerticalM;
-
-                VerticalLayout {
-                    alignment: center;
-
-                    Image {
-                        width: 20px;
-                        height: 20px;
-                        colorize: @linear-gradient(135deg, #56BEFE 0%, #3686F5 60%, #7E5FEB 100%);
-                        source: Icons.gears;
-                    }
-                }
-
-                VerticalLayout {
-                    alignment: center;
-                    Text {
-                        text: ServicesFeatureGlobal.selected-name + " (\{L10n.services-properties})";
-                        color: Theme.colorNeutral;
-                    }
-                }
-
-                Rectangle {
-                    horizontal-stretch: 1;
-                }
-
-                VerticalLayout {
-                    alignment: center;
-
-                    Button {
-                        is-transparent: true;
-                        icon: Icons.dismiss;
-                        icon-color: Theme.colorNeutral;
-                        icon-size: 18px;
-                        prop-padding-left: Theme.spacingHorizontalXXS;
-                        prop-padding-right: Theme.spacingHorizontalXXS;
-                        height: 22px;
-                        has-icon-color: true;
-                        clicked => {
-                            root.close-requested();
-                        }
-                    }
-                }
-            }
-        }
-
-
+    VerticalLayout {
         VerticalLayout {
-            spacing: Theme.spacingVerticalM;
-
-            PropertyRow {
-                label: L10n.services-service-name;
-                value: ServicesFeatureGlobal.selected-name;
-                label-width: root.general-label-width;
-            }
-
-            PropertyRow {
-                label: L10n.services-display-name;
-                value: ServicesFeatureGlobal.selected-display-name;
-                label-width: root.general-label-width;
-            }
-
-            PropertyRow {
-                label: L10n.services-group;
-                value: ServicesFeatureGlobal.selected-group;
-                label-width: root.general-label-width;
-            }
-
-            PropertyRow {
-                label: L10n.services-description;
-                value: ServicesFeatureGlobal.selected-description;
-                label-width: root.general-label-width;
-            }
-
-        }
-
-        Divider { }
-
-        private property <int> selected-env: 1;
-
-        VerticalLayout {
-            spacing: Theme.spacingVerticalM;
-
-            PropertyRow {
-                label: L10n.services-path-to-executable;
-                value: "";
-                label-width: root.runtime-label-width;
-            }
+            padding-top: Theme.spacingVerticalL;
+            padding-bottom: Theme.spacingVerticalL;
+            spacing: Theme.spacingVerticalXXL;
 
             Rectangle {
-                height: startup-row.preferred-height;
-                background: transparent;
 
-                startup-row := HorizontalLayout {
-                    spacing: Theme.spacingHorizontalM;
-
-                    Text {
-                        text: "Startup type";
-                        color: Theme.colorNeutralForeground3;
-                        width: root.runtime-label-width;
-                        vertical-alignment: center;
-                    }
-
-                    ComboBox {
-                        current-index: selected-env;
-                        menu-width: 260px;
-                        items: [
-                            { id: "manual", text: "Manual", has-icon: false },
-                            { id: "auto", text: "Automatic", has-icon: false },
-                            { id: "disabled", text: "Disabled", has-icon: false },
-                        ];
-                        selected(idx, id) => {
-                            selected-env = idx;
-                        }
+                TouchArea {
+                    moved => {
+                        root.drag-requested();
                     }
                 }
-            }
-        }
-        Divider { }
 
-        VerticalLayout {
-            spacing: Theme.spacingVerticalM;
-
-            Rectangle {
-                height: status-row.preferred-height;
                 background: transparent;
 
-                status-row := HorizontalLayout {
-                    spacing: Theme.spacingHorizontalM;
+                header := HorizontalLayout {
+                    spacing: Theme.spacingHorizontalS;
+                    height: Theme.title_bar_height;
+                    padding-left: 0px;
+                    padding-bottom: Theme.spacingVerticalM;
 
-                    Text {
-                        text: "Services status";
-                        color: Theme.colorNeutralForeground3;
-                        width: root.runtime-label-width;
-                        vertical-alignment: center;
+                    VerticalLayout {
+                        alignment: center;
+
+                        Image {
+                            width: 20px;
+                            height: 20px;
+                            colorize: @linear-gradient(135deg, #56BEFE 0%, #3686F5 60%, #7E5FEB 100%);
+                            source: Icons.gears;
+                        }
                     }
 
-                    Text {
-                        text: ServicesFeatureGlobal.selected-status == "" ? L10n.services-not-available : ServicesFeatureGlobal.selected-status;
-                        color: Theme.colorNeutralForeground1;
-                        vertical-alignment: center;
+                    VerticalLayout {
+                        alignment: center;
+                        Text {
+                            text: root.selected-entry.name + " (\{L10n.services-properties})";
+                            color: Theme.colorNeutral;
+                        }
                     }
 
                     Rectangle {
                         horizontal-stretch: 1;
                     }
 
-                    HorizontalLayout {
-                        spacing: 4px;
-                        alignment: end;
-
-                        Button {
-                            is-transparent: true;
-                            icon: Icons.play;
-                            enabled: ServicesFeatureGlobal.start-button-active;
-                            has-icon-color: true;
-                            icon-color: Theme.light-green;
-                            icon-size: 18px;
-                            prop-padding-left: Theme.spacingHorizontalXS;
-                            prop-padding-right: Theme.spacingHorizontalXS;
-                            clicked => {
-                                ServicesFeatureGlobal.service-action(ServicesFeatureGlobal.selected-name, "Start");
+                    VerticalLayout {
+                        alignment: center;
+                        HorizontalLayout {
+                            spacing: Theme.spacingHorizontalXS;
+                            Button {
+                                is-transparent: true;
+                                icon: Icons.open;
+                                icon-color: Theme.colorNeutral;
+                                icon-size: 18px;
+                                prop-padding-left: Theme.spacingHorizontalXXS;
+                                prop-padding-right: Theme.spacingHorizontalXXS;
+                                height: 22px;
+                                has-icon-color: true;
+                                clicked => {
+                                    root.open-in-window(root.selected-entry);
+                                }
                             }
-                        }
 
-                        Button {
-                            is-transparent: true;
-                            icon: Icons.stop;
-                            enabled: ServicesFeatureGlobal.stop-button-active;
-                            has-icon-color: true;
-                            icon-color: Theme.soft-red;
-                            icon-size: 18px;
-                            prop-padding-left: Theme.spacingHorizontalXS;
-                            prop-padding-right: Theme.spacingHorizontalXS;
-                            clicked => {
-                                ServicesFeatureGlobal.service-action(ServicesFeatureGlobal.selected-name, "Stop");
-                            }
-                        }
-
-                        Button {
-                            is-transparent: true;
-                            icon: Icons.refresh;
-                            enabled: ServicesFeatureGlobal.restart-button-active;
-                            has-icon-color: true;
-                            icon-color: Theme.light-blue;
-                            icon-size: 18px;
-                            prop-padding-left: Theme.spacingHorizontalXS;
-                            prop-padding-right: Theme.spacingHorizontalXS;
-                            clicked => {
-                                ServicesFeatureGlobal.service-action(ServicesFeatureGlobal.selected-name, "Restart");
+                            Button {
+                                is-transparent: true;
+                                icon: Icons.dismiss;
+                                icon-color: Theme.colorNeutral;
+                                icon-size: 18px;
+                                prop-padding-left: Theme.spacingHorizontalXXS;
+                                prop-padding-right: Theme.spacingHorizontalXXS;
+                                height: 22px;
+                                has-icon-color: true;
+                                clicked => {
+                                    root.close-requested();
+                                }
                             }
                         }
                     }
                 }
             }
 
-            if(ServicesFeatureGlobal.selected-pid > 0): PropertyRow {
-                label: L10n.services-pid;
-                value: ServicesFeatureGlobal.selected-pid > 0 ? "\{ServicesFeatureGlobal.selected-pid}" : L10n.services-not-running;
-                label-width: root.runtime-label-width;
+            VerticalLayout {
+                spacing: Theme.spacingVerticalM;
+
+                PropertyRow {
+                    label: L10n.services-service-name;
+                    value: root.selected-entry.name;
+                    label-width: root.general-label-width;
+                }
+
+                PropertyRow {
+                    label: L10n.services-display-name;
+                    value: root.selected-entry.display-name;
+                    label-width: root.general-label-width;
+                }
+
+                PropertyRow {
+                    label: L10n.services-group;
+                    value: root.selected-entry.group;
+                    label-width: root.general-label-width;
+                }
+
+                PropertyRow {
+                    label: L10n.services-description;
+                    value: root.selected-entry.description;
+                    label-width: root.general-label-width;
+                }
             }
-            Rectangle {
-                height: Theme.spacingVerticalM;
+
+            Divider { }
+
+            private property <int> selected-env: 1;
+
+            VerticalLayout {
+                spacing: Theme.spacingVerticalM;
+
+                PropertyRow {
+                    label: L10n.services-path-to-executable;
+                    value: "";
+                    label-width: root.runtime-label-width;
+                }
+
+                Rectangle {
+                    height: startup-row.preferred-height;
+                    background: transparent;
+
+                    startup-row := HorizontalLayout {
+                        spacing: Theme.spacingHorizontalM;
+
+                        Text {
+                            text: "Startup type";
+                            color: Theme.colorNeutralForeground3;
+                            width: root.runtime-label-width;
+                            vertical-alignment: center;
+                        }
+
+                        ComboBox {
+                            current-index: selected-env;
+                            menu-width: 260px;
+                            items: [
+                                { id: "manual", text: "Manual", has-icon: false },
+                                { id: "auto", text: "Automatic", has-icon: false },
+                                { id: "disabled", text: "Disabled", has-icon: false },
+                            ];
+                            selected(idx, id) => {
+                                selected-env = idx;
+                            }
+                        }
+                    }
+                }
+            }
+
+            Divider { }
+
+            VerticalLayout {
+                spacing: Theme.spacingVerticalM;
+
+                Rectangle {
+                    height: status-row.preferred-height;
+                    background: transparent;
+
+                    status-row := HorizontalLayout {
+                        spacing: Theme.spacingHorizontalM;
+
+                        Text {
+                            text: "Services status";
+                            color: Theme.colorNeutralForeground3;
+                            width: root.runtime-label-width;
+                            vertical-alignment: center;
+                        }
+
+                        Text {
+                            text: root.selected-entry.status == "" ? L10n.services-not-available : root.selected-entry.status;
+                            color: Theme.colorNeutralForeground1;
+                            vertical-alignment: center;
+                        }
+
+                        Rectangle {
+                            horizontal-stretch: 1;
+                        }
+
+                        HorizontalLayout {
+                            spacing: 4px;
+                            alignment: end;
+
+                            Button {
+                                is-transparent: true;
+                                icon: Icons.play;
+                                enabled: root.start-button-active;
+                                has-icon-color: true;
+                                icon-color: Theme.light-green;
+                                icon-size: 18px;
+                                prop-padding-left: Theme.spacingHorizontalXS;
+                                prop-padding-right: Theme.spacingHorizontalXS;
+                                clicked => {
+                                    root.service-action(root.selected-entry.name, "Start");
+                                }
+                            }
+
+                            Button {
+                                is-transparent: true;
+                                icon: Icons.stop;
+                                enabled: root.stop-button-active;
+                                has-icon-color: true;
+                                icon-color: Theme.soft-red;
+                                icon-size: 18px;
+                                prop-padding-left: Theme.spacingHorizontalXS;
+                                prop-padding-right: Theme.spacingHorizontalXS;
+                                clicked => {
+                                    root.service-action(root.selected-entry.name, "Stop");
+                                }
+                            }
+
+                            Button {
+                                is-transparent: true;
+                                icon: Icons.refresh;
+                                enabled: root.restart-button-active;
+                                has-icon-color: true;
+                                icon-color: Theme.light-blue;
+                                icon-size: 18px;
+                                prop-padding-left: Theme.spacingHorizontalXS;
+                                prop-padding-right: Theme.spacingHorizontalXS;
+                                clicked => {
+                                    root.service-action(root.selected-entry.name, "Restart");
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if(root.selected-entry.pid > 0): PropertyRow {
+                    label: L10n.services-pid;
+                    value: root.selected-entry.pid > 0 ? "\{root.selected-entry.pid}" : L10n.services-not-running;
+                    label-width: root.runtime-label-width;
+                }
+                Rectangle {
+                    height: Theme.spacingVerticalM;
+                }
+            }
+            
+        }
+
+        ContentDialogButtonFooter {
+            is-windowed: root.is-windowed;
+
+            Button {
+                primary: true;
+                prop-padding-left: Theme.spacingHorizontalXL;
+                prop-padding-right: Theme.spacingHorizontalXL;
+                text: "OK";
+                clicked => {
+                    // ServicePropertiesDialogProxy.close();
+                }
+            }
+
+            Button {
+                text: "Cancel";
+                prop-padding-left: Theme.spacingHorizontalXL;
+                prop-padding-right: Theme.spacingHorizontalXL;
+                clicked => {
+                    // ServicePropertiesDialogProxy.close();
+                }
+            }
+
+            Button {
+                prop-padding-left: Theme.spacingHorizontalXL;
+                prop-padding-right: Theme.spacingHorizontalXL;
+                text: "Apply";
             }
         }
     }
@@ -304,33 +383,41 @@ export component ServicePropertiesDialogContent inherits Rectangle {
 }
 
 export component ServicePropertiesDialogWindow inherits Window {
-    width: 560px;
+    
+    callback close-requested();
+    callback service-action(string, string);
+    callback drag-requested();
+    callback open-in-window(ServiceEntry);
+
+    width: 450px;
+    
     no-frame: true;
     background: Colors.transparent;
-    title: ServicesFeatureGlobal.selected-display-name != "" ? ServicesFeatureGlobal.selected-display-name : ServicesFeatureGlobal.selected-name;
+    title: ServicesFeatureGlobal.selected-entry.display-name != "" ? ServicesFeatureGlobal.selected-entry.display-name : ServicesFeatureGlobal.selected-entry.name;
 
-    Rectangle {
-        
-        dialog := ContentDialog {
-            x: Theme.spacingHorizontalXL;
-            y: Theme.spacingVerticalXL;
-            dialog-width: parent.width - Theme.spacingHorizontalXL * 2;
+    Rectangle { 
+        ContentDialog {
             has-footer: true;
+            is-windowed: true;
+            ServicePropertiesDialogContent {
+                is-windowed: true;
+                selected-entry: ServicesFeatureGlobal.selected-entry;
 
-            Rectangle {
-                height: inner.preferred-height;
-                background: transparent;
-
-                drag-area := TouchArea {
-                    moved => {
-                        ServicePropertiesDialogProxy.drag();
-                    }
+                start-button-active: ServicesFeatureGlobal.start-button-active;
+                stop-button-active: ServicesFeatureGlobal.stop-button-active;
+                restart-button-active: ServicesFeatureGlobal.restart-button-active;
+                
+                drag-requested => {
+                    root.drag-requested();
                 }
-
-                inner := ServicePropertiesDialogContent {
-                    close-requested => {
-                        ServicePropertiesDialogProxy.close();
-                    }
+                close-requested => {
+                    root.close-requested();
+                }
+                service-action(name, action) => {
+                    root.service-action(name, action);
+                }
+                open-in-window(entry) => {
+                    root.open-in-window(entry);
                 }
             }
         }

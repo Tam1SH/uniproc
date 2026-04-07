@@ -11,14 +11,15 @@ use tracing_subscriber::filter::Targets;
 use tracing_subscriber::fmt::format::{FormatEvent, FormatFields, Writer};
 use tracing_subscriber::fmt::time::{FormatTime, SystemTime};
 use tracing_subscriber::fmt::writer::MakeWriter;
+use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::layer::{Context as LayerContext, Layer};
 use tracing_subscriber::registry::LookupSpan;
-use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
 include!(concat!(env!("OUT_DIR"), "/trace_scopes.rs"));
 
-static LAST_CONSOLE_FINGERPRINT: LazyLock<Mutex<Option<String>>> = LazyLock::new(|| Mutex::new(None));
+static LAST_CONSOLE_FINGERPRINT: LazyLock<Mutex<Option<String>>> =
+    LazyLock::new(|| Mutex::new(None));
 
 #[derive(Clone, Default)]
 struct TraceFields {
@@ -250,8 +251,8 @@ impl TraceFieldVisitor {
     }
 }
 
-impl tracing::field::Visit for TraceFieldVisitor {
-    fn record_str(&mut self, field: &tracing::field::Field, value: &str) {
+impl Visit for TraceFieldVisitor {
+    fn record_i64(&mut self, field: &tracing::field::Field, value: i64) {
         self.record_value(field.name(), value.to_string());
     }
 
@@ -263,11 +264,11 @@ impl tracing::field::Visit for TraceFieldVisitor {
         }
     }
 
-    fn record_i64(&mut self, field: &tracing::field::Field, value: i64) {
+    fn record_bool(&mut self, field: &tracing::field::Field, value: bool) {
         self.record_value(field.name(), value.to_string());
     }
 
-    fn record_bool(&mut self, field: &tracing::field::Field, value: bool) {
+    fn record_str(&mut self, field: &tracing::field::Field, value: &str) {
         self.record_value(field.name(), value.to_string());
     }
 
@@ -294,25 +295,32 @@ impl TraceFieldVisitor {
 
 impl Visit for PlainFieldVisitor<'_> {
     fn record_str(&mut self, field: &tracing::field::Field, value: &str) {
-        self.values
-            .push((field.name().to_string(), trim_debug_string(value.to_string())));
+        self.values.push((
+            field.name().to_string(),
+            trim_debug_string(value.to_string()),
+        ));
     }
 
     fn record_u64(&mut self, field: &tracing::field::Field, value: u64) {
-        self.values.push((field.name().to_string(), value.to_string()));
+        self.values
+            .push((field.name().to_string(), value.to_string()));
     }
 
     fn record_i64(&mut self, field: &tracing::field::Field, value: i64) {
-        self.values.push((field.name().to_string(), value.to_string()));
+        self.values
+            .push((field.name().to_string(), value.to_string()));
     }
 
     fn record_bool(&mut self, field: &tracing::field::Field, value: bool) {
-        self.values.push((field.name().to_string(), value.to_string()));
+        self.values
+            .push((field.name().to_string(), value.to_string()));
     }
 
     fn record_debug(&mut self, field: &tracing::field::Field, value: &dyn fmt::Debug) {
-        self.values
-            .push((field.name().to_string(), trim_debug_string(format!("{value:?}"))));
+        self.values.push((
+            field.name().to_string(),
+            trim_debug_string(format!("{value:?}")),
+        ));
     }
 }
 
@@ -333,7 +341,11 @@ fn extend_strings(dst: &mut Vec<String>, value: Option<&Value>) {
     };
 
     for item in items {
-        if let Some(scope) = item.as_str().map(str::trim).filter(|scope| !scope.is_empty()) {
+        if let Some(scope) = item
+            .as_str()
+            .map(str::trim)
+            .filter(|scope| !scope.is_empty())
+        {
             dst.push(scope.to_string());
         }
     }
@@ -348,8 +360,6 @@ fn default_targets() -> Targets {
     Targets::new()
         .with_default(Level::DEBUG)
         .with_target("ogurpchik", Level::WARN)
-        .with_target("app_core::settings::store", Level::WARN)
-        .with_target("context::caches::icons::windows", Level::ERROR)
 }
 
 fn merge_fields(dst: &mut TraceFields, src: &TraceFields) {
@@ -450,7 +460,13 @@ where
 
         let plain_fields = collect_plain_fields(event);
         let scope_display = scope_chain_for_context(ctx)
-            .or_else(|| trace_fields.scope.as_deref().filter(|scope| !scope.is_empty()).map(str::to_string))
+            .or_else(|| {
+                trace_fields
+                    .scope
+                    .as_deref()
+                    .filter(|scope| !scope.is_empty())
+                    .map(str::to_string)
+            })
             .unwrap_or_else(|| "-".to_string());
         let console_fingerprint = console_fingerprint(
             meta.level(),
@@ -469,7 +485,11 @@ where
         write!(writer, "\x1b[90m")?;
         SystemTime.format_time(&mut writer)?;
         write!(writer, "\x1b[0m ")?;
-        write_colored(&mut writer, level_color(meta.level()), format_args!("{:>5}", meta.level()))?;
+        write_colored(
+            &mut writer,
+            level_color(meta.level()),
+            format_args!("{:>5}", meta.level()),
+        )?;
 
         if let Some(actor) = plain_fields.get("actor").filter(|value| !value.is_empty()) {
             write!(writer, " ")?;
@@ -546,7 +566,11 @@ where
             )?;
         }
 
-        if let Some(message) = trace_fields.message.as_deref().filter(|value| !value.is_empty()) {
+        if let Some(message) = trace_fields
+            .message
+            .as_deref()
+            .filter(|value| !value.is_empty())
+        {
             write!(writer, " {message}")?;
         }
 
@@ -569,7 +593,8 @@ where
     S: Subscriber + for<'a> LookupSpan<'a>,
     N: for<'writer> FormatFields<'writer> + 'static,
 {
-    ctx.event_scope().map(|scope| scope_chain_from_spans(scope.from_root()))
+    ctx.event_scope()
+        .map(|scope| scope_chain_from_spans(scope.from_root()))
 }
 
 fn scope_chain_from_spans<'a, S, I>(spans: I) -> String
@@ -642,14 +667,7 @@ fn ordered_plain_fields<'a>(fields: &'a HashMap<String, String>) -> Vec<(&'a str
         .filter(|(key, _)| {
             !matches!(
                 key.as_str(),
-                "actor"
-                    | "event"
-                    | "result"
-                    | "status"
-                    | "pids"
-                    | "cols"
-                    | "gap_s"
-                    | "timeout_s"
+                "actor" | "event" | "result" | "status" | "pids" | "cols" | "gap_s" | "timeout_s"
             )
         })
         .collect::<Vec<_>>();
@@ -752,11 +770,7 @@ fn color_code(color: Color) -> &'static str {
     }
 }
 
-fn write_colored(
-    writer: &mut Writer<'_>,
-    color: Color,
-    args: fmt::Arguments<'_>,
-) -> fmt::Result {
+fn write_colored(writer: &mut Writer<'_>, color: Color, args: fmt::Arguments<'_>) -> fmt::Result {
     write!(writer, "{}{}\x1b[0m", color_code(color), args)
 }
 

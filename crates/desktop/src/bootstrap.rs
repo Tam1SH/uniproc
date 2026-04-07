@@ -4,11 +4,11 @@ use domain::features::cosmetics::CosmeticsFeature;
 use domain::features::l10n::L10nFeature;
 use domain::features::navigation::NavigationFeature;
 use domain::features::page_status::PageStatusFeature;
-use domain::features::run_task::RunTaskFeature;
 use domain::features::services::ServicesFeature;
 use domain::features::settings::SettingsFeature;
 use domain::features::trace_settings::TraceSettingsFeature;
 use domain::features::window_actions::WindowActionsFeature;
+use domain::features::windows_manager::WindowManagerFeature;
 use domain_agents::features::agents::AgentsFeature;
 use domain_environments::features::environments::EnvironmentsFeature;
 use domain_processes::processes_impl::ProcessFeature;
@@ -18,7 +18,6 @@ use slint_adapter::adapters::environments::EnvironmentsUiAdapter;
 use slint_adapter::adapters::l10n::SlintL10nPort;
 use slint_adapter::adapters::navigation::NavigationUiAdapter;
 use slint_adapter::adapters::processes::ProcessesUiAdapter;
-use slint_adapter::adapters::run_task::RunTaskAdapter;
 use slint_adapter::adapters::services::ServicesUiAdapter;
 use slint_adapter::adapters::window_actions::WindowActionsAdapter;
 use slint_adapter::AppWindow;
@@ -43,9 +42,9 @@ pub fn run() -> anyhow::Result<()> {
         .feature(TraceSettingsFeature)?
         .feature(AgentsFeature)?
         .feature(PageStatusFeature)?
+        .feature(WindowManagerFeature)?
         .feature(with_adapter!(CosmeticsFeature => CosmeticsAdapter))?
         .feature(with_adapter!(WindowActionsFeature => WindowActionsAdapter))?
-        .feature(with_adapter!(RunTaskFeature => RunTaskAdapter))?
         .feature(with_adapter!(EnvironmentsFeature => EnvironmentsUiAdapter))?
         .feature(with_adapter!(NavigationFeature => NavigationUiAdapter))?
         .feature(with_adapter!(L10nFeature => SlintL10nPort))?

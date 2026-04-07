@@ -5,7 +5,6 @@ use crate::{
 use app_contracts::features::processes::{
     FieldDefDto, FieldMetadata, ProcessEntryVm, ProcessesUiBindings, ProcessesUiPort,
 };
-use app_core::app::FromUiWeak;
 use macros::ui_adapter;
 use slint::{ComponentHandle, Model, SharedString, VecModel};
 use std::cell::RefCell;
@@ -55,12 +54,6 @@ impl ProcessesUiAdapter {
             models,
             cache: Default::default(),
         }
-    }
-}
-
-impl FromUiWeak<AppWindow> for ProcessesUiAdapter {
-    fn from_ui_weak(ui: slint::Weak<AppWindow>) -> Self {
-        Self::new(ui)
     }
 }
 

@@ -1,12 +1,17 @@
 use crate::features::services::view::ServiceTable;
 use app_contracts::features::agents::{WindowsActionRequest, WindowsActionResponse};
 use app_contracts::features::navigation::{tab_ids, PageActivated};
-use app_contracts::features::services::{ServiceActionKind, ServiceSnapshot, ServicesUiPort};
+use app_contracts::features::services::{
+    ServiceActionKind, ServiceDetailsPort, ServiceEntryVm, ServiceSnapshot, ServicesUiPort,
+    PROPERTIES_DIALOG_KEY,
+};
+use app_contracts::features::windows_manager::OpenedWindow;
 use app_core::actor::event_bus::EventBus;
 use app_core::actor::traits::{Context, Handler};
 use app_core::app::Window;
 use app_core::messages;
 use app_core::trace::current_or_new_correlation_uuid;
+use context::native_windows::slint_factory::{OpenWindow, SlintWindowRegistry, WindowRegistry};
 use context::page_status::{PageId, PageStatus, PageStatusChanged, PageStatusRegistry};
 use slint::SharedString;
 use std::collections::HashSet;
@@ -21,11 +26,13 @@ messages! {
     ResizeCol { id: SharedString, width: f32 },
     OpenServices,
     SelectedService(SharedString, usize),
+    OpenPropertiesWindow(ServiceEntryVm),
 }
 
 pub struct ServiceActor<P: ServicesUiPort> {
     pub page_id: PageId,
     pub table: ServiceTable,
+    pub registry: Arc<SlintWindowRegistry>,
     pub ui_port: P,
     pub page_status: Arc<PageStatusRegistry>,
     pub is_active: bool,
@@ -132,28 +139,53 @@ impl<P: ServicesUiPort, T: Window> Handler<SelectedService, T> for ServiceActor<
         if let Some(dto) = self.table.get_by_name(m.0.as_str()) {
             match dto.status.as_str() {
                 "Running" => {
-                    self.ui_port.set_active_start_button(false);
-                    self.ui_port.set_active_stop_button(true);
-                    self.ui_port.set_active_restart_button(true);
+                    self.ui_port.set_active_buttons(false, true, true);
                 }
                 "Stopped" => {
-                    self.ui_port.set_active_start_button(true);
-                    self.ui_port.set_active_stop_button(false);
-                    self.ui_port.set_active_restart_button(false);
+                    self.ui_port.set_active_buttons(true, false, false);
                 }
                 _ => {}
             }
 
-            self.ui_port.set_selected_service_details(
-                dto.display_name.clone().into(),
-                dto.pid,
-                dto.status.clone().into(),
-                dto.group.clone().into(),
-                dto.description.clone().into(),
-            );
+            self.ui_port
+                .set_selected_service_details(dto.clone().into());
         }
 
         self.table.select(m.0.clone(), m.1);
-        self.ui_port.set_selected_name(m.0);
+    }
+}
+
+impl<P: ServicesUiPort, T: Window> Handler<OpenPropertiesWindow, T> for ServiceActor<P> {
+    fn handle(&mut self, m: OpenPropertiesWindow, _: &Context<Self, T>) {
+        EventBus::publish(OpenWindow {
+            key: m.0.name.to_string(),
+            template: PROPERTIES_DIALOG_KEY.to_string(),
+            data: Arc::new(m.0),
+        })
+    }
+}
+
+impl<P: ServicesUiPort, T: Window> Handler<OpenedWindow, T> for ServiceActor<P> {
+    fn handle(&mut self, m: OpenedWindow, _: &Context<Self, T>) {
+        if let Some(window) = self.registry.get_window(&m.key) {
+            if let Some(ui_port) = window.get_port::<dyn ServiceDetailsPort>() {
+                let dto = m
+                    .data
+                    .downcast::<ServiceEntryVm>()
+                    .expect("ServiceEntryVm is of wrong type");
+
+                match dto.status.as_str() {
+                    "Running" => {
+                        ui_port.set_active_buttons(false, true, true);
+                    }
+                    "Stopped" => {
+                        ui_port.set_active_buttons(true, false, false);
+                    }
+                    _ => {}
+                }
+
+                ui_port.set_selected_service_details(dto.as_ref().clone().into());
+            }
+        }
     }
 }

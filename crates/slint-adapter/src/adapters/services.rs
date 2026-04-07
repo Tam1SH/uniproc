@@ -1,18 +1,24 @@
-use crate::native_windows::{NativeWindowConfig, NativeWindowManager};
 use crate::{
-    AppWindow, ServiceEntry, ServicePropertiesDialogProxy, ServicePropertiesDialogWindow,
-    ServicesFeatureGlobal, TableCellData, TableColWidth,
+    AppWindow, ServiceEntry, ServicePropertiesDialogWindow, ServicesFeatureGlobal, TableCellData,
+    TableColWidth, Theme,
 };
 use app_contracts::features::services::{
-    ServiceActionKind, ServiceEntryVm, ServicesUiBindings, ServicesUiPort,
+    ServiceActionKind, ServiceDetailsPort, ServiceEntryDto, ServiceEntryVm, ServicesUiBindings,
+    ServicesUiPort, ServicesWindowRegister, PROPERTIES_DIALOG_KEY,
 };
-use app_core::app::FromUiWeak;
+use app_core::actor::event_bus::EventBus;
+use std::any::{Any, TypeId};
+
+use context::native_windows::slint_factory::{OpenWindow, SlintWindowRegistry, WindowRegistry};
+use context::native_windows::{NativeWindowConfig, NativeWindowManager, UiAdapter};
 use i_slint_backend_winit::WinitWindowAccessor;
 use macros::ui_adapter;
-use slint::{ComponentHandle, Model, SharedString, VecModel};
+use slint::platform::WindowEvent;
+use slint::{ComponentHandle, LogicalSize, Model, SharedString, VecModel, WindowSize};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
+use tracing::info;
 use widgets::table::ui_cache::{SlintTableRowAdapter, UiTableCache};
 
 struct AdapterModels {
@@ -26,7 +32,6 @@ pub struct ServicesUiAdapter {
     ui: slint::Weak<AppWindow>,
     models: Rc<AdapterModels>,
     cache: Rc<RefCell<UiTableCache<ServiceEntry, TableCellData>>>,
-    properties_dialog: NativeWindowManager<ServicePropertiesDialogWindow>,
 }
 
 impl ServicesUiAdapter {
@@ -37,60 +42,123 @@ impl ServicesUiAdapter {
             last_widths: Default::default(),
         });
 
-        let properties_dialog = Rc::new(
-            ServicePropertiesDialogWindow::new()
-                .expect("service properties dialog window should initialize"),
-        );
-
         if let Some(window) = ui.upgrade() {
             let bridge = window.global::<ServicesFeatureGlobal>();
             bridge.set_service_rows(models.rows.clone().into());
             bridge.set_column_widths(models.widths_model.clone().into());
-            bridge.on_open_properties_window({
-                let dialog = properties_dialog.clone();
-                move || {
-                    let _ = dialog.show();
-                }
-            });
         }
-
-        properties_dialog
-            .global::<ServicePropertiesDialogProxy>()
-            .on_close({
-                let dialog = properties_dialog.clone();
-                move || {
-                    let _ = dialog.hide();
-                }
-            });
-        properties_dialog
-            .global::<ServicePropertiesDialogProxy>()
-            .on_drag({
-                let dialog = properties_dialog.clone();
-                move || {
-                    dialog.window().with_winit_window(|w| {
-                        let _ = w.drag_window();
-                    });
-                }
-            });
-
-        let properties_dialog = NativeWindowManager::with_config(
-            properties_dialog,
-            NativeWindowConfig::win11_dialog(),
-        );
-        properties_dialog.apply_effects();
 
         Self {
             ui,
             models,
             cache: Default::default(),
-            properties_dialog,
         }
     }
 }
 
-impl FromUiWeak<AppWindow> for ServicesUiAdapter {
-    fn from_ui_weak(ui: slint::Weak<AppWindow>) -> Self {
-        Self::new(ui)
+impl ServicesWindowRegister for ServicesUiAdapter {
+    fn register(&self, registry: &SlintWindowRegistry) {
+        registry.register(PROPERTIES_DIALOG_KEY, || {
+            let dialog = ServicePropertiesDialogWindow::new()
+                .expect("service properties dialog window should initialize");
+
+            dialog.on_drag_requested({
+                let d = dialog.clone_strong();
+                move || {
+                    d.window().with_winit_window(|w| {
+                        let _ = w.drag_window();
+                    });
+                }
+            });
+
+            dialog.on_close_requested({
+                let d = dialog.clone_strong();
+                move || {
+                    d.window().dispatch_event(WindowEvent::CloseRequested);
+                }
+            });
+
+            let theme = dialog.global::<Theme>();
+
+            if let Ok(accent) = context::native_windows::platform::get_system_accent() {
+                theme.set_accent(accent.into());
+            }
+
+            NativeWindowManager::with_config(
+                dialog.clone_strong(),
+                NativeWindowConfig::win11_dialog(),
+            )
+            .with_adapter(ServicesPropertiesWindowUiAdapter::new(dialog.as_weak()))
+        });
+    }
+}
+
+#[derive(Clone)]
+pub struct ServicesPropertiesWindowUiAdapter {
+    ui: slint::Weak<ServicePropertiesDialogWindow>,
+}
+
+impl UiAdapter for ServicesPropertiesWindowUiAdapter {
+    fn query_port(&self, type_id: TypeId) -> Option<Box<dyn Any>> {
+        if type_id == TypeId::of::<dyn ServiceDetailsPort>() {
+            let port: Box<dyn ServiceDetailsPort> = Box::new(self.clone());
+            return Some(Box::new(port) as Box<dyn Any>);
+        }
+        None
+    }
+    fn box_clone(&self) -> Box<dyn UiAdapter> {
+        Box::new(self.clone())
+    }
+}
+
+impl ServicesPropertiesWindowUiAdapter {
+    pub fn new(ui: slint::Weak<ServicePropertiesDialogWindow>) -> Self {
+        Self { ui }
+    }
+}
+
+#[ui_adapter]
+impl ServiceDetailsPort for ServicesPropertiesWindowUiAdapter {
+    fn set_selected_service_details(
+        &self,
+        ui: &ServicePropertiesDialogWindow,
+        entry: ServiceEntryVm,
+    ) {
+        let g = ui.global::<ServicesFeatureGlobal>();
+        g.set_selected_entry(entry.into());
+    }
+    fn set_active_buttons(
+        &self,
+        ui: &ServicePropertiesDialogWindow,
+        start_flag: bool,
+        stop_flag: bool,
+        restart_flag: bool,
+    ) {
+        let global = ui.global::<ServicesFeatureGlobal>();
+        global.set_stop_button_active(stop_flag);
+        global.set_start_button_active(start_flag);
+        global.set_restart_button_active(restart_flag);
+    }
+}
+
+#[ui_adapter]
+impl ServiceDetailsPort for ServicesUiAdapter {
+    fn set_selected_service_details(&self, ui: &AppWindow, entry: ServiceEntryVm) {
+        let g = ui.global::<ServicesFeatureGlobal>();
+        g.set_selected_entry(entry.into());
+    }
+
+    fn set_active_buttons(
+        &self,
+        ui: &AppWindow,
+        start_flag: bool,
+        stop_flag: bool,
+        restart_flag: bool,
+    ) {
+        let global = ui.global::<ServicesFeatureGlobal>();
+        global.set_stop_button_active(stop_flag);
+        global.set_start_button_active(start_flag);
+        global.set_restart_button_active(restart_flag);
     }
 }
 
@@ -116,7 +184,6 @@ impl ServicesUiPort for ServicesUiAdapter {
         if *last == next_widths {
             return;
         }
-
         *last = next_widths.clone();
 
         if self.models.widths_model.row_count() != next_widths.len() {
@@ -147,44 +214,6 @@ impl ServicesUiPort for ServicesUiAdapter {
         }
     }
 
-    fn set_loading(&self, ui: &AppWindow, loading: bool) {
-        ui.global::<ServicesFeatureGlobal>().set_is_loading(loading);
-    }
-
-    fn set_selected_name(&self, ui: &AppWindow, name: SharedString) {
-        ui.global::<ServicesFeatureGlobal>()
-            .set_selected_name(name.clone());
-        self.properties_dialog
-            .component()
-            .global::<ServicesFeatureGlobal>()
-            .set_selected_name(name);
-    }
-
-    fn set_selected_service_details(
-        &self,
-        ui: &AppWindow,
-        display_name: SharedString,
-        pid: i32,
-        status: SharedString,
-        group: SharedString,
-        description: SharedString,
-    ) {
-        let global = ui.global::<ServicesFeatureGlobal>();
-        global.set_selected_display_name(display_name.clone());
-        global.set_selected_pid(pid);
-        global.set_selected_status(status.clone());
-        global.set_selected_group(group.clone());
-        global.set_selected_description(description.clone());
-
-        let dialog_component = self.properties_dialog.component();
-        let dialog_global = dialog_component.global::<ServicesFeatureGlobal>();
-        dialog_global.set_selected_display_name(display_name);
-        dialog_global.set_selected_pid(pid);
-        dialog_global.set_selected_status(status);
-        dialog_global.set_selected_group(group);
-        dialog_global.set_selected_description(description);
-    }
-
     fn set_sort_state(&self, ui: &AppWindow, field: SharedString, descending: bool) {
         let bridge = ui.global::<ServicesFeatureGlobal>();
         bridge.set_current_sort(field);
@@ -194,21 +223,6 @@ impl ServicesUiPort for ServicesUiAdapter {
     fn set_total_services_count(&self, ui: &AppWindow, count: usize) {
         ui.global::<ServicesFeatureGlobal>()
             .set_total_services_count(count as i32);
-    }
-
-    fn set_active_start_button(&self, ui: &AppWindow, flag: bool) {
-        ui.global::<ServicesFeatureGlobal>()
-            .set_start_button_active(flag);
-    }
-
-    fn set_active_stop_button(&self, ui: &AppWindow, flag: bool) {
-        ui.global::<ServicesFeatureGlobal>()
-            .set_stop_button_active(flag);
-    }
-
-    fn set_active_restart_button(&self, ui: &AppWindow, flag: bool) {
-        ui.global::<ServicesFeatureGlobal>()
-            .set_restart_button_active(flag);
     }
 }
 
@@ -279,6 +293,42 @@ impl ServicesUiBindings for ServicesUiAdapter {
     {
         ui.global::<ServicesFeatureGlobal>()
             .on_open_system_services(handler);
+    }
+
+    #[ui_action(scope = "ui.services.open_properties_window", target = "service-name")]
+    fn on_open_properties_window<F>(&self, ui: &AppWindow, handler: F)
+    where
+        F: Fn(ServiceEntryVm) + 'static,
+    {
+        ui.global::<ServicesFeatureGlobal>()
+            .on_open_properties_window(move |slint_entry| handler(slint_entry.into()));
+    }
+}
+
+impl From<ServiceEntry> for ServiceEntryVm {
+    fn from(entry: ServiceEntry) -> Self {
+        Self {
+            status: entry.status.clone(),
+            name: entry.name.clone(),
+            pid: entry.pid,
+            description: entry.description.clone(),
+            group: entry.group.clone(),
+            display_name: entry.display_name.clone(),
+        }
+    }
+}
+
+impl From<ServiceEntryVm> for ServiceEntry {
+    fn from(entry: ServiceEntryVm) -> Self {
+        Self {
+            status: entry.status.clone(),
+            name: entry.name.clone(),
+            pid: entry.pid,
+            description: entry.description.clone(),
+            group: entry.group.clone(),
+            display_name: entry.display_name.clone(),
+            cells: Default::default(),
+        }
     }
 }
 

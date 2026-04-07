@@ -27,6 +27,7 @@ pub enum ResizeEdge {
     SouthEast,
 }
 
+//TODO: extract Binding trait
 pub trait WindowActionsPort: Clone + 'static {
     fn on_drag<F>(&self, handler: F)
     where

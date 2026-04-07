@@ -11,6 +11,7 @@ use std::any::TypeId;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use tracing::{debug, warn};
 
 pub mod subscribe;
 
@@ -78,15 +79,23 @@ impl EventBus {
     }
 
     pub fn publish<M: Event>(msg: M) {
-        if !Self::has_subscribers::<M>() {
-            return;
-        }
-
         let meta =
             current_meta().unwrap_or_else(|| DispatchMeta::capture_or_root("core.bus.publish"));
 
+        if !Self::has_subscribers::<M>() {
+            warn!(
+                parent: &meta.span,
+                event = short_type_name::<M>(),
+                op_id = meta.op_id,
+                correlation_id = meta.correlation_id.as_deref().unwrap_or(""),
+                "no subscribers"
+            );
+
+            return;
+        }
+
         if is_scope_enabled("core.bus.publish") {
-            tracing::debug!(
+            debug!(
                 parent: &meta.span,
                 event = short_type_name::<M>(),
                 op_id = meta.op_id,
@@ -100,7 +109,10 @@ impl EventBus {
             LOCAL_SUBSCRIBERS.with(|s| {
                 if let Some(subs) = s.borrow().get(&type_id) {
                     for sub in subs {
-                        sub.deliver(Box::new(msg.clone()), meta.child("core.bus.publish", None, None));
+                        sub.deliver(
+                            Box::new(msg.clone()),
+                            meta.child("core.bus.publish", None, None),
+                        );
                     }
                 }
             });

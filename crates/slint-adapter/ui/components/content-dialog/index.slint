@@ -10,23 +10,16 @@ export component ContentDialogButtonFooter inherits Rectangle {
     in property <length> footer-padding-x: Theme.spacingHorizontalL;
     in property <length> footer-padding-y: Theme.spacingVerticalL;
 
+    in property <bool> is-windowed: true;
+
     height: 80px;
-    border-width: 1px;
-    border-color: Theme.colorNeutralStroke3;
+    border-width: is-windowed ? 0px : 1px;
+    border-color: is-windowed ? transparent : Theme.colorNeutralStroke3;
     border-bottom-left-radius: Theme.border_radius_m;
     border-bottom-right-radius: Theme.border_radius_m;
-    background: Theme.colorNeutralBackground3;
-
-    Rectangle {
-        x: 0px;
-        y: 0px;
-        width: parent.width;
-        height: 1px;
-        background: Theme.colorNeutralStrokeAlpha;
-    }
+    background: is-windowed ? transparent : Theme.colorNeutralBackground3;
 
     VerticalLayout {
-        padding: Theme.spacingVerticalL;
         alignment: center;
         HorizontalLayout {
             spacing: Theme.spacingHorizontalS;
@@ -35,67 +28,39 @@ export component ContentDialogButtonFooter inherits Rectangle {
             @children
         }
     }
-
 }
 
 export component ContentDialog inherits Rectangle {
     in property <length> dialog-width: 460px;
+    
     in property <bool> has-footer: false;
-    in property <length> footer-height: 0px;
+    in property <bool> is-windowed: false;
     in property <color> footer-background: Theme.colorNeutralBackground1;
     in property <color> footer-border-color: Theme.colorNeutralStroke3;
 
     width: root.dialog-width;
-    height: content.preferred-height + (root.has-footer ? root.footer-height : 0px);
-    background: Theme.colorNeutralBackground2;
+    
     border-radius: Theme.borderRadiusXLarge;
     border-bottom-right-radius: 0px;
     border-bottom-left-radius: 0px;
     border-width: 1px;
     border-color: Theme.colorNeutralStroke3;
-    drop-shadow-blur: 20px;
-    drop-shadow-color: Colors.black.with-alpha(0.28);
+    drop-shadow-blur: is-windowed ? 0px : 20px;
+    drop-shadow-color: is-windowed ? transparent : Colors.black.with-alpha(0.28);
 
     TouchArea { }
 
-    content := Rectangle {
-        height: root.height - (root.has-footer ? root.footer-height : 0px);
-        horizontal-stretch: 1;
-
+    VerticalLayout {
+        padding-left: is-windowed ? Theme.spacingHorizontalXL : Theme.spacingHorizontalL;
+        padding-right: is-windowed ? Theme.spacingHorizontalXL : Theme.spacingHorizontalL;
         @children
     }
-
-    ContentDialogButtonFooter {
-        y: parent.height - 1px;
-        Button {
-            primary: true;
-            text: "OK";
-            clicked => {
-                // ServicePropertiesDialogProxy.close();
-            }
-        }
-
-        Button {
-            text: "Cancel";
-            clicked => {
-                // ServicePropertiesDialogProxy.close();
-            }
-        }
-
-        Button {
-            text: "Apply";
-        }
-    }
-    
 }
-
-
 
 export component ContentDialogInline inherits Rectangle {
     in-out property <bool> is-open: false;
     in property <length> dialog-width: 460px;
     in property <bool> has-footer: false;
-    in property <length> footer-height: 0px;
     in property <color> footer-background: Theme.colorNeutralBackground1;
     in property <color> footer-border-color: Theme.colorNeutralStroke3;
 
@@ -108,18 +73,17 @@ export component ContentDialogInline inherits Rectangle {
             background: Colors.black.with-alpha(0.32);
             animate background { duration: Theme.durationFast; }
         }
+    }
+    ContentDialog {
+        z: 1001;
+        x: (parent.width - self.width) / 2;
+        y: Math.max(Theme.spacingVerticalXL, (parent.height - self.height) / 2);
+        dialog-width: root.dialog-width;
+        has-footer: root.has-footer;
+        footer-background: root.footer-background;
+        footer-border-color: root.footer-border-color;
 
-        dialog := ContentDialog {
-            x: (parent.width - self.width) / 2;
-            y: Math.max(Theme.spacingVerticalXL, (parent.height - self.height) / 2);
-            dialog-width: root.dialog-width;
-            has-footer: root.has-footer;
-            footer-height: root.footer-height;
-            footer-background: root.footer-background;
-            footer-border-color: root.footer-border-color;
-
-            @children
-        }
+        @children
     }
 }
 
@@ -127,13 +91,10 @@ export component ContentDialogWindow inherits Window {
     in property <bool> is-open: false;
     in property <length> dialog-width: 460px;
     in property <bool> has-footer: false;
-    in property <length> footer-height: 0px;
     in property <color> footer-background: Theme.colorNeutralBackground1;
     in property <color> footer-border-color: Theme.colorNeutralStroke3;
 
-    visible: root.is-open;
     width: root.dialog-width + Theme.spacingHorizontalXL * 2;
-    height: dialog.height + Theme.spacingVerticalXL * 2;
     background: Colors.transparent;
     no-frame: true;
 
@@ -146,7 +107,6 @@ export component ContentDialogWindow inherits Window {
             width: root.dialog-width;
             dialog-width: root.dialog-width;
             has-footer: root.has-footer;
-            footer-height: root.footer-height;
             footer-background: root.footer-background;
             footer-border-color: root.footer-border-color;
 

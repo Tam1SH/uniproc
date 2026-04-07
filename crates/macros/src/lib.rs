@@ -69,6 +69,7 @@ pub fn ui_adapter(_args: TokenStream, input: TokenStream) -> TokenStream {
                 let block = &method.block;
 
                 method.block = parse_quote! ({
+                    //TODO: throw panic
                     let Some(ui) = self.ui.upgrade() else { #return_stmt };
                     #handler_wrap
                     #ui_port_wrap
@@ -141,7 +142,13 @@ fn build_ui_action_wrapper(
     let arity = spec
         .target
         .as_ref()
-        .map(|value| value.value().split(',').filter(|part| !part.trim().is_empty()).count())
+        .map(|value| {
+            value
+                .value()
+                .split(',')
+                .filter(|part| !part.trim().is_empty())
+                .count()
+        })
         .unwrap_or(0);
 
     match arity {

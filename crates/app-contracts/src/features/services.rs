@@ -1,6 +1,9 @@
 use app_core::actor::traits::Message;
+use context::native_windows::slint_factory::SlintWindowRegistry;
 use slint::SharedString;
 use std::fmt::Debug;
+
+pub const PROPERTIES_DIALOG_KEY: &str = "services-properties";
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ServiceEntryVm {
@@ -22,6 +25,19 @@ pub struct ServiceEntryDto {
     pub description: String,
 }
 
+impl From<ServiceEntryDto> for ServiceEntryVm {
+    fn from(entry: ServiceEntryDto) -> Self {
+        Self {
+            status: entry.status.clone().into(),
+            name: entry.name.clone().into(),
+            pid: entry.pid,
+            description: entry.description.clone().into(),
+            group: entry.group.clone().into(),
+            display_name: entry.display_name.clone().into(),
+        }
+    }
+}
+
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ServiceSnapshot {
     pub services: Vec<ServiceEntryDto>,
@@ -37,24 +53,20 @@ pub enum ServiceActionKind {
     Resume,
 }
 
-pub trait ServicesUiPort: Debug + 'static {
+pub trait ServicesWindowRegister {
+    fn register(&self, registry: &SlintWindowRegistry);
+}
+
+pub trait ServiceDetailsPort {
+    fn set_selected_service_details(&self, entry: ServiceEntryVm);
+    fn set_active_buttons(&self, start_flag: bool, stop_flag: bool, restart_flag: bool);
+}
+
+pub trait ServicesUiPort: Debug + ServiceDetailsPort + 'static {
     fn set_column_widths(&self, widths: Vec<(SharedString, u64)>);
     fn set_service_rows_window(&self, total_rows: usize, start: usize, rows: &[ServiceEntryVm]);
-    fn set_loading(&self, loading: bool);
-    fn set_selected_name(&self, name: SharedString);
-    fn set_selected_service_details(
-        &self,
-        display_name: SharedString,
-        pid: i32,
-        status: SharedString,
-        group: SharedString,
-        description: SharedString,
-    );
     fn set_sort_state(&self, field: SharedString, descending: bool);
     fn set_total_services_count(&self, count: usize);
-    fn set_active_start_button(&self, flag: bool);
-    fn set_active_stop_button(&self, flag: bool);
-    fn set_active_restart_button(&self, flag: bool);
 }
 
 pub trait ServicesUiBindings: 'static {
@@ -76,4 +88,7 @@ pub trait ServicesUiBindings: 'static {
     fn on_open_system_services<F>(&self, handler: F)
     where
         F: Fn() + 'static;
+    fn on_open_properties_window<F>(&self, handler: F)
+    where
+        F: Fn(ServiceEntryVm) + 'static;
 }
