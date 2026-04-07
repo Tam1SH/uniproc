@@ -23,6 +23,8 @@ Architecture guide for AI agents. Read this before touching any code.
 - `crates/context/src/trace.rs` scope catalog section — codegen'd from `crates/context/trace-scopes.toml`
 - `slint-adapter/ui/shared/localization.slint` — codegen'd from `.toml`
 - `slint-adapter/ui/shared/icons.slint` — codegen'd from `download.txt`
+- `slint-adapter/ui/globals-export.slint` — codegen'd by `build.rs` (scans `ui/` for exported structs, enums, globals
+  and windows)
 
 ---
 
@@ -79,7 +81,8 @@ Use these labels as shorthand for the current design. They are descriptive, not 
 - `SharedState` is for bootstrap only, not business logic
 - Do not invent new tracing conventions ad hoc — use the scope/correlation model described below
 - Platform-dependent code must live in a dedicated subfolder/module, with one file per platform in the same place
-- Prefer `windows.rs`, `linux.rs`, `macos.rs` (and similar) side-by-side over scattering `#[cfg(...)]` branches across unrelated files
+- Prefer `windows.rs`, `linux.rs`, `macos.rs` (and similar) side-by-side over scattering `#[cfg(...)]` branches across
+  unrelated files
 - Keep the cross-platform entry point thin: `mod.rs` should select the platform module and expose the shared API
 
 ---
@@ -150,6 +153,7 @@ Contains:
 - **`App<TWindow>`** — container into which features are installed
 - **`Feature<TWindow>`** trait — the contract every feature implements
 - **`UiThreadGuard`** — token for UI-thread operations
+
 ### Feature trait
 
 ```rust
@@ -505,6 +509,10 @@ Nothing else is needed — `context::icons::Icons::get("name")` access is codege
 
 ## slint-adapter/ui (Slint UI)
 
+**Why this crate exists:** It serves strictly as a **compilation firewall**. The abstraction (traits/interfaces) is just
+a side effect, not the end goal. Slint macro codegen is heavy. By keeping it trapped here, tweaking a `.slint` file
+never triggers a recompilation of the business logic.
+
 Language: Slint. Directory structure:
 
 | Path                   | Contents                                                                                      |
@@ -517,7 +525,7 @@ Language: Slint. Directory structure:
 | `pages/`               | Dashboard pages. At this stage features cover the FSD need; pages are used inside `builtin/`. |
 | `shared/`              | Theme, locales, icons. Locales and icons are codegen'd — do not edit.                         |
 | `app-window.slint`     | Root window. Tracks width and proxies breakpoints (`sm` / `md` / `lg`) into `WindowAdapter`.  |
-| `globals-export.slint` | Re-exports everything the Rust side needs. When adding a new global, add it here.             |
+| `globals-export.slint` | Codegen'd re-exports of all entities (globals, structs, enums, windows).                      |
 | `window-adapter.slint` | Window resize adapter implementation.                                                         |
 
 ### features/
@@ -542,12 +550,13 @@ export global ServicesFeatureGlobal {
 }
 ```
 
-When adding a new global, re-export it from `globals-export.slint`.
+(Adding a new global/struct/enum/window in any `.slint` file with `export` will automatically include it in
+`globals-export.slint` on next build).
 
 ### Conventions
 
 - New component in `components/` — Fluent Design, transparent background
-- New feature in `features/` — folder with `index.slint` + `globals.slint`, re-export from `globals-export.slint`
+- New feature in `features/` — folder with `index.slint` + `globals.slint`
 - Icons — only via `download.txt`, never place SVGs manually
 - Locales and codegen'd icons in `shared/` — do not edit
 

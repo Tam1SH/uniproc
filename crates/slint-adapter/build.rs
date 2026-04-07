@@ -1,3 +1,5 @@
+mod slint_parser;
+
 use std::fs;
 use std::path::Path;
 use toml::{Table, Value};
@@ -6,6 +8,8 @@ fn main() {
     download_missing_assets();
     generate_icons_slint();
     generate_slint_l10n();
+
+    slint_parser::generate_globals_export(Path::new("ui"));
 
     let config = slint_build::CompilerConfiguration::new()
         .with_style("fluent".into())
