@@ -8,9 +8,12 @@ cfg-if = { workspace = true }
 app-core = { workspace = true }
 ogurpchik = { workspace = true }
 uniproc-protocol = { workspace = true }
+macros.workspace = true
 context.workspace = true
 slint = { workspace = true }
 serde.workspace = true
 uuid.workspace = true
 rkyv.workspace = true
 
+[build-dependencies]
+build-utils = { path = "../build-utils" }

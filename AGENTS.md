@@ -19,9 +19,11 @@ Architecture guide for AI agents. Read this before touching any code.
 ## Never edit manually
 
 - `crates/context/src/icons.rs` — codegen'd icon registry from `slint-adapter/ui/assets`
-- `crates/context/src/l10n.rs` — codegen'd from `.toml`
+- `crates/app-contracts/src/features/l10n/apply.rs` — codegen'd by `crates/context/build.rs` from
+  `crates/context/locales/en.toml`
 - `crates/context/src/trace.rs` scope catalog section — codegen'd from `crates/context/trace-scopes.toml`
-- `slint-adapter/ui/shared/localization.slint` — codegen'd from `.toml`
+- `slint-adapter/ui/shared/localization.slint` — codegen'd by `crates/slint-adapter/build.rs` from
+  `crates/context/locales/en.toml`
 - `slint-adapter/ui/shared/icons.slint` — codegen'd from `download.txt`
 - `slint-adapter/ui/globals-export.slint` — codegen'd by `build.rs` (scans `ui/` for exported structs, enums, globals
   and windows)
@@ -54,15 +56,16 @@ Use these labels as shorthand for the current design. They are descriptive, not 
 
 ## Crate structure
 
-| Crate           | Role                                         | Depends on                               |
-|-----------------|----------------------------------------------|------------------------------------------|
-| `desktop`       | entry point, feature aggregation             | everything                               |
-| `slint-adapter` | contract implementations for Slint           | `contract`, `core`                       |
-| `contract`      | Port + Bindings traits, DTOs                 | `core`                                   |
-| `domain/*`      | features, may be separate crates             | `core`, `context`, `widgets`, `contract` |
-| `context`       | environment: settings, caches, page state    | `core`                                   |
-| `widgets`       | shared UI code (tables)                      | `core`                                   |
-| `core`          | actor system, event bus, Signal, SharedState | —                                        |
+| Crate           | Role                                                | Depends on                               |
+|-----------------|-----------------------------------------------------|------------------------------------------|
+| `desktop`       | entry point, feature aggregation                    | everything                               |
+| `slint-adapter` | contract implementations for Slint                  | `contract`, `core`                       |
+| `contract`      | Port + Bindings traits, DTOs                        | `core`                                   |
+| `domain/*`      | features, may be separate crates                    | `core`, `context`, `widgets`, `contract` |
+| `context`       | environment: settings, caches, page state           | `core`                                   |
+| `widgets`       | shared UI code (tables)                             | `core`                                   |
+| `core`          | actor system, event bus, Signal, SharedState        | —                                        |
+| `build-utils`   | shared build-time helpers for codegen/build scripts | —                                        |
 
 `context` and `widgets` have no knowledge of `slint-adapter` or `contract`. `slint-adapter` has no knowledge of
 `domain`.
@@ -125,7 +128,29 @@ Create `slint-adapter/ui/features/my-feature/` with `index.slint` + `globals.sli
 **Publishing a bus message**
 
 ```rust
-EventBus::publish(MyMessage { ... }); // can be called from any thread
+#[derive(Debug, Clone)]
+pub struct MessageExample;
+impl Message for MessageExample {}
+
+impl<TWindow, F, P> Feature<TWindow> for ProcessFeature<F>
+where
+    TWindow: Window,
+    F: Fn(&TWindow) -> P + 'static,
+    P: ProcessesUiPort + ProcessesUiBindings + Clone + 'static,
+{
+    fn install(
+        self,
+        reactor: &mut Reactor,
+        ui: &TWindow,
+        shared: &SharedState,
+    ) -> anyhow::Result<()> {
+        let addr = Addr::new(MyActor::new(...), ui.as_weak());
+
+        EventBus::subscribe::<_ /* impl Handler<MessageExample> for MyActor */, MessageExample, _ /*TWindow*/>(&ui.new_token(), addr.clone());
+
+        Ok(())
+    }
+}
 ```
 
 **Subscribing to a bus message**
@@ -204,8 +229,9 @@ Contains:
   bus on change (with deduplication)
 - **String caches** — buffers between UI and domain for string data
 - **Icon cache** — extracts icons from processes
-- **Locales** — `context/locales/*.toml`. To add new strings, edit only the `.toml` files. UI bindings and the Rust-side
-  global are codegen'd automatically. The Rust side is currently unused.
+- **Locales** — `context/locales/*.toml` is the source of truth. `crates/context/build.rs` generates
+  `crates/app-contracts/src/features/l10n.rs` (`L10nPort`), and `crates/slint-adapter/build.rs` generates
+  `slint-adapter/ui/shared/localization.slint`. Add/edit strings only in the `.toml` files.
 - **Trace catalog + policy** — owns named tracing scopes, default enable/disable policy, subscriber bootstrap and
   buffered dump-on-warn/error behavior
 - **Icons registry** — codegen'd Rust icon access backed by `slint-adapter/ui/assets`
@@ -243,7 +269,9 @@ Tracing policy and scope naming live in `context`, not in `desktop` and not in f
 Business/UI correlation rules:
 
 - Business correlation is born in UI adapter callbacks, not in domain actors
-- `#[ui_action(scope = \"ui.services.action\", ...)]` is the preferred way to create a correlated UI scope
+- `#[slint_bindings]` methods are the source of truth for UI-action tracing metadata; use `#[tracing(target = "...")]`
+  on the contract method when target field names need an explicit override
+- `slint_bindings_adapter` derives the UI-action scope automatically as `Ui.<FeatureName>.<method_name>`
 - `app_core` only carries correlation/runtime metadata through `send`, `publish` and `spawn_bg`
 - Domain code should reuse the current correlation id for external request/response protocols when one exists
 - Do not thread `correlation_id` manually through every internal actor message unless the protocol truly requires it
@@ -472,14 +500,23 @@ Implementations of `contract` traits for Slint. Each adapter holds a `slint::Wea
 
 ### UI callback tracing
 
-UI-originated actions should create correlation scopes via the `ui_adapter` macro support:
+UI adapter tracing/configuration lives in the contract layer, and adapter impls consume it via
+`#[slint_bindings_adapter(...)]`:
 
 ```rust
-#[ui_action(scope = "ui.services.action", target = "name,kind")]
-fn on_service_action<F>(&self, ui: &AppWindow, handler: F)
+#[slint_bindings(global = "ProcessesFeatureGlobal")]
+pub trait ProcessesUiBindings: 'static {
+    #[tracing(target = "pid,idx")]
+    fn on_select_process<F>(&self, handler: F)
 where
-    F: Fn(SharedString, ServiceActionKind) + 'static;
+        F: Fn(i32, i32) + 'static;
+}
 ```
+
+`slint_bindings_adapter` auto-fills schema-derived methods, wraps UI callbacks in `app_core::trace::in_ui_action_scope`
+with the derived scope, and applies `#[tracing(target = "...")]` overrides from the contract metadata. The shared
+adapter transform also upgrades `self.ui`, removes the explicit `ui` argument from the final method shape, traces
+adapter calls under `ui.adapter.call`, and logs+panics if the weak UI handle is already dropped.
 
 Rules:
 
@@ -487,7 +524,7 @@ Rules:
 - Put product/UI scopes in `crates/context/trace-scopes.toml`
 - If a trace path is structurally useful but a few messages/targets are spammy, suppress them via `[policy]` in
   `crates/context/trace-scopes.toml` or the trace settings feature, not by deleting the whole scope
-- Prefer `#[ui_action(...)]` over manual `in_ui_action_scope(...)` wrappers
+- Prefer contract-level `#[tracing(...)]` metadata over manual `in_ui_action_scope(...)` wrappers in adapter impls
 - Noisy callbacks may be default-disabled in the scope catalog instead of inventing one-off logging logic
 
 ### Icons

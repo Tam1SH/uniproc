@@ -1,5 +1,7 @@
 #![allow(unsafe_op_in_unsafe_fn)]
 
-pub use app_core::messages;
+use rust_i18n::i18n;
+
+i18n!("../../context/locales", fallback = "en");
 
 pub mod features;

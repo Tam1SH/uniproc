@@ -2,8 +2,8 @@ use crate::features::services::view::ServiceTable;
 use app_contracts::features::agents::{WindowsActionRequest, WindowsActionResponse};
 use app_contracts::features::navigation::{tab_ids, PageActivated};
 use app_contracts::features::services::{
-    ServiceActionKind, ServiceDetailsPort, ServiceEntryVm, ServiceSnapshot, ServicesUiPort,
-    PROPERTIES_DIALOG_KEY,
+    ServiceActionKind, ServiceEntryVm, ServiceSnapshot, UiServiceDetailsPort,
+    UiServicesPort, PROPERTIES_DIALOG_KEY,
 };
 use app_contracts::features::windows_manager::OpenedWindow;
 use app_core::actor::event_bus::EventBus;
@@ -29,7 +29,7 @@ messages! {
     OpenPropertiesWindow(ServiceEntryVm),
 }
 
-pub struct ServiceActor<P: ServicesUiPort> {
+pub struct ServiceActor<P: UiServicesPort> {
     pub page_id: PageId,
     pub table: ServiceTable,
     pub registry: Arc<SlintWindowRegistry>,
@@ -39,7 +39,7 @@ pub struct ServiceActor<P: ServicesUiPort> {
     pub pending: HashSet<Uuid>,
 }
 
-impl<P: ServicesUiPort, T: Window> Handler<ServiceSnapshot, T> for ServiceActor<P> {
+impl<P: UiServicesPort, T: Window> Handler<ServiceSnapshot, T> for ServiceActor<P> {
     fn handle(&mut self, m: ServiceSnapshot, _: &Context<Self, T>) {
         self.ui_port.set_total_services_count(m.services.len());
 
@@ -59,7 +59,7 @@ impl<P: ServicesUiPort, T: Window> Handler<ServiceSnapshot, T> for ServiceActor<
     }
 }
 
-impl<P: ServicesUiPort, T: Window> Handler<ServiceAction, T> for ServiceActor<P> {
+impl<P: UiServicesPort, T: Window> Handler<ServiceAction, T> for ServiceActor<P> {
     fn handle(&mut self, m: ServiceAction, _: &Context<Self, T>) {
         let id = current_or_new_correlation_uuid();
         let cmd = match m.kind {
@@ -77,20 +77,20 @@ impl<P: ServicesUiPort, T: Window> Handler<ServiceAction, T> for ServiceActor<P>
     }
 }
 
-impl<P: ServicesUiPort, T: Window> Handler<WindowsActionResponse, T> for ServiceActor<P> {
+impl<P: UiServicesPort, T: Window> Handler<WindowsActionResponse, T> for ServiceActor<P> {
     fn handle(&mut self, m: WindowsActionResponse, _: &Context<Self, T>) {
         self.pending.remove(&m.correlation_id);
     }
 }
 
-impl<P: ServicesUiPort, T: Window> Handler<ResizeCol, T> for ServiceActor<P> {
+impl<P: UiServicesPort, T: Window> Handler<ResizeCol, T> for ServiceActor<P> {
     fn handle(&mut self, m: ResizeCol, _: &Context<Self, T>) {
         let _ = self.table.resize_column(m.id.to_string(), m.width as u64);
         self.ui_port.set_column_widths(self.table.column_widths());
     }
 }
 
-impl<P: ServicesUiPort, T: Window> Handler<OpenServices, T> for ServiceActor<P> {
+impl<P: UiServicesPort, T: Window> Handler<OpenServices, T> for ServiceActor<P> {
     fn handle(&mut self, _: OpenServices, _: &Context<Self, T>) {
         // info!("lol");
         // #[cfg(target_os = "windows")]
@@ -102,13 +102,13 @@ impl<P: ServicesUiPort, T: Window> Handler<OpenServices, T> for ServiceActor<P> 
     }
 }
 
-impl<P: ServicesUiPort, T: Window> Handler<PageActivated, T> for ServiceActor<P> {
+impl<P: UiServicesPort, T: Window> Handler<PageActivated, T> for ServiceActor<P> {
     fn handle(&mut self, m: PageActivated, _: &Context<Self, T>) {
         self.is_active = m.page_id == self.page_id;
     }
 }
 
-impl<P: ServicesUiPort, T: Window> Handler<Sort, T> for ServiceActor<P> {
+impl<P: UiServicesPort, T: Window> Handler<Sort, T> for ServiceActor<P> {
     fn handle(&mut self, m: Sort, _: &Context<Self, T>) {
         let s = &mut self.table.view.flow.sort;
         if s.field_id.as_ref() == Some(&m.0) {
@@ -117,7 +117,8 @@ impl<P: ServicesUiPort, T: Window> Handler<Sort, T> for ServiceActor<P> {
             s.field_id = Some(m.0.clone());
             s.descending = false;
         }
-        self.ui_port.set_sort_state(m.0, s.descending);
+        self.ui_port.set_current_sort_descending(s.descending);
+        self.ui_port.set_current_sort(m.0);
         self.table.refresh();
         let b = self.table.batch();
         self.ui_port
@@ -125,7 +126,7 @@ impl<P: ServicesUiPort, T: Window> Handler<Sort, T> for ServiceActor<P> {
     }
 }
 
-impl<P: ServicesUiPort, T: Window> Handler<ViewportChanged, T> for ServiceActor<P> {
+impl<P: UiServicesPort, T: Window> Handler<ViewportChanged, T> for ServiceActor<P> {
     fn handle(&mut self, m: ViewportChanged, _: &Context<Self, T>) {
         self.table.view.rows.set_viewport(m.start, m.count);
         let b = self.table.batch();
@@ -134,7 +135,7 @@ impl<P: ServicesUiPort, T: Window> Handler<ViewportChanged, T> for ServiceActor<
     }
 }
 
-impl<P: ServicesUiPort, T: Window> Handler<SelectedService, T> for ServiceActor<P> {
+impl<P: UiServicesPort, T: Window> Handler<SelectedService, T> for ServiceActor<P> {
     fn handle(&mut self, m: SelectedService, _: &Context<Self, T>) {
         if let Some(dto) = self.table.get_by_name(m.0.as_str()) {
             match dto.status.as_str() {
@@ -155,7 +156,7 @@ impl<P: ServicesUiPort, T: Window> Handler<SelectedService, T> for ServiceActor<
     }
 }
 
-impl<P: ServicesUiPort, T: Window> Handler<OpenPropertiesWindow, T> for ServiceActor<P> {
+impl<P: UiServicesPort, T: Window> Handler<OpenPropertiesWindow, T> for ServiceActor<P> {
     fn handle(&mut self, m: OpenPropertiesWindow, _: &Context<Self, T>) {
         EventBus::publish(OpenWindow {
             key: m.0.name.to_string(),
@@ -165,10 +166,10 @@ impl<P: ServicesUiPort, T: Window> Handler<OpenPropertiesWindow, T> for ServiceA
     }
 }
 
-impl<P: ServicesUiPort, T: Window> Handler<OpenedWindow, T> for ServiceActor<P> {
+impl<P: UiServicesPort, T: Window> Handler<OpenedWindow, T> for ServiceActor<P> {
     fn handle(&mut self, m: OpenedWindow, _: &Context<Self, T>) {
         if let Some(window) = self.registry.get_window(&m.key) {
-            if let Some(ui_port) = window.get_port::<dyn ServiceDetailsPort>() {
+            if let Some(ui_port) = window.get_port::<dyn UiServiceDetailsPort>() {
                 let dto = m
                     .data
                     .downcast::<ServiceEntryVm>()

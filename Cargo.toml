@@ -17,12 +17,14 @@ members = [
     "crates/widgets",
     "crates/macros",
     "crates/desktop",
+    "crates/build-utils",
 ]
 
 [workspace.dependencies]
 # --- Internal Crates (Project Architecture) ---
 app-contracts = { path = "crates/app-contracts" }
 app-core = { path = "crates/core" }
+build-utils = { path = "crates/build-utils" }
 context = { path = "crates/context" }
 domain = { path = "crates/domain" }
 domain-agents = { path = "crates/domain/src/features/agents" }

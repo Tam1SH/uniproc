@@ -10,8 +10,6 @@ fn main() {
 
 fn generate_l10n_port() {
     let en_toml = Path::new("./locales/en.toml");
-    let out = Path::new("src/l10n.rs");
-
     println!("cargo:rerun-if-changed=./locales/");
 
     let content = fs::read_to_string(en_toml).expect("./locales/en.toml not found");
@@ -24,41 +22,26 @@ fn generate_l10n_port() {
     let trait_methods = flat_keys
         .iter()
         .map(|key| {
-            let method_name = key.replace('.', "_").replace('-', "_");
+            let method_name = key.replace(['.', '-'], "_");
             format!("    fn set_{method_name}(&self, value: String);")
         })
         .collect::<Vec<_>>()
         .join("\n");
 
-    let apply_body = flat_keys
-        .iter()
-        .map(|key| {
-            let method_name = key.replace('.', "_").replace('-', "_");
-            format!("        l10n.set_{method_name}(t!(\"{key}\").to_string());")
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
-
-    let generated = format!(
-        r#"// Based on ../locales/en.toml
+    write_if_changed(
+        Path::new("../app-contracts/src/features/l10n.rs"),
+        &format!(
+            r#"// Based on context/locales/en.toml
 // AUTO-GENERATED — do not edit manually
-use rust_i18n::t;
+use macros::slint_port;
 
-pub trait L10nPort {{
+#[slint_port(global = "L10n")]
+pub trait L10nPort: Clone + 'static {{
 {trait_methods}
 }}
-
-pub struct L10nManager;
-
-impl L10nManager {{
-    pub fn apply_to_port<P: L10nPort>(l10n: &P) {{
-{apply_body}
-    }}
-}}
 "#
+        ),
     );
-
-    write_if_changed(out, &generated);
 }
 
 fn generate_trace_scopes() {
@@ -85,11 +68,7 @@ fn generate_trace_scopes() {
     let consts = scopes
         .iter()
         .map(|entry| {
-            let ctor = if entry.enabled_by_default {
-                "new"
-            } else {
-                "disabled"
-            };
+            let ctor = if entry.enabled_by_default { "new" } else { "disabled" };
             format!(
                 "pub const {}: ScopeSpec = ScopeSpec::{}(\"{}\", ScopeKind::{});",
                 entry.const_name, ctor, entry.name, entry.kind
@@ -150,9 +129,7 @@ fn generate_icons_registry() {
                 .canonicalize()
                 .expect("icon asset should be canonicalizable");
             let asset_path = asset_path.to_string_lossy().replace('\\', "\\\\");
-            format!(
-                "            \"{name}\" => include_bytes!(\"{asset_path}\"),"
-            )
+            format!("            \"{name}\" => include_bytes!(\"{asset_path}\"),")
         })
         .collect::<Vec<_>>()
         .join("\n");
@@ -204,13 +181,7 @@ fn collect_scope_entries(path: Vec<String>, table: &Table, acc: &mut Vec<ScopeEn
                     .map(|segment| segment.to_ascii_uppercase())
                     .collect::<Vec<_>>()
                     .join("_");
-
-                acc.push(ScopeEntry {
-                    name,
-                    const_name,
-                    kind,
-                    enabled_by_default: *enabled_by_default,
-                });
+                acc.push(ScopeEntry { name, const_name, kind, enabled_by_default: *enabled_by_default });
             }
             other => panic!("Unexpected trace scope entry for {:?}: {other:?}", next_path),
         }
@@ -234,11 +205,7 @@ fn policy_strings(table: &Table, key: &str) -> Vec<String> {
 }
 
 fn string_slice_literal(values: &[String]) -> String {
-    let items = values
-        .iter()
-        .map(|value| format!("{value:?}"))
-        .collect::<Vec<_>>()
-        .join(", ");
+    let items = values.iter().map(|v| format!("{v:?}")).collect::<Vec<_>>().join(", ");
     format!("[{items}]")
 }
 
@@ -257,7 +224,6 @@ fn collect_keys(prefix: &str, table: &Table, acc: &mut Vec<String>) {
         } else {
             format!("{}.{}", prefix, key)
         };
-
         match value {
             Value::Table(sub_table) => collect_keys(&full_key, sub_table, acc),
             _ => acc.push(full_key),

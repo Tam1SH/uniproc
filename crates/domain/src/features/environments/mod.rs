@@ -1,8 +1,8 @@
-use app_contracts::features::environments::{EnvironmentsUiBindings, EnvironmentsUiPort};
-use app_core::SharedState;
+use app_contracts::features::environments::{UiEnvironmentsBindings, UiEnvironmentsPort};
 use app_core::app::Feature;
 use app_core::app::Window;
 use app_core::reactor::Reactor;
+use app_core::SharedState;
 
 pub mod host;
 pub mod wsl;
@@ -21,7 +21,7 @@ impl<TWindow, F, P> Feature<TWindow> for EnvironmentsFeature<F>
 where
     TWindow: Window,
     F: Fn(&TWindow) -> P + Clone + 'static,
-    P: EnvironmentsUiPort + EnvironmentsUiBindings + Clone + 'static,
+    P: UiEnvironmentsPort + UiEnvironmentsBindings + Clone + 'static,
 {
     fn install(
         self,

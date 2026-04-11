@@ -3,19 +3,19 @@ use crate::features::environments::wsl::domain::{
 };
 use crate::messages;
 use app_contracts::features::environments::{
-    EnvironmentsUiPort, WslAgentRuntimeEvent, WslConnectionState, WslDistroDto,
+    UiEnvironmentsPort, WslAgentRuntimeEvent, WslConnectionState, WslDistroDto,
 };
 use app_core::actor::traits::{Context, Handler};
 use app_core::app::Window;
 use std::fmt::Debug;
 use tracing::{error, info, instrument};
 
-pub struct WslEnvActor<P: EnvironmentsUiPort> {
+pub struct WslEnvActor<P: UiEnvironmentsPort> {
     distros: Vec<WslDistroDto>,
     ui_port: P,
 }
 
-impl<P: EnvironmentsUiPort> Debug for WslEnvActor<P> {
+impl<P: UiEnvironmentsPort> Debug for WslEnvActor<P> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("WslEnvActor")
             .field("distros_count", &self.distros.len())
@@ -23,7 +23,7 @@ impl<P: EnvironmentsUiPort> Debug for WslEnvActor<P> {
     }
 }
 
-impl<P: EnvironmentsUiPort> WslEnvActor<P> {
+impl<P: UiEnvironmentsPort> WslEnvActor<P> {
     pub fn new(ui_port: P) -> Self {
         Self {
             distros: Vec::new(),
@@ -65,7 +65,7 @@ messages! {
 
 impl<P, TWindow> Handler<WslAgentRuntimeEvent, TWindow> for WslEnvActor<P>
 where
-    P: EnvironmentsUiPort,
+    P: UiEnvironmentsPort,
     TWindow: Window,
 {
     fn handle(&mut self, msg: WslAgentRuntimeEvent, _ctx: &Context<Self, TWindow>) {
@@ -85,7 +85,7 @@ where
 
 impl<P, TWindow> Handler<Init, TWindow> for WslEnvActor<P>
 where
-    P: EnvironmentsUiPort,
+    P: UiEnvironmentsPort,
     TWindow: Window,
 {
     #[instrument(skip(self, ctx))]
@@ -96,7 +96,7 @@ where
 
 impl<P, TWindow> Handler<CheckStatus, TWindow> for WslEnvActor<P>
 where
-    P: EnvironmentsUiPort,
+    P: UiEnvironmentsPort,
     TWindow: Window,
 {
     fn handle(&mut self, _: CheckStatus, ctx: &Context<Self, TWindow>) {
@@ -109,7 +109,7 @@ where
 
 impl<P, TWindow> Handler<SetStatus, TWindow> for WslEnvActor<P>
 where
-    P: EnvironmentsUiPort,
+    P: UiEnvironmentsPort,
     TWindow: Window,
 {
     fn handle(&mut self, msg: SetStatus, ctx: &Context<Self, TWindow>) {
@@ -123,7 +123,7 @@ where
 
 impl<P, TWindow> Handler<RefreshDistros, TWindow> for WslEnvActor<P>
 where
-    P: EnvironmentsUiPort,
+    P: UiEnvironmentsPort,
     TWindow: Window,
 {
     fn handle(&mut self, _: RefreshDistros, ctx: &Context<Self, TWindow>) {
@@ -146,7 +146,7 @@ where
 
 impl<P, TWindow> Handler<UpdateDistros, TWindow> for WslEnvActor<P>
 where
-    P: EnvironmentsUiPort,
+    P: UiEnvironmentsPort,
     TWindow: Window,
 {
     fn handle(&mut self, msg: UpdateDistros, _ctx: &Context<Self, TWindow>) {
@@ -157,7 +157,7 @@ where
 
 impl<P, TWindow> Handler<InstallAgent, TWindow> for WslEnvActor<P>
 where
-    P: EnvironmentsUiPort,
+    P: UiEnvironmentsPort,
     TWindow: Window,
 {
     #[instrument(skip(self, ctx))]

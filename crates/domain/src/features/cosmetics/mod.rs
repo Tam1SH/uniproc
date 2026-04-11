@@ -1,4 +1,4 @@
-use app_contracts::features::cosmetics::CosmeticsPort;
+use app_contracts::features::cosmetics::UiCosmeticsPort;
 use app_core::app::Feature;
 use app_core::app::Window;
 use app_core::reactor::Reactor;
@@ -22,7 +22,7 @@ impl<TWindow, F, P> Feature<TWindow> for CosmeticsFeature<F>
 where
     TWindow: Window,
     F: Fn(&TWindow) -> P + 'static,
-    P: CosmeticsPort,
+    P: UiCosmeticsPort,
 {
     fn install(
         self,
@@ -33,7 +33,7 @@ where
         let port = (self.make_port)(ui);
 
         if let Ok(accent) = context::native_windows::platform::get_system_accent() {
-            port.set_main_window_accent(accent);
+            port.set_accent(accent.into());
             shared.insert(AccentState(accent));
         }
         port.apply_main_window_effects();

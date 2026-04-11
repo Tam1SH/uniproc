@@ -234,8 +234,10 @@ name = "app-contracts"
 version = "0.1.0"
 dependencies = [
  "app-core",
+ "build-utils",
  "cfg-if",
  "context",
+ "macros",
  "ogurpchik",
  "rkyv",
  "serde",
@@ -767,6 +769,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "build-utils"
+version = "0.1.0"
+dependencies = [
+ "i-slint-compiler",
+ "quote",
+ "serde",
+ "serde_json",
+ "syn",
+ "walkdir",
+]
+
+[[package]]
 name = "built"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1228,6 +1242,7 @@ dependencies = [
  "app-core",
  "bon",
  "i-slint-backend-winit",
+ "macros",
  "raw-window-handle",
  "rust-i18n",
  "serde",
@@ -1714,10 +1729,12 @@ dependencies = [
  "context",
  "dashmap",
  "macros",
+ "rust-i18n",
  "serde",
  "serde_json",
  "slint",
  "tokio",
+ "toml 0.9.11+spec-1.1.0",
  "tracing",
  "uniproc-protocol",
  "uuid",
@@ -3511,6 +3528,8 @@ version = "0.1.0"
 dependencies = [
  "proc-macro2",
  "quote",
+ "serde",
+ "serde_json",
  "syn",
 ]
 
@@ -5428,16 +5447,15 @@ dependencies = [
  "anyhow",
  "app-contracts",
  "app-core",
+ "build-utils",
  "cfg-if",
  "context",
  "i-slint-backend-winit",
- "i-slint-compiler",
  "macros",
  "slint",
  "slint-build",
  "toml 0.9.11+spec-1.1.0",
  "tracing",
- "walkdir",
  "widgets",
  "window-vibrancy",
  "windows 0.61.3",

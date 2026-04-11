@@ -15,7 +15,7 @@ use crate::features::services::view::ServiceTable;
 use app_contracts::features::agents::{ScanTick, WindowsActionResponse};
 use app_contracts::features::navigation::{page_ids, PageActivated};
 use app_contracts::features::services::{
-    ServicesUiBindings, ServicesUiPort, ServicesWindowRegister,
+    ServicesWindowRegister, UiServicesBindings, UiServicesPort,
 };
 use app_contracts::features::windows_manager::OpenedWindow;
 use context::native_windows::slint_factory::SlintWindowRegistry;
@@ -40,7 +40,7 @@ impl<TWindow, F, P> Feature<TWindow> for ServicesFeature<F>
 where
     TWindow: Window,
     F: Fn(&TWindow) -> P + 'static,
-    P: ServicesUiPort + ServicesUiBindings + ServicesWindowRegister + Clone + 'static,
+    P: UiServicesPort + UiServicesBindings + ServicesWindowRegister + Clone + 'static,
 {
     fn install(
         self,
@@ -93,7 +93,7 @@ fn bind_ui_events<P, TWindow>(
     registry: Arc<SlintWindowRegistry>,
 ) where
     TWindow: Window,
-    P: ServicesUiPort + ServicesUiBindings + ServicesWindowRegister + Clone + 'static,
+    P: UiServicesPort + UiServicesBindings + ServicesWindowRegister + Clone + 'static,
 {
     let a = addr.clone();
     ui_port.on_service_action(move |name, action| {
@@ -103,7 +103,7 @@ fn bind_ui_events<P, TWindow>(
         });
     });
     let a = addr.clone();
-    ui_port.on_select_service(move |s_name, idx| a.send(SelectedService(s_name, idx)));
+    ui_port.on_select_service(move |s_name, idx| a.send(SelectedService(s_name, idx as usize)));
 
     let a = addr.clone();
     ui_port.on_open_system_services(move || a.send(OpenServices));
@@ -115,8 +115,11 @@ fn bind_ui_events<P, TWindow>(
     ui_port.on_column_resized(move |id, width| a.send(ResizeCol { id, width }));
 
     let a = addr.clone();
-    ui_port.on_viewport_changed(move |start, count| {
-        a.send(ViewportChanged { start, count });
+    ui_port.on_rows_viewport_changed(move |start, count| {
+        a.send(ViewportChanged {
+            start: start as usize,
+            count: count as usize,
+        });
     });
 
     let a = addr.clone();

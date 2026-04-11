@@ -1,3 +1,4 @@
+use macros::{slint_bindings, slint_port};
 use slint::{Image, SharedString};
 use std::fmt::Debug;
 
@@ -56,24 +57,35 @@ pub struct ProcessGroupVm {
     pub children: Vec<ProcessEntryVm>,
 }
 
+#[slint_port(global = "ProcessesFeatureGlobal")]
 pub trait ProcessesUiPort: Debug + 'static {
+    #[manual]
     fn set_column_widths(&self, widths: Vec<(SharedString, u64)>);
+    #[manual]
     fn set_column_metadata(&self, data: Vec<FieldMetadata>);
+    #[manual]
     fn set_process_rows_window(&self, total_rows: usize, start: usize, rows: &[ProcessEntryVm]);
+    #[manual]
     fn set_column_defs(&self, defs: Vec<FieldDefDto>);
-    fn set_is_grouped(&self, is_grouped: bool);
+    #[manual]
     fn get_selected_pid(&self) -> i32;
+    #[manual]
+    fn set_sort_state(&self, field: SharedString, descending: bool);
+    #[manual]
+    fn set_total_processes_count(&self, count: usize);
+    fn set_is_grouped(&self, is_grouped: bool);
     fn set_selected_pid(&self, pid: i32);
     fn set_selected_name(&self, name: SharedString);
-    fn set_sort_state(&self, field: SharedString, descending: bool);
-    fn set_total_processes_count(&self, count: usize);
 }
 
+#[slint_bindings(global = "ProcessesFeatureGlobal")]
 pub trait ProcessesUiBindings: 'static {
+    #[tracing(target = "field")]
     fn on_sort_by<F>(&self, handler: F)
     where
         F: Fn(SharedString) + 'static;
 
+    #[tracing(target = "group")]
     fn on_toggle_expand_group<F>(&self, handler: F)
     where
         F: Fn(SharedString) + 'static;
@@ -82,14 +94,17 @@ pub trait ProcessesUiBindings: 'static {
     where
         F: Fn() + 'static;
 
+    #[tracing(target = "pid,idx")]
     fn on_select_process<F>(&self, handler: F)
     where
         F: Fn(i32, i32) + 'static;
 
+    #[tracing(target = "start,count")]
     fn on_rows_viewport_changed<F>(&self, handler: F)
     where
         F: Fn(i32, i32) + 'static;
 
+    #[tracing(target = "id,width")]
     fn on_column_resized<F>(&self, handler: F)
     where
         F: Fn(SharedString, f32) + 'static;

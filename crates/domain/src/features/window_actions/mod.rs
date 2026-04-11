@@ -3,11 +3,11 @@ mod actors;
 
 use crate::features::window_actions::actors::BreakpointChanged;
 use actors::{Close, Drag, Maximize, Minimize, Resize, WindowActor};
-use app_contracts::features::window_actions::WindowActionsPort;
-use app_core::SharedState;
+use app_contracts::features::window_actions::{UiWindowActionsBindings, UiWindowActionsPort};
 use app_core::actor::addr::Addr;
 use app_core::app::Feature;
 use app_core::reactor::Reactor;
+use app_core::SharedState;
 
 pub struct WindowActionsFeature<F> {
     make_port: F,
@@ -23,7 +23,7 @@ impl<TWindow, F, P> Feature<TWindow> for WindowActionsFeature<F>
 where
     TWindow: Window,
     F: Fn(&TWindow) -> P + 'static,
-    P: WindowActionsPort,
+    P: UiWindowActionsPort + UiWindowActionsBindings,
 {
     fn install(
         self,

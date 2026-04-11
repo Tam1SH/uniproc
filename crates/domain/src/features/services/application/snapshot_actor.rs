@@ -1,7 +1,7 @@
 use crate::features::services::{application::actor::ServiceActor, scanner};
 use app_contracts::features::agents::ScanTick;
 use app_contracts::features::navigation::PageActivated;
-use app_contracts::features::services::{ServiceEntryDto, ServiceSnapshot, ServicesUiPort};
+use app_contracts::features::services::{ServiceEntryDto, ServiceSnapshot, UiServicesPort};
 use app_core::actor::addr::Addr;
 use app_core::actor::traits::{Context, Handler, Message, NoOp};
 use app_core::app::Window;
@@ -18,7 +18,7 @@ pub enum ServiceSnapshotResult {
 }
 impl Message for ServiceSnapshotResult {}
 
-pub struct ServiceSnapshotActor<P: ServicesUiPort, TWindow: Window> {
+pub struct ServiceSnapshotActor<P: UiServicesPort, TWindow: Window> {
     pub target: Addr<ServiceActor<P>, TWindow>,
     pub page_id: PageId,
     pub is_active: bool,
@@ -26,7 +26,7 @@ pub struct ServiceSnapshotActor<P: ServicesUiPort, TWindow: Window> {
 
 impl<P, TWindow> Handler<PageActivated, TWindow> for ServiceSnapshotActor<P, TWindow>
 where
-    P: ServicesUiPort,
+    P: UiServicesPort,
     TWindow: Window,
 {
     fn handle(&mut self, msg: PageActivated, _ctx: &Context<Self, TWindow>) {
@@ -36,7 +36,7 @@ where
 
 impl<P, TWindow> Handler<ScanTick, TWindow> for ServiceSnapshotActor<P, TWindow>
 where
-    P: ServicesUiPort,
+    P: UiServicesPort,
     TWindow: Window,
 {
     fn handle(&mut self, _: ScanTick, ctx: &Context<Self, TWindow>) {
@@ -57,7 +57,7 @@ where
 
 impl<P, TWindow> Handler<ServiceSnapshotResult, TWindow> for ServiceSnapshotActor<P, TWindow>
 where
-    P: ServicesUiPort,
+    P: UiServicesPort,
     TWindow: Window,
 {
     fn handle(&mut self, result: ServiceSnapshotResult, _ctx: &Context<Self, TWindow>) {

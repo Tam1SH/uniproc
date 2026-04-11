@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+macros = { path = "../macros" }
 slint = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }

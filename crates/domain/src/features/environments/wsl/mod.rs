@@ -5,13 +5,13 @@ pub mod domain;
 pub use actors::{Init, InstallAgent, WslEnvActor};
 
 use app_contracts::features::environments::{
-    EnvironmentsUiBindings, EnvironmentsUiPort, WslAgentRuntimeEvent,
+    UiEnvironmentsBindings, UiEnvironmentsPort, WslAgentRuntimeEvent,
 };
-use app_core::SharedState;
 use app_core::actor::addr::Addr;
 use app_core::actor::event_bus::EventBus;
 use app_core::app::Feature;
 use app_core::reactor::Reactor;
+use app_core::SharedState;
 
 pub struct WslFeature<F> {
     make_ui_port: F,
@@ -27,7 +27,7 @@ impl<TWindow, F, P> Feature<TWindow> for WslFeature<F>
 where
     TWindow: Window,
     F: Fn(&TWindow) -> P + 'static,
-    P: EnvironmentsUiPort + EnvironmentsUiBindings + Clone + 'static,
+    P: UiEnvironmentsPort + UiEnvironmentsBindings + Clone + 'static,
 {
     fn install(
         self,

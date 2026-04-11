@@ -28,7 +28,6 @@ windows = { workspace = true, features = [
 ] }
 
 [build-dependencies]
+build-utils = { path = "../build-utils" }
 slint-build.workspace = true
-walkdir.workspace = true
-i-slint-compiler.workspace = true
 toml.workspace = true

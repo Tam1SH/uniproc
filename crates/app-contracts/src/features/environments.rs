@@ -1,4 +1,5 @@
 use app_core::actor::traits::Message;
+use macros::{slint_bindings, slint_port};
 use ogurpchik::codecs::base::HasAllocator;
 use ogurpchik::codecs::base::MessageCodec;
 use ogurpchik::high::client::Client;
@@ -64,17 +65,24 @@ cfg_if::cfg_if! {
     }
 }
 
-pub trait EnvironmentsUiPort: 'static {
-    fn set_host_name(&self, name: String);
+#[slint_port(global = "EnvironmentsFeatureGlobal")]
+pub trait UiEnvironmentsPort: 'static {
+    #[manual]
     fn set_host_icon_by_key(&self, icon_key: &str);
-    fn set_selected_env(&self, name: String);
+    #[manual]
     fn set_wsl_distros(&self, distros: Vec<WslDistroDto>);
+    fn set_host_name(&self, name: String);
+    fn set_selected_env(&self, name: String);
     fn set_has_wsl(&self, has_wsl: bool);
+    #[slint(global = "EnvsLoading")]
     fn set_wsl_is_loading(&self, loading: bool);
+    #[slint(global = "EnvsLoading")]
     fn set_wsl_distros_is_loading(&self, loading: bool);
 }
 
-pub trait EnvironmentsUiBindings: 'static {
+#[slint_bindings(global = "EnvironmentsFeatureGlobal")]
+pub trait UiEnvironmentsBindings: 'static {
+    #[tracing(target = "agent")]
     fn on_install_agent<F>(&self, handler: F)
     where
         F: Fn(String) + 'static;

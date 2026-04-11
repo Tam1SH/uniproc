@@ -1,5 +1,4 @@
-mod slint_parser;
-
+use build_utils::{slint_parser, write_if_changed};
 use std::fs;
 use std::path::Path;
 use toml::{Table, Value};
@@ -47,50 +46,6 @@ fn escape_slint_string(value: &str) -> String {
         .replace('\t', "\\t")
 }
 
-fn generate_slint_l10n_adapter(flat_keys: &[String]) {
-    let out_file = Path::new("src/adapters/l10n.rs");
-
-    let methods = flat_keys
-        .iter()
-        .map(|key| {
-            let name = key.replace(['.', '-'], "_");
-            format!(
-                "    fn set_{name}(&self, ui: &AppWindow, value: String) {{\n\
-                 \t    ui.global::<L10n>().set_{name}(value.into());\n\
-                 \t}}"
-            )
-        })
-        .collect::<Vec<_>>()
-        .join("\n\n");
-
-    let content = format!(
-        r#"// AUTO-GENERATED — do not edit manually
-use crate::{{AppWindow, L10n}};
-use context::l10n::L10nPort;
-use macros::ui_adapter;
-use slint::ComponentHandle;
-
-#[derive(Clone)]
-pub struct SlintL10nPort {{
-    ui: slint::Weak<AppWindow>,
-}}
-
-impl SlintL10nPort {{
-    pub fn new(ui: slint::Weak<AppWindow>) -> Self {{
-        Self {{ ui }}
-    }}
-}}
-
-#[ui_adapter]
-impl L10nPort for SlintL10nPort {{
-{methods}
-}}
-"#
-    );
-
-    write_if_changed(out_file, &content);
-}
-
 fn generate_slint_l10n() {
     let en_toml = Path::new("../context/locales/en.toml");
     let out_file = Path::new("ui/shared/localization.slint");
@@ -103,11 +58,6 @@ fn generate_slint_l10n() {
     let mut flat_entries = Vec::new();
     collect_string_entries("", &table, &mut flat_entries);
     flat_entries.sort_by(|a, b| a.0.cmp(&b.0));
-
-    let flat_keys = flat_entries
-        .iter()
-        .map(|(key, _)| key.clone())
-        .collect::<Vec<_>>();
 
     let properties = flat_entries
         .iter()
@@ -124,8 +74,6 @@ fn generate_slint_l10n() {
     );
 
     write_if_changed(out_file, &generated);
-
-    generate_slint_l10n_adapter(&flat_keys);
 }
 
 fn download_missing_assets() {
@@ -187,14 +135,4 @@ fn generate_icons_slint() {
         "// AUTO-GENERATED — do not edit manually\nexport global Icons {{\n{properties}\n}}\n"
     );
     write_if_changed(out_file, &generated);
-}
-
-fn write_if_changed(path: &Path, content: &str) {
-    let existing = fs::read_to_string(path).unwrap_or_default();
-    if existing != content {
-        if let Some(p) = path.parent() {
-            let _ = fs::create_dir_all(p);
-        }
-        fs::write(path, content).ok();
-    }
 }

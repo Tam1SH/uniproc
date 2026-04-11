@@ -1,6 +1,9 @@
-use slint::RgbaColor;
+use macros::slint_port;
 
-pub trait CosmeticsPort: Clone + 'static {
-    fn set_main_window_accent(&self, accent: RgbaColor<u8>);
+
+#[slint_port(global = "Theme")]
+pub trait UiCosmeticsPort: Clone + 'static {
+    #[manual]
     fn apply_main_window_effects(&self);
+    fn set_accent(&self, accent: slint::Color);
 }
