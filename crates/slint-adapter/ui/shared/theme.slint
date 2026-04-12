@@ -137,8 +137,18 @@ export global Theme {
     out property <color> fill_subtle_secondary: colorSubtleBackgroundSelected;
     out property <color> fill_transparent: colorTransparentBackground;
 
-    in-out property <color> accent: colorBrandBackground;
-    out property <color> accent_hover: colorBrandBackgroundHover;
+    in-out property <color> accent;
+    in-out property <color> accent_light_1;
+    in-out property <color> accent_light_2;
+    in-out property <color> accent_light_3;
+    in-out property <color> accent_dark_1;
+    in-out property <color> accent_dark_2;
+    in-out property <color> accent_dark_3;
+
+    out property <color> accent_1: is_dark ? accent_dark_1 : accent_light_1;
+    out property <color> accent_2: is_dark ? accent_dark_2 : accent_light_2;
+    out property <color> accent_3: is_dark ? accent_dark_3 : accent_light_3;
+    out property <color> accent_hover: accent_1;
     out property <color> accent_text: colorNeutralForegroundOnBrand;
 
     out property <color> border: colorNeutralStroke2;

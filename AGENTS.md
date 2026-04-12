@@ -271,7 +271,8 @@ Business/UI correlation rules:
 - Business correlation is born in UI adapter callbacks, not in domain actors
 - `#[slint_bindings]` methods are the source of truth for UI-action tracing metadata; use `#[tracing(target = "...")]`
   on the contract method when target field names need an explicit override
-- `slint_bindings_adapter` derives the UI-action scope automatically as `Ui.<FeatureName>.<method_name>`
+- `slint_bindings_adapter` derives the UI-action scope automatically as `Ui.<Feature>.<method_name>` (`Ui` prefix is
+  removed from the trait name before building the feature segment)
 - `app_core` only carries correlation/runtime metadata through `send`, `publish` and `spawn_bg`
 - Domain code should reuse the current correlation id for external request/response protocols when one exists
 - Do not thread `correlation_id` manually through every internal actor message unless the protocol truly requires it
@@ -517,6 +518,10 @@ where
 with the derived scope, and applies `#[tracing(target = "...")]` overrides from the contract metadata. The shared
 adapter transform also upgrades `self.ui`, removes the explicit `ui` argument from the final method shape, traces
 adapter calls under `ui.adapter.call`, and logs+panics if the weak UI handle is already dropped.
+
+`Theme` is also driven from Rust via `UiCosmeticsPort`: on Windows, the cosmetics feature pushes the full system accent
+palette (`Accent`, `AccentLight1/2/3`, `AccentDark1/2/3`) into the `Theme` global; on non-Windows platforms, the
+platform layer exposes a stub palette with sensible defaults.
 
 Rules:
 

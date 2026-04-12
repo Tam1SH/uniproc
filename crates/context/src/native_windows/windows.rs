@@ -1,4 +1,4 @@
-use super::{NativeWindowConfig, NativeWindowTexture};
+use super::{platform_types::AccentPalette, NativeWindowConfig, NativeWindowTexture};
 use i_slint_backend_winit::{winit, WinitWindowAccessor};
 use raw_window_handle::{HasWindowHandle, RawWindowHandle};
 use slint::{ComponentHandle, RgbaColor};
@@ -67,16 +67,27 @@ pub fn apply_to_component<T: ComponentHandle + 'static>(
     });
 }
 
-pub fn get_system_accent() -> anyhow::Result<RgbaColor<u8>> {
+pub fn get_system_accent_palette() -> anyhow::Result<AccentPalette> {
     use ::windows::UI::ViewManagement::{UIColorType, UISettings};
     let settings = UISettings::new()?;
-    let color = settings.GetColorValue(UIColorType::AccentLight2)?;
-    Ok(RgbaColor {
+    Ok(AccentPalette {
+        accent: convert_color(settings.GetColorValue(UIColorType::Accent)?),
+        accent_light_1: convert_color(settings.GetColorValue(UIColorType::AccentLight1)?),
+        accent_light_2: convert_color(settings.GetColorValue(UIColorType::AccentLight2)?),
+        accent_light_3: convert_color(settings.GetColorValue(UIColorType::AccentLight3)?),
+        accent_dark_1: convert_color(settings.GetColorValue(UIColorType::AccentDark1)?),
+        accent_dark_2: convert_color(settings.GetColorValue(UIColorType::AccentDark2)?),
+        accent_dark_3: convert_color(settings.GetColorValue(UIColorType::AccentDark3)?),
+    })
+}
+
+fn convert_color(color: windows::UI::Color) -> RgbaColor<u8> {
+    RgbaColor {
         alpha: color.A,
         red: color.R,
         green: color.G,
         blue: color.B,
-    })
+    }
 }
 
 fn hwnd_from_winit(window: &winit::window::Window) -> HWND {

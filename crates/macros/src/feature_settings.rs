@@ -85,8 +85,6 @@ pub fn feature_settings_impl(
     TokenStream::from(expanded)
 }
 
-// ── SettingEntry ──────────────────────────────────────────────────────────────
-
 struct SettingEntry {
     name: Ident,
     key: String,
@@ -97,7 +95,6 @@ struct SettingEntry {
 }
 
 impl SettingEntry {
-    /// Tokens that evaluate to the default value at compile/expand time.
     fn default_tokens(&self) -> TokenStream2 {
         let ty = &self.ty;
         let def = self.default_expr.as_ref().unwrap();
@@ -112,8 +109,6 @@ impl SettingEntry {
         }
     }
 }
-
-// ── Patch-method generation ───────────────────────────────────────────────────
 
 fn gen_patch_methods(entries: &[SettingEntry]) -> Vec<TokenStream2> {
     entries
@@ -146,8 +141,6 @@ fn gen_patch_methods(entries: &[SettingEntry]) -> Vec<TokenStream2> {
         })
         .collect()
 }
-
-// ── Code generators ───────────────────────────────────────────────────────────
 
 fn generate_root(
     vis: &Visibility,
@@ -350,12 +343,10 @@ fn generate_nested(
     }
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
 fn is_trivial_type(ty: &syn::Type) -> bool {
     const TRIVIAL: &[&str] = &[
-        "u8", "u16", "u32", "u64", "u128", "i8", "i16", "i32", "i64", "i128", "f32", "f64",
-        "bool", "String", "usize", "isize",
+        "u8", "u16", "u32", "u64", "u128", "i8", "i16", "i32", "i64", "i128", "f32", "f64", "bool",
+        "String", "usize", "isize",
     ];
     if let syn::Type::Path(tp) = ty {
         tp.qself.is_none()
@@ -386,9 +377,9 @@ fn parse_setting_attr(attr: &Attribute, field_name: &Ident) -> (String, Option<E
     let mut is_json = false;
     let mut is_nested = false;
 
-    if let Ok(meta) = attr.parse_args_with(
-        syn::punctuated::Punctuated::<Meta, syn::Token![,]>::parse_terminated,
-    ) {
+    if let Ok(meta) =
+        attr.parse_args_with(syn::punctuated::Punctuated::<Meta, syn::Token![,]>::parse_terminated)
+    {
         for item in meta {
             match item {
                 Meta::NameValue(nv) => {

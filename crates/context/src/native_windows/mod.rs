@@ -164,4 +164,8 @@ pub fn apply_to_component<T: ComponentHandle + 'static>(
 #[cfg(target_os = "windows")]
 #[path = "windows.rs"]
 pub mod platform;
+#[cfg(not(target_os = "windows"))]
+#[path = "stub.rs"]
+pub mod platform;
+pub mod platform_types;
 pub mod slint_factory;

@@ -17,7 +17,6 @@ pub fn strip_helper_attrs(attrs: &mut Vec<syn::Attribute>) {
     });
 }
 
-/// `slint_port` and `slint_bindings` do exactly the same thing.
 pub fn strip_trait_helper_attrs(mut trait_item: ItemTrait) -> TokenStream {
     for item in &mut trait_item.items {
         if let syn::TraitItem::Fn(method) = item {
@@ -64,10 +63,8 @@ pub fn slint_port_adapter_impl(attr: TokenStream, mut impl_block: ItemImpl) -> T
         .filter(|m| !m.is_manual && !existing.contains(&m.name))
     {
         let fn_name = format_ident!("{}", method.name);
-        let slint_fn_name = format_ident!(
-            "{}",
-            method.slint_name.as_deref().unwrap_or(&method.name)
-        );
+        let slint_fn_name =
+            format_ident!("{}", method.slint_name.as_deref().unwrap_or(&method.name));
         let global_name = format_ident!(
             "{}",
             method.global_override.as_ref().unwrap_or(&port_def.global)
@@ -123,10 +120,8 @@ pub fn slint_bindings_adapter_impl(attr: TokenStream, mut impl_block: ItemImpl) 
         .filter(|m| !m.is_manual && !existing.contains(&m.name))
     {
         let fn_name = format_ident!("{}", method.name);
-        let slint_fn_name = format_ident!(
-            "{}",
-            method.slint_name.as_deref().unwrap_or(&method.name)
-        );
+        let slint_fn_name =
+            format_ident!("{}", method.slint_name.as_deref().unwrap_or(&method.name));
         let global_name = format_ident!("{}", binding_def.global);
 
         let arg_idents: Vec<_> = (0..method.handler_args.len())
@@ -162,8 +157,6 @@ pub fn slint_bindings_adapter_impl(attr: TokenStream, mut impl_block: ItemImpl) 
     apply_adapter_transform(&mut impl_block, Some(binding_def));
     quote!(#impl_block).into()
 }
-
-// ── Shared helpers ────────────────────────────────────────────────────────────
 
 pub fn get_trait_name(impl_block: &ItemImpl) -> String {
     match &impl_block.trait_ {
@@ -283,8 +276,8 @@ fn build_binding_tracing_wrapper(
     method: &ImplItemFn,
     spec: &BindingTracingSpec,
 ) -> proc_macro2::TokenStream {
-    let handler_ident =
-        find_handler_ident(method).unwrap_or_else(|| panic!("binding tracing requires a handler parameter"));
+    let handler_ident = find_handler_ident(method)
+        .unwrap_or_else(|| panic!("binding tracing requires a handler parameter"));
     let scope = &spec.scope;
     let target_fields = spec
         .target
@@ -340,20 +333,12 @@ fn build_binding_scope(trait_name: &str, method_name: &str) -> String {
 }
 
 fn binding_feature_name(trait_name: &str) -> String {
-    let trimmed = trait_name
-        .strip_prefix("Ui")
-        .unwrap_or(trait_name)
-        .strip_suffix("UiBindings")
-        .or_else(|| trait_name.strip_suffix("Bindings"))
-        .unwrap_or_else(|| trait_name.strip_prefix("Ui").unwrap_or(trait_name));
-
+    let trimmed = trait_name.strip_suffix("Bindings").unwrap_or(trait_name);
+    let trimmed = trimmed.strip_prefix("Ui").unwrap_or(trimmed);
     trimmed.to_string()
 }
 
-fn build_ui_port_wrapper(
-    self_ty: &syn::Type,
-    method: &ImplItemFn,
-) -> proc_macro2::TokenStream {
+fn build_ui_port_wrapper(self_ty: &syn::Type, method: &ImplItemFn) -> proc_macro2::TokenStream {
     let method_name = method.sig.ident.to_string();
     let adapter_name = quote! { stringify!(#self_ty) };
 
@@ -380,10 +365,7 @@ fn build_ui_port_wrapper(
     }
 }
 
-fn build_ui_upgrade_failure(
-    self_ty: &syn::Type,
-    method: &ImplItemFn,
-) -> proc_macro2::TokenStream {
+fn build_ui_upgrade_failure(self_ty: &syn::Type, method: &ImplItemFn) -> proc_macro2::TokenStream {
     let method_name = method.sig.ident.to_string();
     let adapter_name = quote! { stringify!(#self_ty) };
 
@@ -457,8 +439,18 @@ fn convert_expr_from_slint(name: &proc_macro2::Ident, ty: &str) -> proc_macro2::
 fn is_trivial_numeric(ty: &str) -> bool {
     matches!(
         ty,
-        "u8" | "u16" | "u32" | "u64" | "u128" | "usize"
-            | "i8" | "i16" | "i32" | "i64" | "i128" | "isize"
-            | "f32" | "f64"
+        "u8" | "u16"
+            | "u32"
+            | "u64"
+            | "u128"
+            | "usize"
+            | "i8"
+            | "i16"
+            | "i32"
+            | "i64"
+            | "i128"
+            | "isize"
+            | "f32"
+            | "f64"
     )
 }

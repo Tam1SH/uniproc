@@ -77,8 +77,14 @@ impl ServicesWindowRegister for ServicesUiAdapter {
 
             let theme = dialog.global::<Theme>();
 
-            if let Ok(accent) = context::native_windows::platform::get_system_accent() {
-                theme.set_accent(accent.into());
+            if let Ok(accent_palette) = context::native_windows::platform::get_system_accent_palette() {
+                theme.set_accent(accent_palette.accent.into());
+                theme.set_accent_light_1(accent_palette.accent_light_1.into());
+                theme.set_accent_light_2(accent_palette.accent_light_2.into());
+                theme.set_accent_light_3(accent_palette.accent_light_3.into());
+                theme.set_accent_dark_1(accent_palette.accent_dark_1.into());
+                theme.set_accent_dark_2(accent_palette.accent_dark_2.into());
+                theme.set_accent_dark_3(accent_palette.accent_dark_3.into());
             }
 
             NativeWindowManager::with_config(
