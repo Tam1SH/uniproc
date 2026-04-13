@@ -1,9 +1,16 @@
 use proc_macro::TokenStream;
-use syn::{parse_macro_input, DeriveInput, ItemImpl, ItemTrait, Meta};
+use syn::{parse_macro_input, DeriveInput, ItemFn, ItemImpl, ItemTrait, Meta};
 
 mod feature_settings;
+mod handler;
 mod schema;
 mod slint_macros;
+
+#[proc_macro_attribute]
+pub fn handler(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(item as ItemFn);
+    handler::generate_standalone_handler(input)
+}
 
 #[proc_macro_attribute]
 pub fn slint_port(_attr: TokenStream, item: TokenStream) -> TokenStream {

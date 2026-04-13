@@ -14,6 +14,7 @@ use app_core::actor::traits::{Context, Handler};
 use app_core::app::Window;
 use app_core::{messages, ratelimit};
 use context::page_status::PageId;
+use macros::handler;
 use slint::SharedString;
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
@@ -88,55 +89,49 @@ impl<P: UiProcessesPort, TWindow: Window> ProcessSnapshotActor<P, TWindow> {
     }
 }
 
-impl<P, TWindow> Handler<PageActivated, TWindow> for ProcessSnapshotActor<P, TWindow>
-where
-    P: UiProcessesPort,
-    TWindow: Window,
-{
-    fn handle(&mut self, msg: PageActivated, _ctx: &Context<Self, TWindow>) {
-        self.is_active = msg.page_id == self.page_id;
-    }
+#[handler]
+fn activate_page<P: UiProcessesPort, T: Window>(
+    this: &mut ProcessSnapshotActor<P, T>,
+    msg: PageActivated,
+) {
+    this.is_active = msg.page_id == this.page_id;
 }
 
-impl<P, TWindow> Handler<RemoteScanResult, TWindow> for ProcessSnapshotActor<P, TWindow>
-where
-    P: UiProcessesPort,
-    TWindow: Window,
-{
-    fn handle(&mut self, msg: RemoteScanResult, _ctx: &Context<Self, TWindow>) {
-        if !self.is_active {
-            return;
-        }
-
-        let ctx = self.context_for(msg.schema_id);
-        let result = WslScanResult {
-            processes: msg.processes,
-            machine: msg.machine,
-            ctx,
-        };
-        let snapshot = build_snapshot(&result);
-        self.snapshots.insert(msg.schema_id, snapshot);
-        self.rebuild_and_send();
+#[handler]
+fn process_remote_scan<P: UiProcessesPort, T: Window>(
+    this: &mut ProcessSnapshotActor<P, T>,
+    msg: RemoteScanResult,
+) {
+    if !this.is_active {
+        return;
     }
+
+    let ctx = this.context_for(msg.schema_id);
+    let result = WslScanResult {
+        processes: msg.processes,
+        machine: msg.machine,
+        ctx,
+    };
+    let snapshot = build_snapshot(&result);
+    this.snapshots.insert(msg.schema_id, snapshot);
+    this.rebuild_and_send();
 }
 
 #[cfg(target_os = "windows")]
-impl<P, TWindow> Handler<WindowsReportMessage, TWindow> for ProcessSnapshotActor<P, TWindow>
-where
-    P: UiProcessesPort,
-    TWindow: Window,
-{
-    fn handle(&mut self, msg: WindowsReportMessage, _ctx: &Context<Self, TWindow>) {
-        if !self.is_active {
-            return;
-        }
-
-        let ctx = self.context_for("windows");
-        let result = WindowsScanResult { report: msg.0, ctx };
-        let snapshot = build_snapshot(&result);
-        self.snapshots.insert("windows", snapshot);
-        self.rebuild_and_send();
+#[handler]
+fn process_windows_report<P: UiProcessesPort, T: Window>(
+    this: &mut ProcessSnapshotActor<P, T>,
+    msg: WindowsReportMessage,
+) {
+    if !this.is_active {
+        return;
     }
+
+    let ctx = this.context_for("windows");
+    let result = WindowsScanResult { report: msg.0, ctx };
+    let snapshot = build_snapshot(&result);
+    this.snapshots.insert("windows", snapshot);
+    this.rebuild_and_send();
 }
 
 pub fn build_snapshot(result: &dyn ScanResult) -> BridgeSnapshot {

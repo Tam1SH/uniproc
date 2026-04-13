@@ -21,35 +21,6 @@ impl<A: 'static, TWindow: Window> Context<A, TWindow> {
         self.addr.clone()
     }
 
-    pub fn spawn_task<M, Fut, S>(&self, fut: Fut, mut loading_setter: S)
-    where
-        M: Message + 'static + Send,
-        A: Handler<M, TWindow>,
-        Fut: Future<Output = M> + 'static + Send,
-        S: FnMut(&TWindow, bool) + 'static + Send,
-    {
-        let ui_weak = self.ui_weak.clone();
-
-        if let Some(ui) = ui_weak.upgrade() {
-            loading_setter(&ui, true);
-        }
-
-        let mut loading_setter = loading_setter;
-
-        let wrapped_fut = async move {
-            let result = fut.await;
-
-            let _ = slint::invoke_from_event_loop(move || {
-                if let Some(ui) = ui_weak.upgrade() {
-                    loading_setter(&ui, false);
-                }
-            });
-            result
-        };
-
-        self.spawn_bg(wrapped_fut);
-    }
-
     pub fn spawn_bg<M, Fut>(&self, fut: Fut)
     where
         M: Message + 'static + Send,
@@ -78,7 +49,10 @@ impl<A: 'static, TWindow: Window> Context<A, TWindow> {
                 REGISTRY.with(|reg| {
                     if let Some(boxed_addr) = reg.borrow().get(&id) {
                         if let Some(addr) = boxed_addr.downcast_ref::<Addr<A, TWindow>>() {
-                            addr.send_with_meta(result, meta.child("core.actor.bg.result", None, None));
+                            addr.send_with_meta(
+                                result,
+                                meta.child("core.actor.bg.result", None, None),
+                            );
                         }
                     }
                 });

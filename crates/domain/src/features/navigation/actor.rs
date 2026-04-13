@@ -16,6 +16,7 @@ use app_core::trace::{current_meta, install_current_meta};
 use context::page_status::{
     PageId, PageStatus, PageStatusChanged, PageStatusRegistry, TabId, TabStatusChanged,
 };
+use macros::handler;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -202,120 +203,108 @@ fn runtime_state_to_page_status(state: AgentConnectionState) -> PageStatus {
     }
 }
 
-impl<P: UiNavigationPort + Clone, TWindow: Window> Handler<RequestPageSwitch, TWindow>
-    for NavigationActor<P>
-{
-    fn handle(&mut self, msg: RequestPageSwitch, _ctx: &Context<Self, TWindow>) {
-        self.perform_page_switch(msg.0, msg.1);
+#[handler]
+fn switch_page<P: UiNavigationPort + Clone>(this: &mut NavigationActor<P>, msg: RequestPageSwitch) {
+    this.perform_page_switch(msg.0, msg.1);
+}
+
+#[handler]
+#[instrument(skip(this))]
+fn switch_tab<P: UiNavigationPort + Clone>(this: &mut NavigationActor<P>, msg: RequestTabSwitch) {
+    let tab_id = msg.0;
+    let Some(page_id) = this.state.page_for_tab(tab_id) else {
+        warn!(?tab_id, "Switch failed: no page available for tab");
+        return;
+    };
+
+    this.perform_page_switch(tab_id, page_id);
+}
+
+#[handler]
+#[instrument(skip(this, msg), fields(context_count = msg.contexts.len()))]
+fn update_navigation_contexts<P: UiNavigationPort + Clone>(
+    this: &mut NavigationActor<P>,
+    msg: NavigationContextsChanged,
+) {
+    this.state.replace_contexts(msg.contexts);
+    this.sync_ui_to_state();
+}
+
+#[handler]
+#[instrument(skip(this, msg), fields(schema_id = msg.schema_id))]
+fn process_remote_scan<P: UiNavigationPort + Clone>(
+    this: &mut NavigationActor<P>,
+    msg: RemoteScanResult,
+) {
+    if this.state.apply_remote_contexts(&msg) {
+        this.sync_ui_to_state();
     }
 }
 
-impl<P: UiNavigationPort + Clone, TWindow: Window> Handler<RequestTabSwitch, TWindow>
-    for NavigationActor<P>
-{
-    #[instrument(skip(self, _ctx))]
-    fn handle(&mut self, msg: RequestTabSwitch, _ctx: &Context<Self, TWindow>) {
-        let tab_id = msg.0;
-        let Some(page_id) = self.state.page_for_tab(tab_id) else {
-            warn!(?tab_id, "Switch failed: no page available for tab");
-            return;
-        };
-
-        self.perform_page_switch(tab_id, page_id);
-    }
-}
-
-impl<P: UiNavigationPort + Clone, TWindow: Window> Handler<NavigationContextsChanged, TWindow>
-    for NavigationActor<P>
-{
-    #[instrument(skip(self, _ctx, msg), fields(context_count = msg.contexts.len()))]
-    fn handle(&mut self, msg: NavigationContextsChanged, _ctx: &Context<Self, TWindow>) {
-        self.state.replace_contexts(msg.contexts);
-        self.sync_ui_to_state();
-    }
-}
-
-impl<P: UiNavigationPort + Clone, TWindow: Window> Handler<RemoteScanResult, TWindow>
-    for NavigationActor<P>
-{
-    #[instrument(skip(self, _ctx, msg), fields(schema_id = msg.schema_id))]
-    fn handle(&mut self, msg: RemoteScanResult, _ctx: &Context<Self, TWindow>) {
-        if self.state.apply_remote_contexts(&msg) {
-            self.sync_ui_to_state();
-        }
-    }
-}
-
-impl<P: UiNavigationPort + Clone, TWindow: Window> Handler<WslAgentRuntimeEvent, TWindow>
-    for NavigationActor<P>
-{
-    #[instrument(skip(self, _ctx), fields(state = ?msg.state, latency = ?msg.latency_ms))]
-    fn handle(&mut self, msg: WslAgentRuntimeEvent, _ctx: &Context<Self, TWindow>) {
-        self.update_context_status("wsl", runtime_state_to_page_status(msg.state));
-    }
+#[handler]
+#[instrument(skip(this), fields(state = ?msg.state, latency = ?msg.latency_ms))]
+fn sync_wsl_status<P: UiNavigationPort + Clone>(
+    this: &mut NavigationActor<P>,
+    msg: WslAgentRuntimeEvent,
+) {
+    this.update_context_status("wsl", runtime_state_to_page_status(msg.state));
 }
 
 #[cfg(target_os = "windows")]
-impl<P: UiNavigationPort + Clone, TWindow: Window> Handler<WindowsAgentRuntimeEvent, TWindow>
-    for NavigationActor<P>
-{
-    #[instrument(skip(self, _ctx), fields(state = ?msg.state, latency = ?msg.latency_ms))]
-    fn handle(&mut self, msg: WindowsAgentRuntimeEvent, _ctx: &Context<Self, TWindow>) {
-        self.update_context_status("host/windows", runtime_state_to_page_status(msg.state));
+#[handler]
+#[instrument(skip(this), fields(state = ?msg.state, latency = ?msg.latency_ms))]
+fn sync_windows_status<P: UiNavigationPort + Clone>(
+    this: &mut NavigationActor<P>,
+    msg: WindowsAgentRuntimeEvent,
+) {
+    this.update_context_status("host/windows", runtime_state_to_page_status(msg.state));
+}
+
+#[handler]
+#[instrument(skip(this), fields(tab_id = ?msg.tab_id, page_id = ?msg.page_id, status = ?msg.status))]
+fn update_page_status<P: UiNavigationPort + Clone>(
+    this: &mut NavigationActor<P>,
+    msg: PageStatusChanged,
+) {
+    this.ui_port
+        .set_page_status(msg.tab_id, msg.page_id, msg.status);
+    if let Some(err) = msg.error {
+        warn!(error = %err, "Page error reported");
+        this.ui_port.set_page_error(msg.tab_id, msg.page_id, err);
     }
 }
 
-impl<P: UiNavigationPort + Clone, TWindow: Window> Handler<PageStatusChanged, TWindow>
-    for NavigationActor<P>
-{
-    #[instrument(skip(self, _ctx), fields(tab_id = ?msg.tab_id, page_id = ?msg.page_id, status = ?msg.status))]
-    fn handle(&mut self, msg: PageStatusChanged, _ctx: &Context<Self, TWindow>) {
-        self.ui_port
-            .set_page_status(msg.tab_id, msg.page_id, msg.status);
-        if let Some(err) = msg.error {
-            warn!(error = %err, "Page error reported");
-            self.ui_port.set_page_error(msg.tab_id, msg.page_id, err);
-        }
+#[handler]
+#[instrument(skip(this), fields(tab_id = ?msg.tab_id, status = ?msg.status))]
+fn update_tab_status<P: UiNavigationPort + Clone>(
+    this: &mut NavigationActor<P>,
+    msg: TabStatusChanged,
+) {
+    this.ui_port.set_tab_status(msg.tab_id, msg.status);
+    if let Some(err) = msg.error {
+        warn!(error = %err, "Tab error reported");
+        this.ui_port.set_tab_error(msg.tab_id, err);
     }
 }
 
-impl<P: UiNavigationPort + Clone, TWindow: Window> Handler<TabStatusChanged, TWindow>
-    for NavigationActor<P>
-{
-    #[instrument(skip(self, _ctx), fields(tab_id = ?msg.tab_id, status = ?msg.status))]
-    fn handle(&mut self, msg: TabStatusChanged, _ctx: &Context<Self, TWindow>) {
-        self.ui_port.set_tab_status(msg.tab_id, msg.status);
-        if let Some(err) = msg.error {
-            warn!(error = %err, "Tab error reported");
-            self.ui_port.set_tab_error(msg.tab_id, err);
-        }
+#[handler]
+fn resize_sidebar<P: UiNavigationPort + Clone>(
+    this: &mut NavigationActor<P>,
+    msg: SideBarWidthChanged,
+) {
+    this.ui_port.set_side_bar_width(msg.0);
+}
+
+#[handler]
+fn close_tab<P: UiNavigationPort + Clone>(this: &mut NavigationActor<P>, msg: RequestTabClose) {
+    if this.state.disable_context(msg.0) {
+        this.sync_ui_to_state();
     }
 }
 
-impl<P: UiNavigationPort + Clone, TWindow: Window> Handler<SideBarWidthChanged, TWindow>
-    for NavigationActor<P>
-{
-    fn handle(&mut self, msg: SideBarWidthChanged, _ctx: &Context<Self, TWindow>) {
-        self.ui_port.set_side_bar_width(msg.0);
-    }
-}
-
-impl<P: UiNavigationPort + Clone, TWindow: Window> Handler<RequestTabClose, TWindow>
-    for NavigationActor<P>
-{
-    fn handle(&mut self, msg: RequestTabClose, _ctx: &Context<Self, TWindow>) {
-        if self.state.disable_context(msg.0) {
-            self.sync_ui_to_state();
-        }
-    }
-}
-
-impl<P: UiNavigationPort + Clone, TWindow: Window> Handler<RequestTabAdd, TWindow>
-    for NavigationActor<P>
-{
-    fn handle(&mut self, msg: RequestTabAdd, _ctx: &Context<Self, TWindow>) {
-        if self.state.enable_context(&msg.0) {
-            self.sync_ui_to_state();
-        }
+#[handler]
+fn add_tab<P: UiNavigationPort + Clone>(this: &mut NavigationActor<P>, msg: RequestTabAdd) {
+    if this.state.enable_context(&msg.0) {
+        this.sync_ui_to_state();
     }
 }

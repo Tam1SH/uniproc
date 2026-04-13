@@ -1,8 +1,8 @@
 use app_core::app::Window;
-mod actors;
+mod actor;
 pub mod domain;
 
-pub use actors::{Init, InstallAgent, WslEnvActor};
+pub use actor::{Init, InstallAgent, WslEnvActor};
 
 use app_contracts::features::environments::{
     UiEnvironmentsBindings, UiEnvironmentsPort, WslAgentRuntimeEvent,

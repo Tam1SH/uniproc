@@ -12,6 +12,7 @@ use app_core::app::Window;
 use app_core::messages;
 use context::page_status::{PageId, PageStatus, PageStatusChanged, PageStatusRegistry};
 use context::settings::SettingSubscription;
+use macros::handler;
 use slint::SharedString;
 use std::sync::Arc;
 use sysinfo::{Pid, ProcessesToUpdate, System};
@@ -62,215 +63,171 @@ impl<P: UiProcessesPort> ProcessActor<P> {
     }
 }
 
-impl<P, TWindow> Handler<ProcessSnapshotReady, TWindow> for ProcessActor<P>
-where
-    P: UiProcessesPort,
-    TWindow: Window,
-{
-    #[instrument(name = "process-actor", level="trace", skip(self, _ctx, msg), fields(count = msg.total_count))]
-    fn handle(&mut self, msg: ProcessSnapshotReady, _ctx: &Context<Self, TWindow>) {
-        let processes = msg.processes.lock().unwrap().clone();
-        self.has_snapshot_data = msg.total_count > 0;
+#[handler]
+#[instrument(name = "process-actor", level = "trace", skip(this, msg), fields(count = msg.total_count))]
+fn process_snapshot_ready<P: UiProcessesPort>(
+    this: &mut ProcessActor<P>,
+    msg: ProcessSnapshotReady,
+) {
+    let processes = msg.processes.lock().unwrap().clone();
+    this.has_snapshot_data = msg.total_count > 0;
 
-        let snapshot = BridgeSnapshot {
-            column_defs: msg.column_defs,
-            processes,
-        };
+    let snapshot = BridgeSnapshot {
+        column_defs: msg.column_defs,
+        processes,
+    };
 
-        let _ = self.table.handle_snapshot(snapshot, &mut self.metadata);
+    let _ = this.table.handle_snapshot(snapshot, &mut this.metadata);
 
-        self.ui_port
-            .set_column_defs(self.table.get_header_columns());
+    this.ui_port
+        .set_column_defs(this.table.get_header_columns());
+    this.ui_port.set_column_widths(this.table.column_widths());
+    this.ui_port
+        .set_column_metadata(this.table.column_metadata());
+    this.ui_port.set_total_processes_count(msg.total_count);
 
-        self.ui_port.set_column_widths(self.table.column_widths());
-        self.ui_port
-            .set_column_metadata(self.table.column_metadata());
-        self.ui_port.set_total_processes_count(msg.total_count);
-
-        if msg.total_count == 0 {
-            self.set_empty_state(
-                true,
-                "No Processes Available",
-                "The page is active, but the current data source returned an empty process snapshot.",
-            );
-        } else {
-            self.set_empty_state(false, "", "");
-        }
-
-        self.page_status.report_page(PageStatusChanged {
-            tab_id: tab_ids::MAIN, // TODO no only main, i think
-            page_id: self.page_id,
-            status: PageStatus::Ready,
-            error: None,
-        });
-
-        self.push_batch();
+    if msg.total_count == 0 {
+        this.set_empty_state(
+            true,
+            "No Processes Available",
+            "The page is active, but the current data source returned an empty process snapshot.",
+        );
+    } else {
+        this.set_empty_state(false, "", "");
     }
+
+    this.page_status.report_page(PageStatusChanged {
+        tab_id: tab_ids::MAIN,
+        page_id: this.page_id,
+        status: PageStatus::Ready,
+        error: None,
+    });
+
+    this.push_batch();
 }
 
-impl<P, TWindow> Handler<PageActivated, TWindow> for ProcessActor<P>
-where
-    P: UiProcessesPort,
-    TWindow: Window,
-{
-    fn handle(&mut self, msg: PageActivated, _ctx: &Context<Self, TWindow>) {
-        self.is_active = msg.page_id == self.page_id;
-    }
+#[handler]
+fn activate_page<P: UiProcessesPort>(this: &mut ProcessActor<P>, msg: PageActivated) {
+    this.is_active = msg.page_id == this.page_id;
 }
 
-impl<P, TWindow> Handler<WslAgentRuntimeEvent, TWindow> for ProcessActor<P>
-where
-    P: UiProcessesPort,
-    TWindow: Window,
-{
-    fn handle(&mut self, msg: WslAgentRuntimeEvent, _ctx: &Context<Self, TWindow>) {
-        if self.has_snapshot_data {
-            return;
-        }
+#[handler]
+fn sync_wsl_agent_status<P: UiProcessesPort>(
+    this: &mut ProcessActor<P>,
+    msg: WslAgentRuntimeEvent,
+) {
+    if this.has_snapshot_data {
+        return;
+    }
 
-        match msg.state {
-            AgentConnectionState::Connected => self.set_empty_state(
+    match msg.state {
+        AgentConnectionState::Connected => this.set_empty_state(
+            true,
+            "Waiting For First Snapshot",
+            "The WSL agent is connected. Waiting for it to publish the first process report.",
+        ),
+        AgentConnectionState::Connecting | AgentConnectionState::WaitingRetry { .. } => this
+            .set_empty_state(
                 true,
-                "Waiting For First Snapshot",
-                "The WSL agent is connected. Waiting for it to publish the first process report.",
+                "Connecting To WSL Agent",
+                "Process data is unavailable until the WSL agent connection is established.",
             ),
-            AgentConnectionState::Connecting | AgentConnectionState::WaitingRetry { .. } => self
-                .set_empty_state(
-                    true,
-                    "Connecting To WSL Agent",
-                    "Process data is unavailable until the WSL agent connection is established.",
-                ),
-            AgentConnectionState::Disconnected => self.set_agent_waiting_state(),
-        }
+        AgentConnectionState::Disconnected => this.set_agent_waiting_state(),
     }
 }
 
 #[cfg(target_os = "windows")]
-impl<P, TWindow> Handler<WindowsAgentRuntimeEvent, TWindow> for ProcessActor<P>
-where
-    P: UiProcessesPort,
-    TWindow: Window,
-{
-    fn handle(&mut self, msg: WindowsAgentRuntimeEvent, _ctx: &Context<Self, TWindow>) {
-        if self.has_snapshot_data {
-            return;
-        }
+#[handler]
+fn sync_windows_agent_status<P: UiProcessesPort>(
+    this: &mut ProcessActor<P>,
+    msg: WindowsAgentRuntimeEvent,
+) {
+    if this.has_snapshot_data {
+        return;
+    }
 
-        match msg.state {
-            AgentConnectionState::Connected => self.set_empty_state(
+    match msg.state {
+        AgentConnectionState::Connected => this.set_empty_state(
+            true,
+            "Waiting For First Snapshot",
+            "The Windows agent is connected. Waiting for it to publish the first process report.",
+        ),
+        AgentConnectionState::Connecting | AgentConnectionState::WaitingRetry { .. } => this
+            .set_empty_state(
                 true,
-                "Waiting For First Snapshot",
-                "The Windows agent is connected. Waiting for it to publish the first process report.",
+                "Connecting To Windows Agent",
+                "Process data is unavailable until the Windows agent connection is established.",
             ),
-            AgentConnectionState::Connecting | AgentConnectionState::WaitingRetry { .. } => {
-                self.set_empty_state(
-                    true,
-                    "Connecting To Windows Agent",
-                    "Process data is unavailable until the Windows agent connection is established.",
-                )
-            }
-            AgentConnectionState::Disconnected => self.set_agent_waiting_state(),
+        AgentConnectionState::Disconnected => this.set_agent_waiting_state(),
+    }
+}
+
+#[handler]
+fn sort_table<P: UiProcessesPort>(this: &mut ProcessActor<P>, msg: Sort) {
+    this.table.toggle_sort(msg.0.clone());
+    let sort = this.table.sort_state();
+    this.ui_port.set_sort_state(msg.0, sort.descending);
+    this.table.refresh(&mut this.metadata).ok();
+    this.push_batch();
+}
+
+#[handler]
+fn toggle_process_expand<P: UiProcessesPort>(this: &mut ProcessActor<P>, msg: ToggleExpand) {
+    this.table.toggle_expand(msg.0);
+    this.table.refresh(&mut this.metadata).ok();
+    this.push_batch();
+}
+
+#[handler]
+fn change_viewport<P: UiProcessesPort>(this: &mut ProcessActor<P>, msg: ViewportChanged) {
+    this.table.set_viewport(msg.start, msg.count.max(1));
+    this.push_batch();
+}
+
+#[handler]
+fn select_process<P: UiProcessesPort>(this: &mut ProcessActor<P>, msg: Select) {
+    this.table.select(msg.pid, msg.idx);
+    this.ui_port.set_selected_pid(msg.pid as i32);
+    if let Some(name) = this.table.selected_name_for_pid(msg.pid) {
+        this.ui_port.set_selected_name(name);
+    }
+}
+
+#[handler]
+fn terminate_selected_process<P: UiProcessesPort>(
+    this: &mut ProcessActor<P>,
+    _: TerminateSelected,
+    ctx: &Context<ProcessActor<P>>,
+) {
+    let pid = this.ui_port.get_selected_pid();
+    let Some(pid) = (pid != -1).then_some(pid as u32) else {
+        return;
+    };
+
+    ctx.spawn_bg(async move {
+        let mut system = System::new();
+        system.refresh_processes(ProcessesToUpdate::Some(&[Pid::from_u32(pid)]), false);
+        if let Some(process) = system.process(Pid::from_u32(pid)) {
+            process.kill();
         }
-    }
+        NoOp
+    });
+
+    this.table.clear_selection();
 }
 
-impl<P, TWindow> Handler<Sort, TWindow> for ProcessActor<P>
-where
-    P: UiProcessesPort,
-    TWindow: Window,
-{
-    fn handle(&mut self, msg: Sort, _ctx: &Context<Self, TWindow>) {
-        self.table.toggle_sort(msg.0.clone());
-        let sort = self.table.sort_state();
-        self.ui_port.set_sort_state(msg.0, sort.descending);
-        self.table.refresh(&mut self.metadata).ok();
-        self.push_batch();
+#[handler]
+fn resize_process_column<P: UiProcessesPort>(this: &mut ProcessActor<P>, msg: ResizeColumn) {
+    if let Err(e) = this.table.resize_column(msg.id, msg.width as u64) {
+        tracing::warn!("resize_column failed: {e}");
+        return;
     }
+    this.ui_port.set_column_widths(this.table.column_widths());
 }
 
-impl<P, TWindow> Handler<ToggleExpand, TWindow> for ProcessActor<P>
-where
-    P: UiProcessesPort,
-    TWindow: Window,
-{
-    fn handle(&mut self, msg: ToggleExpand, _ctx: &Context<Self, TWindow>) {
-        self.table.toggle_expand(msg.0);
-        self.table.refresh(&mut self.metadata).ok();
-        self.push_batch();
-    }
-}
-
-impl<P, TWindow> Handler<ViewportChanged, TWindow> for ProcessActor<P>
-where
-    P: UiProcessesPort,
-    TWindow: Window,
-{
-    fn handle(&mut self, msg: ViewportChanged, _ctx: &Context<Self, TWindow>) {
-        self.table.set_viewport(msg.start, msg.count.max(1));
-        self.push_batch();
-    }
-}
-
-impl<P, TWindow> Handler<Select, TWindow> for ProcessActor<P>
-where
-    P: UiProcessesPort,
-    TWindow: Window,
-{
-    fn handle(&mut self, msg: Select, _ctx: &Context<Self, TWindow>) {
-        self.table.select(msg.pid, msg.idx);
-        self.ui_port.set_selected_pid(msg.pid as i32);
-        if let Some(name) = self.table.selected_name_for_pid(msg.pid) {
-            self.ui_port.set_selected_name(name);
-        }
-    }
-}
-
-impl<P, TWindow> Handler<TerminateSelected, TWindow> for ProcessActor<P>
-where
-    P: UiProcessesPort,
-    TWindow: Window,
-{
-    fn handle(&mut self, _: TerminateSelected, ctx: &Context<Self, TWindow>) {
-        let pid = self.ui_port.get_selected_pid();
-        let Some(pid) = (pid != -1).then_some(pid as u32) else {
-            return;
-        };
-
-        ctx.spawn_bg(async move {
-            let mut system = System::new();
-            system.refresh_processes(ProcessesToUpdate::Some(&[Pid::from_u32(pid)]), false);
-            if let Some(process) = system.process(Pid::from_u32(pid)) {
-                process.kill();
-            }
-            NoOp
-        });
-
-        self.table.clear_selection();
-    }
-}
-
-impl<P, TWindow> Handler<ResizeColumn, TWindow> for ProcessActor<P>
-where
-    P: UiProcessesPort,
-    TWindow: Window,
-{
-    fn handle(&mut self, msg: ResizeColumn, _ctx: &Context<Self, TWindow>) {
-        if let Err(e) = self.table.resize_column(msg.id, msg.width as u64) {
-            tracing::warn!("resize_column failed: {e}");
-            return;
-        }
-        self.ui_port.set_column_widths(self.table.column_widths());
-    }
-}
-
-impl<P, TWindow> Handler<GroupClicked, TWindow> for ProcessActor<P>
-where
-    P: UiProcessesPort,
-    TWindow: Window,
-{
-    fn handle(&mut self, _msg: GroupClicked, _ctx: &Context<Self, TWindow>) {
-        info!("clicked");
-        self.is_grouped = !self.is_grouped;
-        self.ui_port.set_is_grouped(self.is_grouped);
-    }
+#[handler]
+fn toggle_grouping<P: UiProcessesPort>(this: &mut ProcessActor<P>, _msg: GroupClicked) {
+    info!("clicked");
+    this.is_grouped = !this.is_grouped;
+    this.ui_port.set_is_grouped(this.is_grouped);
 }

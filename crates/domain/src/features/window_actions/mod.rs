@@ -1,8 +1,8 @@
 use app_core::app::Window;
-mod actors;
+mod actor;
 
-use crate::features::window_actions::actors::BreakpointChanged;
-use actors::{Close, Drag, Maximize, Minimize, Resize, WindowActor};
+use crate::features::window_actions::actor::BreakpointChanged;
+use actor::{Close, Drag, Maximize, Minimize, Resize, WindowActor};
 use app_contracts::features::window_actions::{UiWindowActionsBindings, UiWindowActionsPort};
 use app_core::actor::addr::Addr;
 use app_core::app::Feature;
