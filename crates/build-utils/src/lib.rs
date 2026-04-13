@@ -1,6 +1,12 @@
 pub mod collector;
 pub mod slint_parser;
 
+// Re-export the codegen schema types at the crate root for convenience.
+pub use collector::{
+    ArgDef, BindingDef, BindingMethodDef, DtoDef, DtoField, MethodDef, PortDef, Schema,
+    load_schema,
+};
+
 use std::{fs, path::Path};
 
 pub fn write_if_changed(path: &Path, content: &str) {
