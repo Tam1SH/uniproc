@@ -19,11 +19,11 @@ Architecture guide for AI agents. Read this before touching any code.
 ## Never edit manually
 
 - `crates/context/src/icons.rs` — codegen'd icon registry from `slint-adapter/ui/assets`
-- `crates/app-contracts/src/features/l10n/apply.rs` — codegen'd by `crates/context/build.rs` from
-  `crates/context/locales/en.toml`
+- `crates/domain/src/features/l10n/apply.rs` — codegen'd by `crates/domain/build.rs` from
+  `crates/domain/locales/en.toml`
 - `crates/context/src/trace.rs` scope catalog section — codegen'd from `crates/context/trace-scopes.toml`
 - `slint-adapter/ui/shared/localization.slint` — codegen'd by `crates/slint-adapter/build.rs` from
-  `crates/context/locales/en.toml`
+  `crates/domain/locales/en.toml`
 - `slint-adapter/ui/shared/icons.slint` — codegen'd from `download.txt`
 - `slint-adapter/ui/globals-export.slint` — codegen'd by `build.rs` (scans `ui/` for exported structs, enums, globals
   and windows)
@@ -77,6 +77,9 @@ Use these labels as shorthand for the current design. They are descriptive, not 
 - Business logic lives only in actors inside domain
 - Features do not call each other directly — event bus only
 - UI has no knowledge of domain, only of contract
+- In `crates/app-contracts/src/features/<feature>/`, split contracts by role only when it adds clarity:
+  use `model.rs`, `bindings.rs`, `ports.rs` selectively, avoid empty placeholder files, and keep `mod.rs`
+  re-exporting the public API
 - New feature = use an existing feature as the reference implementation
 - Heavy feature = separate crate
 - Do not add `contract` or `slint-adapter` dependencies to `context` or `widgets`
@@ -115,7 +118,7 @@ Add a line to `slint-adapter/ui/assets/download.txt` in the format `name:url`, r
 `context::icons::Icons::get("name")` in Rust or the codegen'd Slint binding.
 
 **Adding a locale string**
-Edit `context/locales/*.toml`, rebuild. Do not touch any generated files.
+Edit `crates/domain/locales/*.toml`, rebuild. Do not touch any generated files.
 
 **Adding a trace scope**
 Edit `crates/context/trace-scopes.toml`, rebuild. Do not hand-edit the generated scope catalog in
@@ -229,8 +232,8 @@ Contains:
   bus on change (with deduplication)
 - **String caches** — buffers between UI and domain for string data
 - **Icon cache** — extracts icons from processes
-- **Locales** — `context/locales/*.toml` is the source of truth. `crates/context/build.rs` generates
-  `crates/app-contracts/src/features/l10n.rs` (`L10nPort`), and `crates/slint-adapter/build.rs` generates
+- **Locales** — `crates/domain/locales/*.toml` is the source of truth. `crates/domain/build.rs` generates
+  `crates/domain/src/features/l10n/apply.rs`, and `crates/slint-adapter/build.rs` generates
   `slint-adapter/ui/shared/localization.slint`. Add/edit strings only in the `.toml` files.
 - **Trace catalog + policy** — owns named tracing scopes, default enable/disable policy, subscriber bootstrap and
   buffered dump-on-warn/error behavior
@@ -293,6 +296,15 @@ The layer between domain and UI. Contains **only**:
 1. **Port traits** — commands from domain to UI (almost always unidirectional)
 2. **Bindings traits** — callbacks from UI to domain
 3. **DTOs** — data structures implementing `Message` for the event bus
+
+Feature contracts live under `crates/app-contracts/src/features/<feature>/` and may be split by concern when that
+actually improves readability. Do not force 1:1 files just for symmetry.
+
+- `model.rs` — DTOs, VMs, enums, constants, bus messages, helper types
+- `bindings.rs` — `Ui...Bindings` traits, when a feature actually has bindings
+- `ports.rs` — `Ui...Port` traits and adjacent adapter-facing contracts, when they exist
+- `mod.rs` — internal module wiring plus public re-exports so external imports stay stable
+- If a feature only has one concern, keep it compact instead of introducing empty modules
 
 Example of the split:
 

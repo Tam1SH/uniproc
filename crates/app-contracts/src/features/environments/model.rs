@@ -1,5 +1,4 @@
 use app_core::actor::traits::Message;
-use macros::{slint_bindings, slint_port};
 use ogurpchik::codecs::base::HasAllocator;
 use ogurpchik::codecs::base::MessageCodec;
 use ogurpchik::high::client::Client;
@@ -42,14 +41,14 @@ cfg_if::cfg_if! {
     if #[cfg(target_os = "windows")] {
         pub type WslConnectionState = AgentConnectionState;
 
-        #[derive(Clone)]
+        #[derive(Clone, Debug)]
         pub struct WslAgentRuntimeEvent {
             pub state: AgentConnectionState,
             pub latency_ms: Option<i32>,
         }
         impl Message for WslAgentRuntimeEvent {}
 
-        #[derive(Clone)]
+        #[derive(Clone, Debug)]
         pub struct WindowsAgentRuntimeEvent {
             pub state: AgentConnectionState,
             pub latency_ms: Option<i32>,
@@ -63,27 +62,4 @@ cfg_if::cfg_if! {
         }
         impl Message for LinuxAgentRuntimeEvent {}
     }
-}
-
-#[slint_port(global = "EnvironmentsFeatureGlobal")]
-pub trait UiEnvironmentsPort: 'static {
-    #[manual]
-    fn set_host_icon_by_key(&self, icon_key: &str);
-    #[manual]
-    fn set_wsl_distros(&self, distros: Vec<WslDistroDto>);
-    fn set_host_name(&self, name: String);
-    fn set_selected_env(&self, name: String);
-    fn set_has_wsl(&self, has_wsl: bool);
-    #[slint(global = "EnvsLoading")]
-    fn set_wsl_is_loading(&self, loading: bool);
-    #[slint(global = "EnvsLoading")]
-    fn set_wsl_distros_is_loading(&self, loading: bool);
-}
-
-#[slint_bindings(global = "EnvironmentsFeatureGlobal")]
-pub trait UiEnvironmentsBindings: 'static {
-    #[tracing(target = "agent")]
-    fn on_install_agent<F>(&self, handler: F)
-    where
-        F: Fn(String) + 'static;
 }
