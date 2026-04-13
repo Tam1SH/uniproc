@@ -4,22 +4,22 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-app-core = { workspace = true }
-app-contracts = { workspace = true }
+anyhow.workspace = true
+app-contracts.workspace = true
+app-core.workspace = true
 context.workspace = true
-serde_json.workspace = true
-tracing.workspace = true
-slint = { workspace = true }
-anyhow = { workspace = true }
-uuid.workspace = true
-tokio.workspace = true
-macros.workspace = true
-serde.workspace = true
-widgets.workspace = true
 dashmap.workspace = true
-uniproc-protocol.workspace = true
+macros.workspace = true
 rust-i18n.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+slint.workspace = true
 sysinfo.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+uniproc-protocol.workspace = true
+uuid.workspace = true
+widgets.workspace = true
 
 [target.'cfg(target_os = "windows")'.dependencies]
 windows.workspace = true

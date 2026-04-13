@@ -9,6 +9,7 @@ members = [
     "crates/core",
     "crates/context",
     "crates/domain",
+    "crates/domain-test-kit",
     "crates/domain/src/features/agents",
     "crates/domain/src/features/environments",
     "crates/domain/src/features/processes",
@@ -27,6 +28,7 @@ app-core = { path = "crates/core" }
 build-utils = { path = "crates/build-utils" }
 context = { path = "crates/context" }
 domain = { path = "crates/domain" }
+domain-test-kit = { path = "crates/domain-test-kit" }
 domain-agents = { path = "crates/domain/src/features/agents" }
 domain-environments = { path = "crates/domain/src/features/environments" }
 domain-processes = { path = "crates/domain/src/features/processes" }
@@ -43,6 +45,8 @@ slint = { version = "=1.14.1", features = ["renderer-skia"] }
 slint-build = "=1.14.1"
 i-slint-backend-winit = "=1.14.1"
 i-slint-compiler = "=1.14.1"
+i-slint-core = "=1.14.1"
+i-slint-backend-testing = "=1.14.1"
 winit = "0.30.12"
 window-vibrancy = "0.7.1"
 raw-window-handle = "0.6.2"
@@ -76,9 +80,15 @@ windows = { version = "0.61.3", features = [
     "Win32_NetworkManagement", "Win32_NetworkManagement_IpHelper", "Win32_NetworkManagement_Ndis",
     "Win32_Networking_WinSock", "Win32_System_Threading", "UI",
     "UI_ViewManagement", "Win32_System_Hypervisor", "Management", "Management_Deployment",
-    "ApplicationModel", "ApplicationModel_Core", "Win32_Storage_Packaging", "Win32_Storage_Packaging_Appx", "Win32_System_Services"] }
+    "ApplicationModel", "ApplicationModel_Core", "Win32_Storage_Packaging", "Win32_Storage_Packaging_Appx", "Win32_System_Services",
+] }
 libc = "1.0.0-alpha.2"
 sysinfo = "0.38.0"
+
+# --- Proc-Macro & Code Generation ---
+proc-macro2 = "1.0"
+quote = "1.0"
+syn = { version = "2.0", features = ["full", "extra-traits"] }
 
 # --- Utilities ---
 anyhow = "1.0.100"

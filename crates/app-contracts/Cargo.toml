@@ -4,16 +4,16 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-cfg-if = { workspace = true }
-app-core = { workspace = true }
-ogurpchik = { workspace = true }
-uniproc-protocol = { workspace = true }
-macros.workspace = true
+app-core.workspace = true
+cfg-if.workspace = true
 context.workspace = true
-slint = { workspace = true }
-serde.workspace = true
-uuid.workspace = true
+macros.workspace = true
+ogurpchik.workspace = true
 rkyv.workspace = true
+serde.workspace = true
+slint.workspace = true
+uniproc-protocol.workspace = true
+uuid.workspace = true
 
 [build-dependencies]
-build-utils = { path = "../build-utils" }
+build-utils.workspace = true

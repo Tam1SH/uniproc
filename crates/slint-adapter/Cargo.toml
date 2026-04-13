@@ -4,20 +4,20 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-cfg-if = { workspace = true }
-slint = { workspace = true }
-app-contracts = { workspace = true }
+anyhow.workspace = true
+app-contracts.workspace = true
+app-core.workspace = true
+cfg-if.workspace = true
 context.workspace = true
-app-core = { workspace = true }
-widgets.workspace = true
-anyhow = { workspace = true }
-i-slint-backend-winit = { workspace = true }
-winit = { workspace = true }
+i-slint-backend-winit.workspace = true
 macros.workspace = true
+slint.workspace = true
 tracing.workspace = true
+widgets.workspace = true
+winit.workspace = true
 
 [target.'cfg(target_os = "windows")'.dependencies]
-window-vibrancy = { workspace = true }
+window-vibrancy.workspace = true
 windows = { workspace = true, features = [
     "UI",
     "UI_ViewManagement",
@@ -28,6 +28,6 @@ windows = { workspace = true, features = [
 ] }
 
 [build-dependencies]
-build-utils = { path = "../build-utils" }
+build-utils.workspace = true
 slint-build.workspace = true
 toml.workspace = true

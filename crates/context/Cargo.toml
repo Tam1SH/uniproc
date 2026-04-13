@@ -4,23 +4,23 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-macros = { path = "../macros" }
-slint = { workspace = true }
-tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
-rust-i18n = { workspace = true }
-anyhow = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
-ttl_cache = { workspace = true }
-bon = { workspace = true }
+anyhow.workspace = true
 app-core.workspace = true
-i-slint-backend-winit = { workspace = true }
-raw-window-handle = { workspace = true }
+bon.workspace = true
+i-slint-backend-winit.workspace = true
+macros.workspace = true
+raw-window-handle.workspace = true
+rust-i18n.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+slint.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+ttl_cache.workspace = true
 
 [target.'cfg(target_os = "windows")'.dependencies]
-windows = { workspace = true }
-window-vibrancy = { workspace = true }
+window-vibrancy.workspace = true
+windows.workspace = true
 
 [dev-dependencies]
 tempfile = "3.27.0"

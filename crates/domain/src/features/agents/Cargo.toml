@@ -7,18 +7,18 @@ edition.workspace = true
 path = "lib.rs"
 
 [dependencies]
-cfg-if = { workspace = true }
-anyhow = { workspace = true }
-app-core = { workspace = true }
-context.workspace = true
-app-contracts = { workspace = true }
-ogurpchik = { workspace = true }
-rkyv = { workspace = true }
-slint = { workspace = true }
-tokio = { workspace = true }
-tracing = { workspace = true }
-uniproc-protocol = { workspace = true }
-macros.workspace = true
-serde.workspace = true
+anyhow.workspace = true
+app-contracts.workspace = true
+app-core.workspace = true
 async-trait.workspace = true
+cfg-if.workspace = true
+context.workspace = true
+macros.workspace = true
+ogurpchik.workspace = true
+rkyv.workspace = true
+serde.workspace = true
+slint.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+uniproc-protocol.workspace = true
 uuid.workspace = true

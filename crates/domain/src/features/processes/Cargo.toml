@@ -7,21 +7,26 @@ edition.workspace = true
 path = "lib.rs"
 
 [dependencies]
-anyhow = { workspace = true }
-app-core = { workspace = true }
-app-contracts = { workspace = true }
-widgets.workspace = true
-slint = { workspace = true }
-sysinfo = { workspace = true }
+anyhow.workspace = true
+app-contracts.workspace = true
+app-core.workspace = true
 bon.workspace = true
-tracing = { workspace = true }
-uniproc-protocol = { workspace = true }
 context.workspace = true
-serde_json = { workspace = true }
-serde.workspace = true
-macros.workspace = true
+dashmap.workspace = true
 lazy_static.workspace = true
-dashmap = { workspace = true, features = ["serde"] }
+macros.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+slint.workspace = true
+sysinfo.workspace = true
+tracing.workspace = true
+uniproc-protocol.workspace = true
 uuid.workspace = true
+widgets.workspace = true
+
 [target.'cfg(target_os = "windows")'.dependencies]
-windows = { workspace = true, features = ["Win32_System_SystemInformation", "Wdk_System_Threading", "Wdk_System_SystemInformation"] }
+windows = { workspace = true, features = [
+    "Wdk_System_Threading",
+    "Wdk_System_SystemInformation",
+    "Win32_System_SystemInformation",
+] }

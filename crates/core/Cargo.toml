@@ -4,11 +4,11 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-slint = { workspace = true }
-tokio = { workspace = true }
-tracing = { workspace = true }
-anyhow = { workspace = true }
-arc-swap = { workspace = true }
-parking_lot = "0.12.5"
+anyhow.workspace = true
+arc-swap.workspace = true
+slint.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+uuid.workspace = true
 once_cell = "1.21.3"
-uuid = { workspace = true }
+parking_lot = "0.12.5"
