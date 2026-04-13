@@ -44,7 +44,7 @@ export component ContextMenu inherits PopupWindow {
                 Rectangle {
                     height: 32px;
                     border-radius: 4px;
-                    background: item-touch.has-hover ? (item.is-danger ? #FF6060.with-alpha(0.1) : Theme.accent.with-alpha(0.1)) : transparent;
+                    background: item-touch.has-hover ? (item.is-danger ? #FF6060.with-alpha(0.1) : Theme.accent_2.with-alpha(0.1)) : transparent;
 
                     item-touch := TouchArea {
                         clicked => {
@@ -63,7 +63,7 @@ export component ContextMenu inherits PopupWindow {
                                 source: item.icon;
                                 width: 20px;
                                 height: 20px;
-                                colorize: item.is-danger ? #FF6060 : (item-touch.has-hover ? Theme.accent : white);
+                                colorize: item.is-danger ? #FF6060 : (item-touch.has-hover ? Theme.accent_2 : white);
                                 animate colorize { duration: 100ms; }
                             }
                         }

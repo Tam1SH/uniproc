@@ -28,7 +28,8 @@ pub trait NavigationUiBindings: 'static {
         F: Fn(TabId) + 'static;
 
     #[manual]
+    #[tracing(target = "context_key")]
     fn on_request_tab_add<F>(&self, handler: F)
     where
-        F: Fn() + 'static;
+        F: Fn(String) + 'static;
 }

@@ -5,7 +5,7 @@ import { TableUtils } from "utils.slint";
 export component MetricSplitBar inherits Rectangle {
     in property <float> value;
     in property <float> threshold: 100;
-    in property <color> accent-color: Theme.accent;
+    in property <color> accent_2-color: Theme.accent_2;
     in property <length> bar-width: 50px;
 
     width: bar-width;
@@ -25,7 +25,7 @@ export component MetricSplitBar inherits Rectangle {
         Rectangle {
             width: root.width * root.ratio();
             height: parent.height;
-            background: root.accent-color;
+            background: root.accent_2-color;
             border-radius: 3px;
         }
 

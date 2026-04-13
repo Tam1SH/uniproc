@@ -1,37 +1,124 @@
 import { Theme } from "theme.slint";
 import { Navigation } from "../globals/tabs-navigation.slint";
 import { BrowserTabItem } from "components/tab-item.slint";
+import { Icons } from "icons.slint";
+import { Divider } from "divider.slint";
 
-export component TabBar inherits Rectangle {
-    height: 40px;
-    background: Theme.surface;
+component AvailableContextItem inherits Rectangle {
+    in property <string> title;
+    in property <string> context-key;
+    in property <image> icon;
+    callback selected(string);
+
+    height: 32px;
+    border-radius: 6px;
+    background: area.has-hover ? Theme.colorNeutralBackgroundAlpha3 : transparent;
+
+    area := TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            root.selected(root.context-key);
+        }
+    }
 
     HorizontalLayout {
-        alignment: start;
         padding-left: 10px;
-        padding-top: 4px;
+        padding-right: 10px;
+        spacing: 8px;
 
-        for tab[i] in Navigation.tabs: BrowserTabItem {
-            title: tab.title;
-            active: Navigation.active_tab_index == i;
-            clicked => {
-                Navigation.request_tab_switch(i);
-            }
-            close_clicked => {
-                Navigation.request_tab_close(i);
+        Image {
+            source: root.icon;
+            width: 16px;
+            height: 16px;
+            image-fit: contain;
+            vertical-alignment: center;
+        }
+
+        Text {
+            text: root.title;
+            vertical-alignment: center;
+            color: white;
+        }
+    }
+}
+
+export component TabBar inherits Rectangle {
+    HorizontalLayout {
+        alignment: start;
+        padding-left: Theme.spacingHorizontalM;
+        for tab[i] in Navigation.tabs: VerticalLayout {
+            alignment: end;
+            BrowserTabItem {
+                title: tab.title;
+                icon: tab.icon;
+                active: Navigation.active_tab_index == i;
+                is-first: i == 0;
+                is-closable: tab.is_closable;
+                status: tab.status;
+                clicked => {
+                    Navigation.request_tab_switch(i);
+                }
+                close_clicked => {
+                    Navigation.request_tab_close(i);
+                }
             }
         }
 
-        Rectangle {
-            width: 30px;
-            Text {
-                text: "+";
-                color: white;
-                font-size: 20px;
+        VerticalLayout {
+            alignment: center;
+
+            HorizontalLayout {
+                padding-left: Theme.spacingHorizontalS;
+                spacing: Theme.spacingHorizontalS;
+                add-touch := TouchArea {
+                    mouse-cursor: pointer;
+                    clicked => {
+                        if (Navigation.available-contexts.length > 0) {
+                            add-menu.show();
+                        }
+                    }
+                }
+
+                Image {
+                    source: Icons.arrow-up-regular;
+                    colorize: Navigation.available-contexts.length > 0 ? white : Theme.colorNeutralForegroundDisabled;
+                    width: 12px;
+                    height: 12px;
+                    y: 3px;
+
+                    vertical-alignment: center;
+                    transform-rotation: -90deg;
+                    transform-origin: { x: 2.5px, y: 5px };
+                }
             }
-            TouchArea {
-                clicked => {
-                    Navigation.request_tab_add();
+        }
+    }
+
+    add-menu := PopupWindow {
+        width: 220px;
+        height: add-menu-content.preferred-height;
+
+        add-menu-content := Rectangle {
+            background: Theme.colorNeutralBackground2;
+            border-width: 1px;
+            border-color: Theme.colorNeutralStrokeAlpha;
+            border-radius: 8px;
+            drop-shadow-blur: 8px;
+            drop-shadow-offset-y: 8px;
+            drop-shadow-color: rgba(0, 0, 0, 0.3);
+
+            VerticalLayout {
+                padding: 6px;
+                spacing: 4px;
+
+                for context in Navigation.available-contexts: AvailableContextItem {
+                    title: context.title;
+                    context-key: context.context_key;
+                    icon: context.icon;
+                    selected(context-key) => {
+                        Navigation.request_tab_add(context-key);
+                        add-menu.close();
+                    }
                 }
             }
         }

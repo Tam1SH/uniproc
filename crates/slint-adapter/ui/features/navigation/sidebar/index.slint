@@ -86,10 +86,6 @@ export component SideBar inherits Rectangle {
                     spacing: 4px;
                     alignment: start;
 
-                    Environments {
-                        is-collapsed: root.is-collapsed;
-                    }
-
                     nav-pages := VerticalLayout {
                         spacing: root.nav-item-spacing;
 
@@ -103,7 +99,7 @@ export component SideBar inherits Rectangle {
                             indicator-height: root.indicator-transition-active ? (idx == Navigation.switch_from_index ? root.from-indicator-height : (idx == Navigation.switch_to_index ? root.to-indicator-height : Theme.selection_indicator_height)) : Theme.selection_indicator_height;
                             indicator-offset-y: root.indicator-transition-active ? (idx == Navigation.switch_from_index ? root.from-indicator-y : (idx == Navigation.switch_to_index ? root.to-indicator-y : root.indicator-center-y)) : root.indicator-center-y;
                             clicked => {
-                                Navigation.request_page_switch(Navigation.active_tab_index, page.id);
+                                Navigation.request_page_switch(Navigation.tabs[Navigation.active_tab_index].id, page.id);
                             }
                         }
                     }

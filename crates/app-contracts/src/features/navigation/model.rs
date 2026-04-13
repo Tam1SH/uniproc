@@ -86,9 +86,19 @@ pub struct TabDescriptor {
     pub id: TabId,
     pub context_key: TabContextKey,
     pub title: String,
+    pub icon_key: String,
     pub pages: Vec<PageDescriptor>,
     pub status: PageStatus,
     pub error_msg: String,
+    pub is_closable: bool,
+}
+
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct AvailableContextDescriptor {
+    pub context_key: TabContextKey,
+    pub title: String,
+    pub icon_key: String,
+    pub status: PageStatus,
 }
 
 #[derive(Clone, Debug)]

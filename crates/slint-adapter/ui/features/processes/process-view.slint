@@ -80,17 +80,48 @@ export component ProcessViewBody inherits Rectangle {
             background: Theme.colorNeutralStrokeAlpha;
         }
 
-        list := ListView {
-            changed viewport-y => {
-                root.emit-viewport();
-            }
-            changed visible-height => {
-                root.emit-viewport();
+        Rectangle {
+            vertical-stretch: 1;
+
+            list := ListView {
+                changed viewport-y => {
+                    root.emit-viewport();
+                }
+                changed visible-height => {
+                    root.emit-viewport();
+                }
+
+                for entry[idx] in ProcessesFeatureGlobal.process-rows: ProcessItem {
+                    entry: entry;
+                    idx: idx;
+                }
             }
 
-            for entry[idx] in ProcessesFeatureGlobal.process-rows: ProcessItem {
-                entry: entry;
-                idx: idx;
+            if (ProcessesFeatureGlobal.empty-state-visible): Rectangle {
+                width: parent.width;
+                height: parent.height;
+                background: Theme.colorNeutralBackgroundAlpha;
+
+                VerticalLayout {
+                    alignment: center;
+                    spacing: 10px;
+
+                    Text {
+                        text: ProcessesFeatureGlobal.empty-state-title;
+                        color: Theme.text_primary;
+                        font-size: 16px;
+                        font-weight: 600;
+                        horizontal-alignment: center;
+                    }
+
+                    Text {
+                        text: ProcessesFeatureGlobal.empty-state-message;
+                        color: Theme.text_secondary;
+                        font-size: Theme.font_size_body;
+                        horizontal-alignment: center;
+                        wrap: word-wrap;
+                    }
+                }
             }
         }
 

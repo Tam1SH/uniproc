@@ -24,10 +24,11 @@ import {
     ServicesPageHeader,
 } from "../pages/dashboard/subpages/services/index.slint";
 import { LoadingSpinner } from "loader-area.slint";
+import { TabBar } from "../features/navigation/tabs/index.slint";
 
 export component BuiltinDashboard inherits HorizontalLayout {
 
-    private property <TabData> tab_data: Navigation.tabs[0];
+    private property <TabData> tab_data: Navigation.tabs[Navigation.active_tab_index];
     private property <int> cur: Navigation.active_page_index;
     private property <PageData> current-page: root.tab_data.pages[root.cur];
 
@@ -39,81 +40,93 @@ export component BuiltinDashboard inherits HorizontalLayout {
 
     SideBar { }
 
-    Rectangle {
-        background: Theme.colorNeutralBackgroundAlpha;
-        border-width: 1px;
-        border-color: Theme.colorNeutralStrokeAlpha;
-        border-top-left-radius: Theme.border_radius_m;
+    VerticalLayout {
+        spacing: 0;
 
-        VerticalLayout {
+        Rectangle {
+            height: tabbar.preferred-height + 1px;
+            
+            tabbar := TabBar {
+                y: 1px;
+            }
+        }
+        
+        Rectangle {
+            background: Theme.colorNeutralBackgroundAlpha;
+            border-width: 1px;
+            border-color: Theme.colorNeutralStrokeAlpha;
+            border-top-left-radius: Theme.border_radius_m;
 
-            if (root.current-page.id == 1): ProcessesPageHeader { }
-            if (root.current-page.id == 7): ServicesPageHeader { }
+            VerticalLayout {
 
-            page-body-layer := Rectangle {
+                if (root.current-page.id == 1): ProcessesPageHeader { }
+                if (root.current-page.id == 7): ServicesPageHeader { }
 
-                vertical-stretch: 1;
-                clip: true;
+                page-body-layer := Rectangle {
 
-                if (root.cur-status == PageStatus.loading): LoadingSpinner { }
+                    vertical-stretch: 1;
+                    clip: true;
 
-                if (root.cur-status == PageStatus.error): Rectangle {
-                    VerticalLayout {
-                        alignment: center;
-                        spacing: 12px;
-                        Text {
-                            text: "⚠️";
-                            font-size: 24px;
-                            horizontal-alignment: center;
-                        }
+                    if (root.cur-status == PageStatus.loading): LoadingSpinner { }
 
-                        Text {
-                            text: root.cur-error;
-                            color: Theme.text_secondary;
-                            horizontal-alignment: center;
-                            font-size: Theme.font_size_body;
-                        }
-                    }
-                }
-
-                content-layer := Rectangle {
-                    width: 100%;
-                    height: 100%;
-                    opacity: 0;
-                    y: 30px;
-                    visible: root.is-ready;
-
-                    states [
-                        visible when Navigation.content-visible && root.is-ready: {
-                            opacity: 1;
-                            y: 0px;
-                            in {
-                                animate y {
-                                    duration: 400ms;
-                                    easing: cubic-bezier(0.1, 0.9, 0.2, 1.0);
-                                }
-                                animate opacity { duration: 250ms; }
+                    if (root.cur-status == PageStatus.error): Rectangle {
+                        VerticalLayout {
+                            alignment: center;
+                            spacing: 12px;
+                            Text {
+                                text: "⚠️";
+                                font-size: 24px;
+                                horizontal-alignment: center;
                             }
-                            out {
-                                animate opacity {
-                                    duration: 150ms;
-                                    easing: ease-in-out;
-                                }
-                                animate y {
-                                    duration: 0ms;
-                                    delay: 150ms;
-                                }
+
+                            Text {
+                                text: root.cur-error;
+                                color: Theme.text_secondary;
+                                horizontal-alignment: center;
+                                font-size: Theme.font_size_body;
                             }
                         }
-                    ]
-
-                    if (root.current-page.id == 1): ProcessesPageBody {
-                        width: 100%;
-                        height: 100%;
                     }
-                    if (root.current-page.id == 7): ServicesPageBody {
+
+                    content-layer := Rectangle {
                         width: 100%;
                         height: 100%;
+                        opacity: 0;
+                        y: 30px;
+                        visible: root.is-ready;
+
+                        states [
+                            visible when Navigation.content-visible && root.is-ready: {
+                                opacity: 1;
+                                y: 0px;
+                                in {
+                                    animate y {
+                                        duration: 400ms;
+                                        easing: cubic-bezier(0.1, 0.9, 0.2, 1.0);
+                                    }
+                                    animate opacity { duration: 250ms; }
+                                }
+                                out {
+                                    animate opacity {
+                                        duration: 150ms;
+                                        easing: ease-in-out;
+                                    }
+                                    animate y {
+                                        duration: 0ms;
+                                        delay: 150ms;
+                                    }
+                                }
+                            }
+                        ]
+
+                        if (root.current-page.id == 1): ProcessesPageBody {
+                            width: 100%;
+                            height: 100%;
+                        }
+                        if (root.current-page.id == 7): ServicesPageBody {
+                            width: 100%;
+                            height: 100%;
+                        }
                     }
                 }
             }

@@ -57,6 +57,8 @@ impl AgentBackend for LinuxBackend {
                     schema_id: "linux",
                     processes: r.processes,
                     machine: r.machine,
+                    environments: r.environments,
+                    docker_containers: r.docker_containers,
                 })
             });
             ratelimit!(3600, info!("Report published to event bus"));

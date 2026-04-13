@@ -101,10 +101,14 @@ impl ProcessVisitor for WslProcessStat {
             + self.vsock_tx_bytes
             + self.p9_rx_bytes
             + self.p9_tx_bytes
-            + self.tcp_tx_bytes
-            + self.tcp_rx_bytes
-            + self.udp_tx_bytes
-            + self.udp_rx_bytes
+            + self.tcp_tx_lo_bytes
+            + self.tcp_rx_lo_bytes
+            + self.tcp_tx_remote_bytes
+            + self.tcp_rx_remote_bytes
+            + self.udp_tx_lo_bytes
+            + self.udp_rx_lo_bytes
+            + self.udp_tx_remote_bytes
+            + self.udp_rx_remote_bytes
             + self.uds_tx_bytes
             + self.uds_rx_bytes;
         let mut net = ctx.get_field_value(pid, "net", FieldValueKind::Bytes(net_total));
@@ -155,10 +159,14 @@ impl ScanResult for WslScanResult {
             + self.machine.vsock_tx_bytes
             + self.machine.p9_rx_bytes
             + self.machine.p9_tx_bytes
-            + self.machine.tcp_tx_bytes
-            + self.machine.tcp_rx_bytes
-            + self.machine.udp_tx_bytes
-            + self.machine.udp_rx_bytes
+            + self.machine.tcp_tx_lo_bytes
+            + self.machine.tcp_rx_lo_bytes
+            + self.machine.tcp_tx_remote_bytes
+            + self.machine.tcp_rx_remote_bytes
+            + self.machine.udp_tx_lo_bytes
+            + self.machine.udp_rx_lo_bytes
+            + self.machine.udp_tx_remote_bytes
+            + self.machine.udp_rx_remote_bytes
             + self.machine.uds_tx_bytes
             + self.machine.uds_rx_bytes;
         let mut net = self

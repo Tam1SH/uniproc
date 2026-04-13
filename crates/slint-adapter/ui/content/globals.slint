@@ -17,8 +17,17 @@ export struct PageData {
 export struct TabData {
     id: int,
     title: string,
+    icon: image,
     pages: [PageData],
     status: PageStatus,
     error_msg: string,
+    is_closable: bool,
+}
+
+export struct AvailableContextData {
+    context_key: string,
+    title: string,
+    icon: image,
+    status: PageStatus,
 }
 

@@ -13,7 +13,7 @@ export component ResizeHandle inherits Rectangle {
         border-radius: 1px;
         x: (parent.width - self.width) / 2;
 
-        background: touch.pressed ? Theme.accent : (touch.has-hover ? Theme.layer_background : transparent);
+        background: touch.pressed ? Theme.accent_2 : (touch.has-hover ? Theme.layer_background : transparent);
         animate background { duration: 100ms; }
     }
 

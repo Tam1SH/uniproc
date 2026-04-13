@@ -2,8 +2,11 @@ use crate::features::processes::domain::table::ProcessTable;
 use crate::features::processes::services::metadata::ProcessMetadataService;
 use crate::processes_impl::application::process_snapshot_actor::ProcessSnapshotReady;
 use crate::processes_impl::domain::snapshot::BridgeSnapshot;
+#[cfg(target_os = "windows")]
+use app_contracts::features::environments::WindowsAgentRuntimeEvent;
+use app_contracts::features::environments::{AgentConnectionState, WslAgentRuntimeEvent};
 use app_contracts::features::navigation::{tab_ids, PageActivated};
-use app_contracts::features::processes::ProcessesUiPort;
+use app_contracts::features::processes::UiProcessesPort;
 use app_core::actor::traits::{Context, Handler, NoOp};
 use app_core::app::Window;
 use app_core::messages;
@@ -24,7 +27,7 @@ messages! {
     GroupClicked,
 }
 
-pub struct ProcessActor<P: ProcessesUiPort> {
+pub struct ProcessActor<P: UiProcessesPort> {
     pub page_id: PageId,
     pub table: ProcessTable,
     pub metadata: ProcessMetadataService,
@@ -32,26 +35,42 @@ pub struct ProcessActor<P: ProcessesUiPort> {
     pub is_active: bool,
     pub is_grouped: bool,
     pub ui_port: P,
+    pub has_snapshot_data: bool,
     #[allow(unused)]
     pub subs: Vec<SettingSubscription>,
 }
 
-impl<P: ProcessesUiPort> ProcessActor<P> {
+impl<P: UiProcessesPort> ProcessActor<P> {
     fn push_batch(&self) {
         let batch = self.table.batch();
         self.ui_port
             .set_process_rows_window(batch.total_rows, batch.start, batch.rows);
     }
+
+    fn set_empty_state(&self, visible: bool, title: &str, message: &str) {
+        self.ui_port.set_empty_state_visible(visible);
+        self.ui_port.set_empty_state_title(title.into());
+        self.ui_port.set_empty_state_message(message.into());
+    }
+
+    fn set_agent_waiting_state(&self) {
+        self.set_empty_state(
+            true,
+            "Waiting For Process Data",
+            "The process list will appear after the agent connects and sends its first snapshot.",
+        );
+    }
 }
 
 impl<P, TWindow> Handler<ProcessSnapshotReady, TWindow> for ProcessActor<P>
 where
-    P: ProcessesUiPort,
+    P: UiProcessesPort,
     TWindow: Window,
 {
     #[instrument(name = "process-actor", level="trace", skip(self, _ctx, msg), fields(count = msg.total_count))]
     fn handle(&mut self, msg: ProcessSnapshotReady, _ctx: &Context<Self, TWindow>) {
         let processes = msg.processes.lock().unwrap().clone();
+        self.has_snapshot_data = msg.total_count > 0;
 
         let snapshot = BridgeSnapshot {
             column_defs: msg.column_defs,
@@ -68,6 +87,16 @@ where
             .set_column_metadata(self.table.column_metadata());
         self.ui_port.set_total_processes_count(msg.total_count);
 
+        if msg.total_count == 0 {
+            self.set_empty_state(
+                true,
+                "No Processes Available",
+                "The page is active, but the current data source returned an empty process snapshot.",
+            );
+        } else {
+            self.set_empty_state(false, "", "");
+        }
+
         self.page_status.report_page(PageStatusChanged {
             tab_id: tab_ids::MAIN, // TODO no only main, i think
             page_id: self.page_id,
@@ -81,7 +110,7 @@ where
 
 impl<P, TWindow> Handler<PageActivated, TWindow> for ProcessActor<P>
 where
-    P: ProcessesUiPort,
+    P: UiProcessesPort,
     TWindow: Window,
 {
     fn handle(&mut self, msg: PageActivated, _ctx: &Context<Self, TWindow>) {
@@ -89,9 +118,65 @@ where
     }
 }
 
+impl<P, TWindow> Handler<WslAgentRuntimeEvent, TWindow> for ProcessActor<P>
+where
+    P: UiProcessesPort,
+    TWindow: Window,
+{
+    fn handle(&mut self, msg: WslAgentRuntimeEvent, _ctx: &Context<Self, TWindow>) {
+        if self.has_snapshot_data {
+            return;
+        }
+
+        match msg.state {
+            AgentConnectionState::Connected => self.set_empty_state(
+                true,
+                "Waiting For First Snapshot",
+                "The WSL agent is connected. Waiting for it to publish the first process report.",
+            ),
+            AgentConnectionState::Connecting | AgentConnectionState::WaitingRetry { .. } => self
+                .set_empty_state(
+                    true,
+                    "Connecting To WSL Agent",
+                    "Process data is unavailable until the WSL agent connection is established.",
+                ),
+            AgentConnectionState::Disconnected => self.set_agent_waiting_state(),
+        }
+    }
+}
+
+#[cfg(target_os = "windows")]
+impl<P, TWindow> Handler<WindowsAgentRuntimeEvent, TWindow> for ProcessActor<P>
+where
+    P: UiProcessesPort,
+    TWindow: Window,
+{
+    fn handle(&mut self, msg: WindowsAgentRuntimeEvent, _ctx: &Context<Self, TWindow>) {
+        if self.has_snapshot_data {
+            return;
+        }
+
+        match msg.state {
+            AgentConnectionState::Connected => self.set_empty_state(
+                true,
+                "Waiting For First Snapshot",
+                "The Windows agent is connected. Waiting for it to publish the first process report.",
+            ),
+            AgentConnectionState::Connecting | AgentConnectionState::WaitingRetry { .. } => {
+                self.set_empty_state(
+                    true,
+                    "Connecting To Windows Agent",
+                    "Process data is unavailable until the Windows agent connection is established.",
+                )
+            }
+            AgentConnectionState::Disconnected => self.set_agent_waiting_state(),
+        }
+    }
+}
+
 impl<P, TWindow> Handler<Sort, TWindow> for ProcessActor<P>
 where
-    P: ProcessesUiPort,
+    P: UiProcessesPort,
     TWindow: Window,
 {
     fn handle(&mut self, msg: Sort, _ctx: &Context<Self, TWindow>) {
@@ -105,7 +190,7 @@ where
 
 impl<P, TWindow> Handler<ToggleExpand, TWindow> for ProcessActor<P>
 where
-    P: ProcessesUiPort,
+    P: UiProcessesPort,
     TWindow: Window,
 {
     fn handle(&mut self, msg: ToggleExpand, _ctx: &Context<Self, TWindow>) {
@@ -117,7 +202,7 @@ where
 
 impl<P, TWindow> Handler<ViewportChanged, TWindow> for ProcessActor<P>
 where
-    P: ProcessesUiPort,
+    P: UiProcessesPort,
     TWindow: Window,
 {
     fn handle(&mut self, msg: ViewportChanged, _ctx: &Context<Self, TWindow>) {
@@ -128,7 +213,7 @@ where
 
 impl<P, TWindow> Handler<Select, TWindow> for ProcessActor<P>
 where
-    P: ProcessesUiPort,
+    P: UiProcessesPort,
     TWindow: Window,
 {
     fn handle(&mut self, msg: Select, _ctx: &Context<Self, TWindow>) {
@@ -142,7 +227,7 @@ where
 
 impl<P, TWindow> Handler<TerminateSelected, TWindow> for ProcessActor<P>
 where
-    P: ProcessesUiPort,
+    P: UiProcessesPort,
     TWindow: Window,
 {
     fn handle(&mut self, _: TerminateSelected, ctx: &Context<Self, TWindow>) {
@@ -166,7 +251,7 @@ where
 
 impl<P, TWindow> Handler<ResizeColumn, TWindow> for ProcessActor<P>
 where
-    P: ProcessesUiPort,
+    P: UiProcessesPort,
     TWindow: Window,
 {
     fn handle(&mut self, msg: ResizeColumn, _ctx: &Context<Self, TWindow>) {
@@ -180,7 +265,7 @@ where
 
 impl<P, TWindow> Handler<GroupClicked, TWindow> for ProcessActor<P>
 where
-    P: ProcessesUiPort,
+    P: UiProcessesPort,
     TWindow: Window,
 {
     fn handle(&mut self, _msg: GroupClicked, _ctx: &Context<Self, TWindow>) {

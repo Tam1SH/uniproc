@@ -1,23 +1,26 @@
 mod actor;
+mod model;
 mod settings;
+mod state;
 
 use crate::features::navigation::actor::{
     NavigationActor, RequestPageSwitch, RequestTabAdd, RequestTabClose, RequestTabSwitch,
     SideBarWidthChanged,
 };
+use crate::features::navigation::model::bootstrap_contexts;
 use crate::features::navigation::settings::NavigationSettings;
-use app_contracts::features::navigation::{
-    page_ids, tab_ids, NavigationUiBindings, NavigationUiPort, PageDescriptor, TabDescriptor,
-};
+#[cfg(target_os = "windows")]
+use app_contracts::features::environments::WindowsAgentRuntimeEvent;
+use app_contracts::features::agents::RemoteScanResult;
+use app_contracts::features::environments::WslAgentRuntimeEvent;
+use app_contracts::features::navigation::{NavigationUiBindings, UiNavigationPort};
 use app_core::actor::addr::Addr;
 use app_core::actor::event_bus::EventBus;
 use app_core::app::Feature;
 use app_core::app::Window;
 use app_core::reactor::Reactor;
 use app_core::SharedState;
-use context::page_status::{
-    PageId, PageStatusChanged, PageStatusRegistry, TabId, TabStatusChanged,
-};
+use context::page_status::{PageStatusChanged, PageStatusRegistry, TabStatusChanged};
 
 pub struct NavigationFeature<F> {
     make_ui_port: F,
@@ -33,7 +36,7 @@ impl<TWindow, F, P> Feature<TWindow> for NavigationFeature<F>
 where
     TWindow: Window,
     F: Fn(&TWindow) -> P + 'static,
-    P: NavigationUiPort + NavigationUiBindings + Clone + 'static,
+    P: UiNavigationPort + NavigationUiBindings + Clone + 'static,
 {
     fn install(
         self,
@@ -44,22 +47,29 @@ where
         let settings = NavigationSettings::new(shared)?;
         let ui_port = (self.make_ui_port)(ui);
 
-        let tabs = builtin_tabs();
-
-        let default_page = settings.default_page().get();
-        ui_port.set_navigation_tree(tabs.clone());
-
-        ui_port.set_side_bar_width(settings.side_bar_width().get());
-
+        let contexts = bootstrap_contexts();
         let actor = NavigationActor::new(
             ui_port.clone(),
             shared.get::<PageStatusRegistry>().unwrap(),
-            tabs,
+            contexts,
             &settings,
         );
+        let tabs = actor.tabs().to_vec();
+        let available_contexts = actor.available_contexts().to_vec();
+        let default_page = settings.default_page().get();
+        let initial_route = actor.resolve_initial_route(default_page).or_else(|| {
+            tabs.first()
+                .and_then(|tab| tab.pages.first().map(|page| (tab.id, page.id)))
+        });
         let addr = Addr::new(actor, ui.as_weak());
 
-        addr.send(RequestPageSwitch(default_page.0, default_page.1));
+        ui_port.set_navigation_tree(tabs.clone());
+        ui_port.set_available_contexts(available_contexts);
+        ui_port.set_side_bar_width(settings.side_bar_width().get());
+
+        if let Some((tab_id, page_id)) = initial_route {
+            addr.send(RequestPageSwitch(tab_id, page_id));
+        }
 
         let a = addr.clone();
         ui_port.on_request_page_switch(move |t_id, p_id| a.send(RequestPageSwitch(t_id, p_id)));
@@ -71,55 +81,18 @@ where
         ui_port.on_request_tab_close(move |t_id| a.send(RequestTabClose(t_id)));
 
         let a = addr.clone();
-        ui_port.on_request_tab_add(move || a.send(RequestTabAdd));
+        ui_port.on_request_tab_add(move |context_key| a.send(RequestTabAdd(context_key)));
 
         let a = addr.clone();
         ui_port.on_side_bar_width_changed(move |w| a.send(SideBarWidthChanged(w)));
 
         EventBus::subscribe::<_, PageStatusChanged, _>(&ui.new_token(), addr.clone());
         EventBus::subscribe::<_, TabStatusChanged, _>(&ui.new_token(), addr.clone());
+        EventBus::subscribe::<_, RemoteScanResult, _>(&ui.new_token(), addr.clone());
+        EventBus::subscribe::<_, WslAgentRuntimeEvent, _>(&ui.new_token(), addr.clone());
+        #[cfg(target_os = "windows")]
+        EventBus::subscribe::<_, WindowsAgentRuntimeEvent, _>(&ui.new_token(), addr.clone());
 
         Ok(())
     }
-}
-
-fn builtin_tabs() -> Vec<TabDescriptor> {
-    vec![
-        TabDescriptor {
-            id: tab_ids::MAIN,
-            title: "Dashboard".into(),
-            pages: vec![
-                PageDescriptor {
-                    id: page_ids::PROCESSES,
-                    text: "Processes".into(),
-                    icon_key: "apps-list".into(),
-                    ..Default::default()
-                },
-                PageDescriptor {
-                    id: page_ids::SERVICES,
-                    text: "Services".into(),
-                    icon_key: "puzzle".into(),
-                    ..Default::default()
-                },
-                PageDescriptor {
-                    id: page_ids::DISK,
-                    text: "Disk".into(),
-                    icon_key: "disk".into(),
-                    ..Default::default()
-                },
-            ],
-            ..Default::default()
-        },
-        TabDescriptor {
-            id: TabId(1),
-            title: "Ubuntu".into(),
-            pages: vec![PageDescriptor {
-                id: PageId(0),
-                text: "Processes".into(),
-                icon_key: "proc".into(),
-                ..Default::default()
-            }],
-            ..Default::default()
-        },
-    ]
 }

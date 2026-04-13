@@ -1,5 +1,6 @@
 
 import { ProcessesFeatureGlobal } from "../features/processes/globals.slint";
+import { TabBar } from "../features/navigation/tabs/index.slint";
 import { WindowControls } from "controls.slint";
 import { Theme } from "theme.slint";
 import { Icons } from "icons.slint";
@@ -31,18 +32,11 @@ export component TitleBar {
     }
 
     Rectangle {
-        height: 48px;
-
-        TouchArea {
-            moved => {
-                TitleBarActions.drag();
-            }
-        }
-
+        
         HorizontalLayout {
-            spacing: Theme.spacingHorizontalL;
+            spacing: 10px;
             padding-left: Theme.spacingHorizontalL;
-
+            
             VerticalLayout {
                 alignment: center;
                 Image {
@@ -51,13 +45,25 @@ export component TitleBar {
                     height: 16px;
                     image-fit: contain;
                 }
+
+                TouchArea {
+                    moved => {
+                        TitleBarActions.drag();
+                    }
+                }
             }
 
-            Text {
-                vertical-alignment: center;
-                color: white;
-                font-size: 12px;
-                text: "Uniproc";
+
+            Rectangle {
+                //???
+                horizontal-stretch: 999;
+                height: parent.height;
+
+                TouchArea {
+                    moved => {
+                        TitleBarActions.drag();
+                    }
+                }
             }
 
             WindowControls {

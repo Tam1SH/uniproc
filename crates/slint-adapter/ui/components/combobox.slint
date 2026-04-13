@@ -27,7 +27,7 @@ component ComboBoxRow inherits Rectangle {
         height: Theme.selection_indicator_height;
         x: Theme.spacingHorizontalXXS;
         border-radius: Theme.borderRadiusCircular;
-        background: root.selected ? Theme.accent : Colors.transparent;
+        background: root.selected ? Theme.accent_2 : Colors.transparent;
     }
 
     touch := TouchArea {
@@ -49,7 +49,7 @@ component ComboBoxRow inherits Rectangle {
                 source: root.item.icon;
                 width: 16px;
                 height: 16px;
-                colorize: root.selected ? Theme.accent : Theme.colorNeutralForeground2;
+                colorize: root.selected ? Theme.accent_2 : Theme.colorNeutralForeground2;
             }
         }
 

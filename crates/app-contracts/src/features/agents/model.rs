@@ -1,7 +1,9 @@
 use app_core::actor::traits::Message;
 use std::sync::Arc;
 
-use uniproc_protocol::{LinuxMachineStats, LinuxProcessStats};
+use uniproc_protocol::{
+    LinuxDockerContainerInfo, LinuxEnvironmentInfo, LinuxMachineStats, LinuxProcessStats,
+};
 use uuid::Uuid;
 
 #[derive(Debug, Clone)]
@@ -13,6 +15,8 @@ pub struct RemoteScanResult {
     pub schema_id: &'static str,
     pub processes: Vec<LinuxProcessStats>,
     pub machine: LinuxMachineStats,
+    pub environments: Vec<LinuxEnvironmentInfo>,
+    pub docker_containers: Vec<LinuxDockerContainerInfo>,
 }
 impl Message for RemoteScanResult {}
 

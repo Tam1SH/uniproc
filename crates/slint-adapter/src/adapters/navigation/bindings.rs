@@ -58,8 +58,9 @@ impl NavigationUiBindings for NavigationUiAdapter {
 
     fn on_request_tab_add<F>(&self, ui: &AppWindow, handler: F)
     where
-        F: Fn() + 'static,
+        F: Fn(String) + 'static,
     {
-        ui.global::<crate::Navigation>().on_request_tab_add(handler);
+        ui.global::<crate::Navigation>()
+            .on_request_tab_add(move |context_key| handler(context_key.to_string()));
     }
 }

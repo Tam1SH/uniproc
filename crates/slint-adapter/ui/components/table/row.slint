@@ -32,7 +32,7 @@ export component GenericTableRow inherits Rectangle {
     callback toggle-expand();
 
     height: 32px;
-    background: root.selected ? Theme.accent.with-alpha(0.1) :
+    background: root.selected ? Theme.accent_2.with-alpha(0.1) :
                 (touch.has-hover ? rgba(255,255,255,0.05) :
                 (root.is-alternate ? Theme.fill_row_subtle : transparent));
 

@@ -8,6 +8,6 @@ export component ContentContainer inherits Rectangle {
     clip: true;
     private property <TabData> active_tab: Navigation.tabs[Navigation.active_tab_index];
 
-    if (root.active_tab.id == 0): BuiltinDashboard { }
-    if (root.active_tab.id != 0): Rectangle { }
+    if (Navigation.tabs.length > 0): BuiltinDashboard { }
+    if (Navigation.tabs.length == 0): Rectangle { }
 }

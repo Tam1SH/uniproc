@@ -5,7 +5,7 @@ import { ContentDialogMode, ContentDialogWindow } from "components/content-dialo
 import { ContextMenuItem } from "components/context-menu.slint";
 import { TableCellData, TableColDef, TableColMetadata, TableColWidth } from "components/table/types.slint";
 import { TableUtils } from "components/table/utils.slint";
-import { PageData, PageStatus, TabData } from "content/globals.slint";
+import { AvailableContextData, PageData, PageStatus, TabData } from "content/globals.slint";
 import { EnvironmentsFeatureGlobal, EnvsLoading, WslDistro } from "features/environments/globals.slint";
 import { Navigation } from "features/navigation/globals/tabs-navigation.slint";
 import { ProcessEntry, ProcessGroup, ProcessesFeatureGlobal } from "features/processes/globals.slint";
@@ -20,6 +20,7 @@ import { TitleBarActions, WindowClickHandler } from "title/title-bar.slint";
 import { WindowAdapter, WindowSize } from "window-adapter.slint";
 
 export {
+    AvailableContextData,
     ComboBoxItem,
     ContentDialogMode,
     ContentDialogWindow,

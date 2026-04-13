@@ -1733,6 +1733,7 @@ dependencies = [
  "serde",
  "serde_json",
  "slint",
+ "sysinfo",
  "tokio",
  "toml 0.9.11+spec-1.1.0",
  "tracing",
@@ -6324,7 +6325,7 @@ checksum = "ebc1c04c71510c7f702b52b7c350734c9ff1295c464a03335b00bb84fc54f853"
 [[package]]
 name = "uniproc-protocol"
 version = "0.1.0"
-source = "git+https://github.com/Tam1SH/uniproc-protocol?branch=master#0eb7545dfb07eb05db6ff418df1ef99d13e592c6"
+source = "git+https://github.com/Tam1SH/uniproc-protocol?branch=master#12d58641256ef095775e11fb472277ff54ae5de1"
 dependencies = [
  "ogurpchik",
  "rkyv",
@@ -6779,7 +6780,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]

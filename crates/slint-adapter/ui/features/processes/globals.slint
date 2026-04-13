@@ -101,6 +101,9 @@ export global ProcessesFeatureGlobal {
     in property <bool> current-sort-descending;
     in property <bool> is-grouped;
     in property <int> total-processes-count;
+    in property <bool> empty-state-visible: false;
+    in property <string> empty-state-title: "";
+    in property <string> empty-state-message: "";
     callback sort-by(string);
     callback group-clicked();
     callback toggle-expand-group(string);

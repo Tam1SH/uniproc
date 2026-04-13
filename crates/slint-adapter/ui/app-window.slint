@@ -13,6 +13,7 @@ import { ResizeHandler } from "components/resize-area.slint";
 import { WslDistro } from "features/environments/globals.slint";
 import { ServicesFeatureGlobal } from "features/services/globals.slint";
 import { WindowSize, WindowAdapter } from "window-adapter.slint";
+import { TabBar } from "features/navigation/tabs/index.slint";
 export * from "globals-export.slint";
 
 export component AppWindow inherits Window {
@@ -52,7 +53,7 @@ export component AppWindow inherits Window {
         spacing: 0;
 
         TitleBar { }
-
+        
         HorizontalLayout {
             ContentContainer { }
         }

@@ -7,7 +7,7 @@ use crate::processes_impl::scanner::visitors::windows::WindowsScanResult;
 use app_contracts::features::agents::{RemoteScanResult, WindowsReportMessage};
 use app_contracts::features::navigation::PageActivated;
 use app_contracts::features::processes::{
-    FieldDefDto, ProcessFieldDto, ProcessNodeDto, ProcessesUiPort,
+    FieldDefDto, ProcessFieldDto, ProcessNodeDto, UiProcessesPort,
 };
 use app_core::actor::addr::Addr;
 use app_core::actor::traits::{Context, Handler};
@@ -19,7 +19,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 use tracing::Span;
 
-pub struct ProcessSnapshotActor<P: ProcessesUiPort, TWindow: Window> {
+pub struct ProcessSnapshotActor<P: UiProcessesPort, TWindow: Window> {
     pub snapshots: HashMap<&'static str, BridgeSnapshot>,
     pub contexts: HashMap<&'static str, Arc<StatefulContext>>,
     pub target: Addr<ProcessActor<P>, TWindow>,
@@ -38,7 +38,7 @@ messages! {
     }
 }
 
-impl<P: ProcessesUiPort, TWindow: Window> ProcessSnapshotActor<P, TWindow> {
+impl<P: UiProcessesPort, TWindow: Window> ProcessSnapshotActor<P, TWindow> {
     fn context_for(&mut self, schema_id: &'static str) -> Arc<StatefulContext> {
         self.contexts
             .entry(schema_id)
@@ -90,7 +90,7 @@ impl<P: ProcessesUiPort, TWindow: Window> ProcessSnapshotActor<P, TWindow> {
 
 impl<P, TWindow> Handler<PageActivated, TWindow> for ProcessSnapshotActor<P, TWindow>
 where
-    P: ProcessesUiPort,
+    P: UiProcessesPort,
     TWindow: Window,
 {
     fn handle(&mut self, msg: PageActivated, _ctx: &Context<Self, TWindow>) {
@@ -100,7 +100,7 @@ where
 
 impl<P, TWindow> Handler<RemoteScanResult, TWindow> for ProcessSnapshotActor<P, TWindow>
 where
-    P: ProcessesUiPort,
+    P: UiProcessesPort,
     TWindow: Window,
 {
     fn handle(&mut self, msg: RemoteScanResult, _ctx: &Context<Self, TWindow>) {
@@ -123,7 +123,7 @@ where
 #[cfg(target_os = "windows")]
 impl<P, TWindow> Handler<WindowsReportMessage, TWindow> for ProcessSnapshotActor<P, TWindow>
 where
-    P: ProcessesUiPort,
+    P: UiProcessesPort,
     TWindow: Window,
 {
     fn handle(&mut self, msg: WindowsReportMessage, _ctx: &Context<Self, TWindow>) {

@@ -1,6 +1,12 @@
 use crate::features::navigation::settings::NavigationSettings;
+use crate::features::navigation::state::NavigationState;
+use app_contracts::features::agents::RemoteScanResult;
+#[cfg(target_os = "windows")]
+use app_contracts::features::environments::WindowsAgentRuntimeEvent;
+use app_contracts::features::environments::{AgentConnectionState, WslAgentRuntimeEvent};
 use app_contracts::features::navigation::{
-    NavigationUiPort, PageActivated, TabActivated, TabDescriptor,
+    AvailableContextDescriptor, NavigationContextsChanged, PageActivated, TabActivated,
+    TabContextSnapshot, UiNavigationPort,
 };
 use app_core::actor::event_bus::EventBus;
 use app_core::actor::traits::{Context, Handler};
@@ -8,9 +14,8 @@ use app_core::app::Window;
 use app_core::messages;
 use app_core::trace::{current_meta, install_current_meta};
 use context::page_status::{
-    PageId, PageStatusChanged, PageStatusRegistry, TabId, TabStatusChanged,
+    PageId, PageStatus, PageStatusChanged, PageStatusRegistry, TabId, TabStatusChanged,
 };
-use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -21,52 +26,48 @@ messages! {
     RequestPageSwitch(TabId, PageId),
     RequestTabSwitch(TabId),
     RequestTabClose(TabId),
-    RequestTabAdd,
+    RequestTabAdd(String),
     SideBarWidthChanged(u64),
 }
 
-pub struct NavigationActor<P: NavigationUiPort + Clone> {
+pub struct NavigationActor<P: UiNavigationPort + Clone> {
     ui_port: P,
     registry: Arc<PageStatusRegistry>,
-
-    tabs: Vec<TabDescriptor>,
-    active_tab_id: TabId,
-
-    tab_active_pages: HashMap<TabId, PageId>,
-
+    state: NavigationState,
     anim_token: Arc<AtomicU64>,
     switch_duration: Duration,
     hide_delay: Duration,
     show_delay: Duration,
 }
 
-impl<P: NavigationUiPort + Clone> NavigationActor<P> {
+impl<P: UiNavigationPort + Clone> NavigationActor<P> {
     pub fn new(
         ui_port: P,
         registry: Arc<PageStatusRegistry>,
-        tabs: Vec<TabDescriptor>,
+        contexts: Vec<TabContextSnapshot>,
         settings: &NavigationSettings,
     ) -> Self {
-        let active_tab_id = tabs.first().map(|t| t.id).unwrap_or_default();
-        let mut tab_active_pages = HashMap::new();
-
-        for tab in &tabs {
-            if let Some(page) = tab.pages.first() {
-                tab_active_pages.insert(tab.id, page.id);
-            }
-        }
-
         Self {
             ui_port,
             registry,
-            tabs,
-            active_tab_id,
-            tab_active_pages,
+            state: NavigationState::new(contexts),
             anim_token: Arc::new(AtomicU64::new(0)),
             switch_duration: Duration::from_millis(600),
             hide_delay: Duration::from_millis(settings.switch_hide_delay_ms().get()),
             show_delay: Duration::from_millis(settings.switch_show_delay_ms().get()),
         }
+    }
+
+    pub fn tabs(&self) -> &[app_contracts::features::navigation::TabDescriptor] {
+        self.state.tabs()
+    }
+
+    pub fn available_contexts(&self) -> &[AvailableContextDescriptor] {
+        self.state.available_contexts()
+    }
+
+    pub fn resolve_initial_route(&self, candidate: (TabId, PageId)) -> Option<(TabId, PageId)> {
+        self.state.resolve_initial_route(candidate)
     }
 
     fn run_animation_step(
@@ -103,55 +104,61 @@ impl<P: NavigationUiPort + Clone> NavigationActor<P> {
         });
     }
 
+    fn sync_ui_to_state(&self) {
+        self.ui_port.set_navigation_tree(self.state.tabs().to_vec());
+        self.ui_port
+            .set_available_contexts(self.state.available_contexts().to_vec());
+
+        if let Some((active_tab_id, active_page_id)) = self.state.active_route() {
+            self.ui_port.set_active_tab(active_tab_id);
+            self.ui_port.set_active_page(active_tab_id, active_page_id);
+        }
+    }
+
+    fn update_context_status(&mut self, context_key: &str, status: PageStatus) {
+        if self.state.update_context_status(context_key, status) {
+            self.sync_ui_to_state();
+        }
+    }
+
     #[instrument(skip(self), fields(tab_id = ?tab_id, page_id = ?page_id))]
     fn perform_page_switch(&mut self, tab_id: TabId, page_id: PageId) {
-        let Some(tab) = self.tabs.iter().find(|t| t.id == tab_id) else {
-            warn!("Switch failed: Tab not found");
+        let Some(switch_plan) = self.state.switch_to_page(tab_id, page_id) else {
+            warn!("Switch failed or skipped: target route unavailable");
             return;
-        };
-        let Some((new_index, _)) = tab.pages.iter().enumerate().find(|(_, p)| p.id == page_id)
-        else {
-            warn!("Switch failed: Page not found in tab");
-            return;
-        };
-
-        let old_page_id = self.tab_active_pages.get(&tab_id).cloned();
-        if Some(page_id) == old_page_id && tab_id == self.active_tab_id {
-            debug!("Switch skipped: already on this page");
-            return;
-        }
-
-        let from_index = if tab_id == self.active_tab_id {
-            tab.pages
-                .iter()
-                .position(|p| Some(p.id) == old_page_id)
-                .unwrap_or(0) as i32
-        } else {
-            -1
         };
 
         info!(
-            from_tab = ?self.active_tab_id,
-            to_tab = ?tab_id,
-            from_page = ?old_page_id,
-            to_page = ?page_id,
+            context_key = switch_plan.context_key.0.as_str(),
+            from_tab = ?switch_plan.previous_tab_id,
+            to_tab = ?switch_plan.tab_id,
+            from_page = ?switch_plan.previous_page_id,
+            to_page = ?switch_plan.page_id,
             "Switching page"
         );
 
-        self.tab_active_pages.insert(tab_id, page_id);
-        self.active_tab_id = tab_id;
+        EventBus::publish(TabActivated {
+            tab_id: switch_plan.tab_id,
+        });
+        EventBus::publish(PageActivated {
+            tab_id: switch_plan.tab_id,
+            page_id: switch_plan.page_id,
+        });
 
-        EventBus::publish(TabActivated { tab_id });
-        EventBus::publish(PageActivated { tab_id, page_id });
-
-        let page_state = self.registry.get_page_state(tab_id, page_id);
+        let page_state = self
+            .registry
+            .get_page_state(switch_plan.tab_id, switch_plan.page_id);
         self.ui_port
-            .set_page_status(tab_id, page_id, page_state.status);
+            .set_page_status(switch_plan.tab_id, switch_plan.page_id, page_state.status);
 
-        if from_index != -1 {
-            debug!(from_index, new_index, "Starting transition animation");
+        if switch_plan.from_index != -1 {
+            debug!(
+                from_index = switch_plan.from_index,
+                to_index = switch_plan.to_index,
+                "Starting transition animation"
+            );
             self.ui_port
-                .set_switch_transition(from_index, new_index as i32, 0.0);
+                .set_switch_transition(switch_plan.from_index, switch_plan.to_index, 0.0);
             let next_token = self.anim_token.fetch_add(1, Ordering::SeqCst) + 1;
 
             Self::run_animation_step(
@@ -175,8 +182,8 @@ impl<P: NavigationUiPort + Clone> NavigationActor<P> {
             let ui2 = ui.clone();
             let inner_meta = current_meta();
 
-            ui2.set_active_tab(tab_id);
-            ui2.set_active_page(tab_id, page_id);
+            ui2.set_active_tab(switch_plan.tab_id);
+            ui2.set_active_page(switch_plan.tab_id, switch_plan.page_id);
             slint::Timer::single_shot(s_delay, move || {
                 let _meta_guard = inner_meta.clone().map(install_current_meta);
                 debug!("Setting content visible after delay");
@@ -186,7 +193,16 @@ impl<P: NavigationUiPort + Clone> NavigationActor<P> {
     }
 }
 
-impl<P: NavigationUiPort + Clone, TWindow: Window> Handler<RequestPageSwitch, TWindow>
+fn runtime_state_to_page_status(state: AgentConnectionState) -> PageStatus {
+    match state {
+        AgentConnectionState::Connected => PageStatus::Ready,
+        AgentConnectionState::Connecting => PageStatus::Loading,
+        AgentConnectionState::Disconnected => PageStatus::Inactive,
+        AgentConnectionState::WaitingRetry { .. } => PageStatus::Loading,
+    }
+}
+
+impl<P: UiNavigationPort + Clone, TWindow: Window> Handler<RequestPageSwitch, TWindow>
     for NavigationActor<P>
 {
     fn handle(&mut self, msg: RequestPageSwitch, _ctx: &Context<Self, TWindow>) {
@@ -194,30 +210,62 @@ impl<P: NavigationUiPort + Clone, TWindow: Window> Handler<RequestPageSwitch, TW
     }
 }
 
-impl<P: NavigationUiPort + Clone, TWindow: Window> Handler<RequestTabSwitch, TWindow>
+impl<P: UiNavigationPort + Clone, TWindow: Window> Handler<RequestTabSwitch, TWindow>
     for NavigationActor<P>
 {
     #[instrument(skip(self, _ctx))]
     fn handle(&mut self, msg: RequestTabSwitch, _ctx: &Context<Self, TWindow>) {
         let tab_id = msg.0;
-        let page_id = self
-            .tab_active_pages
-            .get(&tab_id)
-            .cloned()
-            .or_else(|| {
-                self.tabs
-                    .iter()
-                    .find(|t| t.id == tab_id)
-                    .and_then(|t| t.pages.first())
-                    .map(|p| p.id)
-            })
-            .unwrap_or_default();
+        let Some(page_id) = self.state.page_for_tab(tab_id) else {
+            warn!(?tab_id, "Switch failed: no page available for tab");
+            return;
+        };
 
         self.perform_page_switch(tab_id, page_id);
     }
 }
 
-impl<P: NavigationUiPort + Clone, TWindow: Window> Handler<PageStatusChanged, TWindow>
+impl<P: UiNavigationPort + Clone, TWindow: Window> Handler<NavigationContextsChanged, TWindow>
+    for NavigationActor<P>
+{
+    #[instrument(skip(self, _ctx, msg), fields(context_count = msg.contexts.len()))]
+    fn handle(&mut self, msg: NavigationContextsChanged, _ctx: &Context<Self, TWindow>) {
+        self.state.replace_contexts(msg.contexts);
+        self.sync_ui_to_state();
+    }
+}
+
+impl<P: UiNavigationPort + Clone, TWindow: Window> Handler<RemoteScanResult, TWindow>
+    for NavigationActor<P>
+{
+    #[instrument(skip(self, _ctx, msg), fields(schema_id = msg.schema_id))]
+    fn handle(&mut self, msg: RemoteScanResult, _ctx: &Context<Self, TWindow>) {
+        if self.state.apply_remote_contexts(&msg) {
+            self.sync_ui_to_state();
+        }
+    }
+}
+
+impl<P: UiNavigationPort + Clone, TWindow: Window> Handler<WslAgentRuntimeEvent, TWindow>
+    for NavigationActor<P>
+{
+    #[instrument(skip(self, _ctx), fields(state = ?msg.state, latency = ?msg.latency_ms))]
+    fn handle(&mut self, msg: WslAgentRuntimeEvent, _ctx: &Context<Self, TWindow>) {
+        self.update_context_status("wsl", runtime_state_to_page_status(msg.state));
+    }
+}
+
+#[cfg(target_os = "windows")]
+impl<P: UiNavigationPort + Clone, TWindow: Window> Handler<WindowsAgentRuntimeEvent, TWindow>
+    for NavigationActor<P>
+{
+    #[instrument(skip(self, _ctx), fields(state = ?msg.state, latency = ?msg.latency_ms))]
+    fn handle(&mut self, msg: WindowsAgentRuntimeEvent, _ctx: &Context<Self, TWindow>) {
+        self.update_context_status("host/windows", runtime_state_to_page_status(msg.state));
+    }
+}
+
+impl<P: UiNavigationPort + Clone, TWindow: Window> Handler<PageStatusChanged, TWindow>
     for NavigationActor<P>
 {
     #[instrument(skip(self, _ctx), fields(tab_id = ?msg.tab_id, page_id = ?msg.page_id, status = ?msg.status))]
@@ -231,7 +279,7 @@ impl<P: NavigationUiPort + Clone, TWindow: Window> Handler<PageStatusChanged, TW
     }
 }
 
-impl<P: NavigationUiPort + Clone, TWindow: Window> Handler<TabStatusChanged, TWindow>
+impl<P: UiNavigationPort + Clone, TWindow: Window> Handler<TabStatusChanged, TWindow>
     for NavigationActor<P>
 {
     #[instrument(skip(self, _ctx), fields(tab_id = ?msg.tab_id, status = ?msg.status))]
@@ -244,7 +292,7 @@ impl<P: NavigationUiPort + Clone, TWindow: Window> Handler<TabStatusChanged, TWi
     }
 }
 
-impl<P: NavigationUiPort + Clone, TWindow: Window> Handler<SideBarWidthChanged, TWindow>
+impl<P: UiNavigationPort + Clone, TWindow: Window> Handler<SideBarWidthChanged, TWindow>
     for NavigationActor<P>
 {
     fn handle(&mut self, msg: SideBarWidthChanged, _ctx: &Context<Self, TWindow>) {
@@ -252,18 +300,22 @@ impl<P: NavigationUiPort + Clone, TWindow: Window> Handler<SideBarWidthChanged, 
     }
 }
 
-impl<P: NavigationUiPort + Clone, TWindow: Window> Handler<RequestTabClose, TWindow>
+impl<P: UiNavigationPort + Clone, TWindow: Window> Handler<RequestTabClose, TWindow>
     for NavigationActor<P>
 {
-    fn handle(&mut self, _msg: RequestTabClose, _ctx: &Context<Self, TWindow>) {
-        // TODO: Implement tab closing logic
+    fn handle(&mut self, msg: RequestTabClose, _ctx: &Context<Self, TWindow>) {
+        if self.state.disable_context(msg.0) {
+            self.sync_ui_to_state();
+        }
     }
 }
 
-impl<P: NavigationUiPort + Clone, TWindow: Window> Handler<RequestTabAdd, TWindow>
+impl<P: UiNavigationPort + Clone, TWindow: Window> Handler<RequestTabAdd, TWindow>
     for NavigationActor<P>
 {
-    fn handle(&mut self, _msg: RequestTabAdd, _ctx: &Context<Self, TWindow>) {
-        // TODO: Implement tab adding logic
+    fn handle(&mut self, msg: RequestTabAdd, _ctx: &Context<Self, TWindow>) {
+        if self.state.enable_context(&msg.0) {
+            self.sync_ui_to_state();
+        }
     }
 }

@@ -11,8 +11,11 @@ use crate::processes_impl::settings::ProcessSettings;
 #[cfg(target_os = "windows")]
 use app_contracts::features::agents::WindowsReportMessage;
 use app_contracts::features::agents::{RemoteScanResult, ScanTick};
+#[cfg(target_os = "windows")]
+use app_contracts::features::environments::WindowsAgentRuntimeEvent;
+use app_contracts::features::environments::WslAgentRuntimeEvent;
 use app_contracts::features::navigation::{page_ids, PageActivated};
-use app_contracts::features::processes::{ProcessesUiBindings, ProcessesUiPort};
+use app_contracts::features::processes::{ProcessesUiBindings, UiProcessesPort};
 use app_core::actor::addr::Addr;
 use app_core::actor::event_bus::EventBus;
 use app_core::SharedState;
@@ -40,7 +43,7 @@ impl<TWindow, F, P> Feature<TWindow> for ProcessFeature<F>
 where
     TWindow: Window,
     F: Fn(&TWindow) -> P + 'static,
-    P: ProcessesUiPort + ProcessesUiBindings + Clone + 'static,
+    P: UiProcessesPort + ProcessesUiBindings + Clone + 'static,
 {
     fn install(
         self,
@@ -60,6 +63,7 @@ where
             is_active: true,
             is_grouped: false,
             ui_port: ui_port.clone(),
+            has_snapshot_data: false,
             subs: vec![],
         };
 
@@ -81,10 +85,21 @@ where
         EventBus::subscribe::<_, PageActivated, _>(&ui.new_token(), addr.clone());
         EventBus::subscribe::<_, PageActivated, _>(&ui.new_token(), snapshot_addr.clone());
         EventBus::subscribe::<_, RemoteScanResult, _>(&ui.new_token(), snapshot_addr.clone());
+        EventBus::subscribe::<_, WslAgentRuntimeEvent, _>(&ui.new_token(), addr.clone());
+        #[cfg(target_os = "windows")]
+        EventBus::subscribe::<_, WindowsAgentRuntimeEvent, _>(&ui.new_token(), addr.clone());
         #[cfg(target_os = "windows")]
         EventBus::subscribe::<_, WindowsReportMessage, _>(&ui.new_token(), snapshot_addr.clone());
 
         reactor.add_dynamic_loop(scan_interval_ms.as_signal(), || EventBus::publish(ScanTick));
+
+        //TODO: it broken + need translate
+        ui_port.set_empty_state_visible(true);
+        ui_port.set_empty_state_title("Waiting For Process Data".into());
+        ui_port.set_empty_state_message(
+            "The process list will appear after the agent connects and sends its first snapshot."
+                .into(),
+        );
 
         Ok(())
     }
@@ -93,7 +108,7 @@ where
 fn bind_ui_events<P, TWindow>(addr: Addr<ProcessActor<P>, TWindow>, ui_port: &P)
 where
     TWindow: Window,
-    P: ProcessesUiPort + ProcessesUiBindings + Clone + 'static,
+    P: UiProcessesPort + ProcessesUiBindings + Clone + 'static,
 {
     let a = addr.clone();
     ui_port.on_sort_by(move |field| a.send(Sort(field)));

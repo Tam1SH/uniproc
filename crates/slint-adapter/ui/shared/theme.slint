@@ -139,15 +139,15 @@ export global Theme {
 
     in-out property <color> accent;
     in-out property <color> accent_light_1;
-    in-out property <color> accent_light_2;
+    in-out property <color> accent_light_2: root.colorBrandBackground;
     in-out property <color> accent_light_3;
     in-out property <color> accent_dark_1;
     in-out property <color> accent_dark_2;
     in-out property <color> accent_dark_3;
 
-    out property <color> accent_1: is_dark ? accent_dark_1 : accent_light_1;
-    out property <color> accent_2: is_dark ? accent_dark_2 : accent_light_2;
-    out property <color> accent_3: is_dark ? accent_dark_3 : accent_light_3;
+    out property <color> accent_1: is_dark ? accent_light_1 : accent_dark_1;
+    out property <color> accent_2: is_dark ? accent_light_2 : accent_dark_2;
+    out property <color> accent_3: is_dark ? accent_light_3 : accent_dark_3;
     out property <color> accent_hover: accent_1;
     out property <color> accent_text: colorNeutralForegroundOnBrand;
 
@@ -166,8 +166,8 @@ export global Theme {
     out property <length> icon_size_m: 16px;
     out property <length> icon_size_l: 20px;
 
-    out property <length> title_bar_height: 47px;
-    out property <length> title_control_width: 48px;
+    out property <length> title_bar_height: 46px;
+    out property <length> title_control_width: 46px;
     out property <length> selection_indicator_width: 3px;
     out property <length> selection_indicator_height: 16px;
 

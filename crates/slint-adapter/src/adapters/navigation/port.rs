@@ -1,6 +1,8 @@
 use crate::adapters::navigation::NavigationUiAdapter;
 use crate::AppWindow;
-use app_contracts::features::navigation::{NavigationUiPort, TabDescriptor};
+use app_contracts::features::navigation::{
+    AvailableContextDescriptor, TabDescriptor, UiNavigationPort,
+};
 use context::icons::Icons;
 use context::page_status::{PageId, PageStatus, TabId};
 use macros::slint_port_adapter;
@@ -22,7 +24,7 @@ fn update_row<T: Clone + 'static>(
 }
 
 #[slint_port_adapter(window = AppWindow)]
-impl NavigationUiPort for NavigationUiAdapter {
+impl UiNavigationPort for NavigationUiAdapter {
     fn set_navigation_tree(&self, ui: &AppWindow, tabs: Vec<TabDescriptor>) {
         let slint_tabs: Vec<_> = tabs
             .into_iter()
@@ -42,15 +44,32 @@ impl NavigationUiPort for NavigationUiAdapter {
                 crate::TabData {
                     id: tab.id.0 as i32,
                     title: tab.title.into(),
+                    icon: Icons::get(&tab.icon_key),
                     pages: ModelRc::new(VecModel::from(pages)),
                     status: tab.status.into(),
                     error_msg: tab.error_msg.into(),
+                    is_closable: tab.is_closable,
                 }
             })
             .collect();
 
         ui.global::<crate::Navigation>()
             .set_tabs(ModelRc::new(VecModel::from(slint_tabs)));
+    }
+
+    fn set_available_contexts(&self, ui: &AppWindow, contexts: Vec<AvailableContextDescriptor>) {
+        let slint_contexts: Vec<_> = contexts
+            .into_iter()
+            .map(|context| crate::AvailableContextData {
+                context_key: context.context_key.0.into(),
+                title: context.title.into(),
+                icon: Icons::get(&context.icon_key),
+                status: context.status.into(),
+            })
+            .collect();
+
+        ui.global::<crate::Navigation>()
+            .set_available_contexts(ModelRc::new(VecModel::from(slint_contexts)));
     }
 
     fn set_active_tab(&self, ui: &AppWindow, tab_id: TabId) {
