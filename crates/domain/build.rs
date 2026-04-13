@@ -3,10 +3,10 @@ use std::path::Path;
 use toml::{Table, Value};
 
 fn main() {
-    let en_toml = Path::new("../context/locales/en.toml");
-    println!("cargo:rerun-if-changed=../context/locales/en.toml");
+    let en_toml = Path::new("./locales/en.toml");
+    println!("cargo:rerun-if-changed=./locales/");
 
-    let content = fs::read_to_string(en_toml).expect("../context/locales/en.toml not found");
+    let content = fs::read_to_string(en_toml).expect("./locales/en.toml not found");
     let table: Table = content.parse().expect("Failed to parse en.toml");
 
     let mut flat_keys = Vec::new();
@@ -23,7 +23,7 @@ fn main() {
         .join("\n");
 
     let generated = format!(
-        r#"// Based on context/locales/en.toml
+        r#"// Based on locales/en.toml
 // AUTO-GENERATED — do not edit manually
 use app_contracts::features::l10n::L10nPort;
 use rust_i18n::t;
@@ -34,10 +34,7 @@ pub fn apply<P: L10nPort>(port: &P) {{
 "#
     );
 
-    write_if_changed(
-        Path::new("src/features/l10n/apply.rs"),
-        &generated,
-    );
+    write_if_changed(Path::new("src/features/l10n/apply.rs"), &generated);
 }
 
 fn collect_keys(prefix: &str, table: &Table, acc: &mut Vec<String>) {

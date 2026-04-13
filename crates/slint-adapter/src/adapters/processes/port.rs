@@ -1,6 +1,6 @@
 use crate::AppWindow;
 use app_contracts::features::processes::{
-    FieldDefDto, FieldMetadata, ProcessEntryVm, ProcessesUiPort,
+    FieldDefDto, FieldMetadata, ProcessEntryVm, UiProcessesPort,
 };
 use macros::slint_port_adapter;
 use slint::{ComponentHandle, Model, SharedString, VecModel};
@@ -53,7 +53,7 @@ impl ProcessesUiAdapter {
 }
 
 #[slint_port_adapter(window = AppWindow)]
-impl ProcessesUiPort for ProcessesUiAdapter {
+impl UiProcessesPort for ProcessesUiAdapter {
     fn set_column_widths(&self, ui: &AppWindow, widths: Vec<(SharedString, u64)>) {
         let global = ui.global::<crate::ProcessesFeatureGlobal>();
         let defs = global.get_column_defs();
@@ -153,6 +153,7 @@ impl ProcessesUiPort for ProcessesUiAdapter {
         ui.global::<crate::ProcessesFeatureGlobal>()
             .set_total_processes_count(count as i32);
     }
+
 }
 
 impl SlintTableRowAdapter<crate::ProcessEntry, crate::TableCellData> for ProcessEntryVm {

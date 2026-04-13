@@ -1,4 +1,4 @@
-// Based on context/locales/en.toml
+// Based on locales/en.toml
 // AUTO-GENERATED — do not edit manually
 use app_contracts::features::l10n::L10nPort;
 use rust_i18n::t;

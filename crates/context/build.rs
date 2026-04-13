@@ -3,45 +3,8 @@ use std::path::{Path, PathBuf};
 use toml::{Table, Value};
 
 fn main() {
-    generate_l10n_port();
     generate_icons_registry();
     generate_trace_scopes();
-}
-
-fn generate_l10n_port() {
-    let en_toml = Path::new("./locales/en.toml");
-    println!("cargo:rerun-if-changed=./locales/");
-
-    let content = fs::read_to_string(en_toml).expect("./locales/en.toml not found");
-    let table: Table = content.parse().expect("Failed to parse en.toml");
-
-    let mut flat_keys = Vec::new();
-    collect_keys("", &table, &mut flat_keys);
-    flat_keys.sort();
-
-    let trait_methods = flat_keys
-        .iter()
-        .map(|key| {
-            let method_name = key.replace(['.', '-'], "_");
-            format!("    fn set_{method_name}(&self, value: String);")
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
-
-    write_if_changed(
-        Path::new("../app-contracts/src/features/l10n.rs"),
-        &format!(
-            r#"// Based on context/locales/en.toml
-// AUTO-GENERATED — do not edit manually
-use macros::slint_port;
-
-#[slint_port(global = "L10n")]
-pub trait L10nPort: Clone + 'static {{
-{trait_methods}
-}}
-"#
-        ),
-    );
 }
 
 fn generate_trace_scopes() {
@@ -68,7 +31,11 @@ fn generate_trace_scopes() {
     let consts = scopes
         .iter()
         .map(|entry| {
-            let ctor = if entry.enabled_by_default { "new" } else { "disabled" };
+            let ctor = if entry.enabled_by_default {
+                "new"
+            } else {
+                "disabled"
+            };
             format!(
                 "pub const {}: ScopeSpec = ScopeSpec::{}(\"{}\", ScopeKind::{});",
                 entry.const_name, ctor, entry.name, entry.kind
@@ -181,9 +148,17 @@ fn collect_scope_entries(path: Vec<String>, table: &Table, acc: &mut Vec<ScopeEn
                     .map(|segment| segment.to_ascii_uppercase())
                     .collect::<Vec<_>>()
                     .join("_");
-                acc.push(ScopeEntry { name, const_name, kind, enabled_by_default: *enabled_by_default });
+                acc.push(ScopeEntry {
+                    name,
+                    const_name,
+                    kind,
+                    enabled_by_default: *enabled_by_default,
+                });
             }
-            other => panic!("Unexpected trace scope entry for {:?}: {other:?}", next_path),
+            other => panic!(
+                "Unexpected trace scope entry for {:?}: {other:?}",
+                next_path
+            ),
         }
     }
 }
@@ -205,7 +180,11 @@ fn policy_strings(table: &Table, key: &str) -> Vec<String> {
 }
 
 fn string_slice_literal(values: &[String]) -> String {
-    let items = values.iter().map(|v| format!("{v:?}")).collect::<Vec<_>>().join(", ");
+    let items = values
+        .iter()
+        .map(|v| format!("{v:?}"))
+        .collect::<Vec<_>>()
+        .join(", ");
     format!("[{items}]")
 }
 

@@ -47,12 +47,12 @@ fn escape_slint_string(value: &str) -> String {
 }
 
 fn generate_slint_l10n() {
-    let en_toml = Path::new("../context/locales/en.toml");
+    let en_toml = Path::new("../domain/locales/en.toml");
     let out_file = Path::new("ui/shared/localization.slint");
 
-    println!("cargo:rerun-if-changed=../context/locales/");
+    println!("cargo:rerun-if-changed=../domain/locales/");
 
-    let content = fs::read_to_string(en_toml).expect("../context/locales/en.toml not found");
+    let content = fs::read_to_string(en_toml).expect("../domain/locales/en.toml not found");
     let table: Table = content.parse().expect("Failed to parse en.toml");
 
     let mut flat_entries = Vec::new();
