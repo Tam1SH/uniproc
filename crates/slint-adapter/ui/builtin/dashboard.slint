@@ -42,20 +42,12 @@ export component BuiltinDashboard inherits HorizontalLayout {
 
     VerticalLayout {
         spacing: 0;
-
-        Rectangle {
-            height: tabbar.preferred-height + 1px;
-            
-            tabbar := TabBar {
-                y: 1px;
-            }
-        }
-        
+        padding: Theme.spacingHorizontalS;
         Rectangle {
             background: Theme.colorNeutralBackgroundAlpha;
             border-width: 1px;
             border-color: Theme.colorNeutralStrokeAlpha;
-            border-top-left-radius: Theme.border_radius_m;
+            border-radius: Theme.border_radius_m;
 
             VerticalLayout {
 
@@ -132,5 +124,4 @@ export component BuiltinDashboard inherits HorizontalLayout {
             }
         }
     }
-
 }

@@ -1,6 +1,6 @@
 use app_contracts::features::windows_manager::OpenedWindow;
 use app_core::actor::event_bus::EventBus;
-use app_core::actor::traits::{Context, Handler};
+use app_core::actor::traits::Context;
 use context::native_windows::slint_factory::{OpenWindow, WindowClosed, WindowRegistry};
 use macros::handler;
 use std::sync::Arc;

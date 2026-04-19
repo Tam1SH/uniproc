@@ -1,10 +1,9 @@
-use crate::actor::{short_type_name, should_trace_actor_message};
 use crate::actor::traits::{Context, Handler, Message};
-use crate::app::Window;
+use crate::actor::{short_type_name, should_trace_actor_message};
 use crate::trace::{install_current_meta, is_message_enabled, is_scope_enabled, DispatchMeta};
 
-pub trait Envelope<A, TWindow: Window> {
-    fn handle(&mut self, actor: &mut A, ctx: &Context<A, TWindow>);
+pub trait Envelope<A> {
+    fn handle(&mut self, actor: &mut A, ctx: &Context<A>);
 }
 
 pub struct MessageEnvelope<M: Message> {
@@ -12,11 +11,11 @@ pub struct MessageEnvelope<M: Message> {
     pub(super) meta: DispatchMeta,
 }
 
-impl<A, M: Message, TWindow: Window> Envelope<A, TWindow> for MessageEnvelope<M>
+impl<A, M: Message> Envelope<A> for MessageEnvelope<M>
 where
-    A: Handler<M, TWindow>,
+    A: Handler<M>,
 {
-    fn handle(&mut self, actor: &mut A, ctx: &Context<A, TWindow>) {
+    fn handle(&mut self, actor: &mut A, ctx: &Context<A>) {
         if let Some(m) = self.message.take() {
             let _meta_guard = install_current_meta(self.meta.clone());
             let message_name = short_type_name::<M>();
@@ -42,6 +41,7 @@ where
                 correlation_id = self.meta.correlation_id.as_deref().unwrap_or(""),
             );
             let _enter = span.enter();
+
             actor.handle(m, ctx);
         }
     }

@@ -7,12 +7,12 @@ use app_contracts::features::services::{
 };
 use app_contracts::features::windows_manager::OpenedWindow;
 use app_core::actor::event_bus::EventBus;
-use app_core::actor::traits::{Context, Handler};
-use app_core::app::Window;
+use app_core::feature::FeatureContextState;
 use app_core::messages;
 use app_core::trace::current_or_new_correlation_uuid;
 use context::native_windows::slint_factory::{OpenWindow, SlintWindowRegistry, WindowRegistry};
 use context::page_status::{PageId, PageStatus, PageStatusChanged, PageStatusRegistry};
+use macros::handler;
 use slint::SharedString;
 use std::collections::HashSet;
 use std::sync::Arc;
@@ -37,156 +37,148 @@ pub struct ServiceActor<P: UiServicesPort> {
     pub page_status: Arc<PageStatusRegistry>,
     pub is_active: bool,
     pub pending: HashSet<Uuid>,
+    pub ctx_state: FeatureContextState,
 }
 
-impl<P: UiServicesPort, T: Window> Handler<ServiceSnapshot, T> for ServiceActor<P> {
-    fn handle(&mut self, m: ServiceSnapshot, _: &Context<Self, T>) {
-        self.ui_port.set_total_services_count(m.services.len());
-
-        self.table.update_data(m.services);
-
-        self.ui_port.set_column_widths(self.table.column_widths());
-
-        self.page_status.report_page(PageStatusChanged {
-            tab_id: tab_ids::MAIN,
-            page_id: self.page_id,
-            status: PageStatus::Ready,
-            error: None,
-        });
+impl<P: UiServicesPort> ServiceActor<P> {
+    fn push_batch(&self) {
         let b = self.table.batch();
         self.ui_port
             .set_service_rows_window(b.total_rows, b.start, b.rows);
     }
 }
 
-impl<P: UiServicesPort, T: Window> Handler<ServiceAction, T> for ServiceActor<P> {
-    fn handle(&mut self, m: ServiceAction, _: &Context<Self, T>) {
-        let id = current_or_new_correlation_uuid();
-        let cmd = match m.kind {
-            ServiceActionKind::Start => ServiceCommand::Start { name: m.name },
-            ServiceActionKind::Stop => ServiceCommand::Stop { name: m.name },
-            ServiceActionKind::Restart => ServiceCommand::Restart { name: m.name },
-            ServiceActionKind::Pause => ServiceCommand::Pause { name: m.name },
-            ServiceActionKind::Resume => ServiceCommand::Resume { name: m.name },
-        };
-        self.pending.insert(id);
-        EventBus::publish(WindowsActionRequest::new(
-            id,
-            WindowsRequest::ServiceCommand(cmd),
-        ));
+#[handler]
+fn service_snapshot<P: UiServicesPort>(this: &mut ServiceActor<P>, msg: ServiceSnapshot) {
+    if !this.is_active {
+        return;
     }
+
+    this.ui_port.set_total_services_count(msg.services.len());
+    this.table.update_data(msg.services);
+    this.ui_port.set_column_widths(this.table.column_widths());
+
+    this.page_status.report_page(PageStatusChanged {
+        tab_id: tab_ids::MAIN,
+        page_id: this.page_id,
+        status: PageStatus::Ready,
+        error: None,
+    });
+
+    this.push_batch();
 }
 
-impl<P: UiServicesPort, T: Window> Handler<WindowsActionResponse, T> for ServiceActor<P> {
-    fn handle(&mut self, m: WindowsActionResponse, _: &Context<Self, T>) {
-        self.pending.remove(&m.correlation_id);
-    }
+#[handler]
+fn service_action<P: UiServicesPort>(this: &mut ServiceActor<P>, msg: ServiceAction) {
+    let id = current_or_new_correlation_uuid();
+    let cmd = match msg.kind {
+        ServiceActionKind::Start => ServiceCommand::Start { name: msg.name },
+        ServiceActionKind::Stop => ServiceCommand::Stop { name: msg.name },
+        ServiceActionKind::Restart => ServiceCommand::Restart { name: msg.name },
+        ServiceActionKind::Pause => ServiceCommand::Pause { name: msg.name },
+        ServiceActionKind::Resume => ServiceCommand::Resume { name: msg.name },
+    };
+
+    this.pending.insert(id);
+    EventBus::publish(WindowsActionRequest::new(
+        id,
+        WindowsRequest::ServiceCommand(cmd),
+    ));
 }
 
-impl<P: UiServicesPort, T: Window> Handler<ResizeCol, T> for ServiceActor<P> {
-    fn handle(&mut self, m: ResizeCol, _: &Context<Self, T>) {
-        let _ = self.table.resize_column(m.id.to_string(), m.width as u64);
-        self.ui_port.set_column_widths(self.table.column_widths());
-    }
+#[handler]
+fn on_action_response<P: UiServicesPort>(this: &mut ServiceActor<P>, msg: WindowsActionResponse) {
+    this.pending.remove(&msg.correlation_id);
 }
 
-impl<P: UiServicesPort, T: Window> Handler<OpenServices, T> for ServiceActor<P> {
-    fn handle(&mut self, _: OpenServices, _: &Context<Self, T>) {
-        // info!("lol");
-        // #[cfg(target_os = "windows")]
-        // let _ = dbg!(
-        //     std::process::Command::new("mmc.exe")
-        //         .arg("services.msc")
-        //         .spawn()
-        // );
-    }
+#[handler]
+fn resize_service_column<P: UiServicesPort>(this: &mut ServiceActor<P>, msg: ResizeCol) {
+    let _ = this
+        .table
+        .resize_column(msg.id.to_string(), msg.width as u64);
+    this.ui_port.set_column_widths(this.table.column_widths());
 }
 
-impl<P: UiServicesPort, T: Window> Handler<PageActivated, T> for ServiceActor<P> {
-    fn handle(&mut self, m: PageActivated, _: &Context<Self, T>) {
-        self.is_active = m.page_id == self.page_id;
-    }
+#[handler]
+fn open_external_services<P: UiServicesPort>(_: &mut ServiceActor<P>, _: OpenServices) {
+    // #[cfg(target_os = "windows")]
+    // let _ = std::process::Command::new("mmc.exe")
+    //     .arg("services.msc")
+    //     .spawn();
 }
 
-impl<P: UiServicesPort, T: Window> Handler<Sort, T> for ServiceActor<P> {
-    fn handle(&mut self, m: Sort, _: &Context<Self, T>) {
-        let s = &mut self.table.view.flow.sort;
-        if s.field_id.as_ref() == Some(&m.0) {
-            s.descending = !s.descending;
-        } else {
-            s.field_id = Some(m.0.clone());
-            s.descending = false;
+#[handler]
+fn activate_page<P: UiServicesPort>(this: &mut ServiceActor<P>, msg: PageActivated) {
+    this.is_active = msg.page_id == this.page_id;
+}
+
+#[handler]
+fn sort_services<P: UiServicesPort>(this: &mut ServiceActor<P>, msg: Sort) {
+    let s = &mut this.table.view.flow.sort;
+    if s.field_id.as_ref() == Some(&msg.0) {
+        s.descending = !s.descending;
+    } else {
+        s.field_id = Some(msg.0.clone());
+        s.descending = false;
+    }
+
+    this.ui_port.set_current_sort_descending(s.descending);
+    this.ui_port.set_current_sort(msg.0);
+
+    this.table.refresh();
+    this.push_batch();
+}
+
+#[handler]
+fn change_viewport<P: UiServicesPort>(this: &mut ServiceActor<P>, msg: ViewportChanged) {
+    this.table.view.rows.set_viewport(msg.start, msg.count);
+    this.push_batch();
+}
+
+#[handler]
+fn select_service<P: UiServicesPort>(this: &mut ServiceActor<P>, msg: SelectedService) {
+    if let Some(dto) = this.table.get_by_name(msg.0.as_str()) {
+        match dto.status.as_str() {
+            "Running" => this.ui_port.set_active_buttons(false, true, true),
+            "Stopped" => this.ui_port.set_active_buttons(true, false, false),
+            _ => {}
         }
-        self.ui_port.set_current_sort_descending(s.descending);
-        self.ui_port.set_current_sort(m.0);
-        self.table.refresh();
-        let b = self.table.batch();
-        self.ui_port
-            .set_service_rows_window(b.total_rows, b.start, b.rows);
+
+        this.ui_port
+            .set_selected_service_details(dto.clone().into());
     }
+
+    this.table.select(msg.0.clone(), msg.1);
 }
 
-impl<P: UiServicesPort, T: Window> Handler<ViewportChanged, T> for ServiceActor<P> {
-    fn handle(&mut self, m: ViewportChanged, _: &Context<Self, T>) {
-        self.table.view.rows.set_viewport(m.start, m.count);
-        let b = self.table.batch();
-        self.ui_port
-            .set_service_rows_window(b.total_rows, b.start, b.rows);
-    }
+#[handler]
+fn open_properties<P: UiServicesPort>(_: &mut ServiceActor<P>, msg: OpenPropertiesWindow) {
+    EventBus::publish(OpenWindow {
+        key: msg.0.name.to_string(),
+        template: PROPERTIES_DIALOG_KEY.to_string(),
+        data: Arc::new(msg.0),
+    })
 }
 
-impl<P: UiServicesPort, T: Window> Handler<SelectedService, T> for ServiceActor<P> {
-    fn handle(&mut self, m: SelectedService, _: &Context<Self, T>) {
-        if let Some(dto) = self.table.get_by_name(m.0.as_str()) {
-            match dto.status.as_str() {
-                "Running" => {
-                    self.ui_port.set_active_buttons(false, true, true);
-                }
-                "Stopped" => {
-                    self.ui_port.set_active_buttons(true, false, false);
-                }
-                _ => {}
-            }
+#[handler]
+fn on_window_opened<P: UiServicesPort>(this: &mut ServiceActor<P>, msg: OpenedWindow) {
+    let Some(window) = this.registry.get_window(&msg.key) else {
+        return;
+    };
+    let Some(ui_port) = window.get_port::<dyn UiServiceDetailsPort>() else {
+        return;
+    };
 
-            self.ui_port
-                .set_selected_service_details(dto.clone().into());
-        }
+    let dto = msg
+        .data
+        .downcast::<ServiceEntryVm>()
+        .expect("ServiceEntryVm is of wrong type");
 
-        self.table.select(m.0.clone(), m.1);
+    match dto.status.as_str() {
+        "Running" => ui_port.set_active_buttons(false, true, true),
+        "Stopped" => ui_port.set_active_buttons(true, false, false),
+        _ => {}
     }
-}
 
-impl<P: UiServicesPort, T: Window> Handler<OpenPropertiesWindow, T> for ServiceActor<P> {
-    fn handle(&mut self, m: OpenPropertiesWindow, _: &Context<Self, T>) {
-        EventBus::publish(OpenWindow {
-            key: m.0.name.to_string(),
-            template: PROPERTIES_DIALOG_KEY.to_string(),
-            data: Arc::new(m.0),
-        })
-    }
-}
-
-impl<P: UiServicesPort, T: Window> Handler<OpenedWindow, T> for ServiceActor<P> {
-    fn handle(&mut self, m: OpenedWindow, _: &Context<Self, T>) {
-        if let Some(window) = self.registry.get_window(&m.key) {
-            if let Some(ui_port) = window.get_port::<dyn UiServiceDetailsPort>() {
-                let dto = m
-                    .data
-                    .downcast::<ServiceEntryVm>()
-                    .expect("ServiceEntryVm is of wrong type");
-
-                match dto.status.as_str() {
-                    "Running" => {
-                        ui_port.set_active_buttons(false, true, true);
-                    }
-                    "Stopped" => {
-                        ui_port.set_active_buttons(true, false, false);
-                    }
-                    _ => {}
-                }
-
-                ui_port.set_selected_service_details(dto.as_ref().clone().into());
-            }
-        }
-    }
+    ui_port.set_selected_service_details(dto.as_ref().clone().into());
 }

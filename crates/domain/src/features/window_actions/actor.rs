@@ -2,7 +2,6 @@ use app_contracts::features::window_actions::{
     ResizeEdge, UiWindowActionsPort, WindowBreakpoint, WindowConfigChanged,
 };
 use app_core::actor::event_bus::EventBus;
-use app_core::actor::traits::Context;
 use app_core::messages;
 use macros::handler;
 

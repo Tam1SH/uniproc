@@ -12,3 +12,9 @@ tracing.workspace = true
 uuid.workspace = true
 once_cell = "1.21.3"
 parking_lot = "0.12.5"
+
+[features]
+test-utils = []
+
+
+

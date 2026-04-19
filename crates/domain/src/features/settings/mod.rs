@@ -1,14 +1,10 @@
 mod settings;
 
-use app_core::app::Feature;
-use app_core::app::Window;
-use app_core::reactor::Reactor;
-use app_core::SharedState;
+use crate::features::settings::settings::SettingsPersistenceSettings;
+use app_core::feature::{AppFeature, AppFeatureInitContext};
+pub use context::settings::*;
 use std::path::PathBuf;
 use std::sync::Arc;
-
-use crate::features::settings::settings::SettingsPersistenceSettings;
-pub use context::settings::*;
 
 #[derive(Default)]
 pub struct SettingsFeature {
@@ -23,24 +19,17 @@ impl SettingsFeature {
     }
 }
 
-impl<TWindow> Feature<TWindow> for SettingsFeature
-where
-    TWindow: Window,
-{
-    fn install(
-        self,
-        _reactor: &mut Reactor,
-        _ui: &TWindow,
-        shared: &SharedState,
-    ) -> anyhow::Result<()> {
+impl AppFeature for SettingsFeature {
+    fn install(self, ctx: &mut AppFeatureInitContext) -> anyhow::Result<()> {
         let path = self
             .path_override
-            .unwrap_or_else(SettingsStore::default_settings_path);
+            .map(Ok)
+            .unwrap_or_else(SettingsStore::default_settings_path)?;
         let store = Arc::new(SettingsStore::load_or_default(path)?);
 
-        shared.insert_arc(Arc::clone(&store));
+        ctx.shared.insert_arc(Arc::clone(&store));
 
-        let _ = SettingsPersistenceSettings::new(shared)?;
+        let _ = SettingsPersistenceSettings::new(ctx.shared)?;
 
         Ok(())
     }

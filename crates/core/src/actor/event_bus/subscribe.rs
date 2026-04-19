@@ -1,7 +1,6 @@
 use crate::actor::addr::Addr;
 use crate::actor::short_type_name;
 use crate::actor::traits::{Handler, Message};
-use crate::app::Window;
 use crate::trace::{is_scope_enabled, DispatchMeta};
 
 use std::any::Any;
@@ -17,15 +16,15 @@ pub trait UntypedSubscriber: 'static {
     fn id(&self) -> SubscriptionId;
 }
 
-pub struct Subscriber<A: Handler<M, TWindow>, M: Event, TWindow: Window> {
+pub struct Subscriber<A: Handler<M>, M: Event> {
     pub(super) id: SubscriptionId,
-    pub(super) addr: Addr<A, TWindow>,
+    pub(super) addr: Addr<A>,
     pub(super) _marker: PhantomData<M>,
 }
 
-impl<A, M, TWindow: Window> UntypedSubscriber for Subscriber<A, M, TWindow>
+impl<A, M> UntypedSubscriber for Subscriber<A, M>
 where
-    A: Handler<M, TWindow> + 'static,
+    A: Handler<M> + 'static,
     M: Event,
 {
     fn deliver(&self, msg: Box<dyn Any>, meta: DispatchMeta) {
@@ -40,11 +39,12 @@ where
                     "bus.deliver"
                 );
             }
-            self.addr
-                .send_with_meta((*concrete_msg).clone(), meta.child("core.bus.deliver", None, None));
+            self.addr.send_with_meta(
+                (*concrete_msg).clone(),
+                meta.child("core.bus.deliver", None, None),
+            );
         }
     }
-
     fn id(&self) -> SubscriptionId {
         self.id
     }

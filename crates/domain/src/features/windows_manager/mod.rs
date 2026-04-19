@@ -1,33 +1,26 @@
 use crate::features::windows_manager::actor::WindowManagerActor;
 use app_core::actor::addr::Addr;
 use app_core::actor::event_bus::EventBus;
-use app_core::app::Feature;
-use app_core::app::Window;
-use app_core::reactor::Reactor;
-use app_core::SharedState;
-use context::native_windows::slint_factory::{
-    OpenWindow, SlintWindowRegistry, WindowClosed, WindowRegistry,
-};
+use app_core::feature::{AppFeature, AppFeatureInitContext};
+use app_core::lifecycle_tracker::FeatureLifecycle;
+use context::native_windows::slint_factory::{OpenWindow, SlintWindowRegistry, WindowClosed};
 
 mod actor;
 
 pub struct WindowManagerFeature;
 
-impl<TWindow> Feature<TWindow> for WindowManagerFeature
-where
-    TWindow: Window,
-{
-    fn install(self, _: &mut Reactor, ui: &TWindow, shared: &SharedState) -> anyhow::Result<()> {
+impl AppFeature for WindowManagerFeature {
+    fn install(self, ctx: &mut AppFeatureInitContext) -> anyhow::Result<()> {
         let reg = SlintWindowRegistry::new();
-        shared.insert(reg);
-        let reg = shared.get::<SlintWindowRegistry>().unwrap();
+
+        ctx.shared.insert(reg);
+        let reg = ctx.shared.get::<SlintWindowRegistry>().unwrap();
 
         let actor = WindowManagerActor::new(reg);
-        let addr = Addr::new(actor, ui.as_weak());
+        let addr = Addr::new(actor, ctx.token.clone(), &FeatureLifecycle::new());
 
-        let guard = ui.new_token();
-        EventBus::subscribe::<_, WindowClosed, _>(&guard, addr.clone());
-        EventBus::subscribe::<_, OpenWindow, _>(&guard, addr);
+        EventBus::subscribe::<_, WindowClosed>(addr.clone(), &FeatureLifecycle::new());
+        EventBus::subscribe::<_, OpenWindow>(addr, &FeatureLifecycle::new());
 
         Ok(())
     }

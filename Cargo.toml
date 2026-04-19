@@ -1,3 +1,4 @@
+cargo-features = ["codegen-backend"]
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
@@ -104,6 +105,9 @@ static_assertions = "1.1.0"
 ttl_cache = "0.5"
 walkdir = "2.5.0"
 
+[workspace.lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage)'] }
+
 # --- Profiles ---
 [profile.release]
 opt-level = "s"
@@ -119,3 +123,4 @@ codegen-units = 256
 
 [profile.dev.package."*"]
 debug = 0
+

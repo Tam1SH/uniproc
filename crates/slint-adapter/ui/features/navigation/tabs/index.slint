@@ -3,7 +3,7 @@ import { Navigation } from "../globals/tabs-navigation.slint";
 import { BrowserTabItem } from "components/tab-item.slint";
 import { Icons } from "icons.slint";
 import { Divider } from "divider.slint";
-
+import { ContextMenu } from "context-menu.slint";
 component AvailableContextItem inherits Rectangle {
     in property <string> title;
     in property <string> context-key;
@@ -43,9 +43,10 @@ component AvailableContextItem inherits Rectangle {
 }
 
 export component TabBar inherits Rectangle {
+    y: 0.5px;
     HorizontalLayout {
         alignment: start;
-        padding-left: Theme.spacingHorizontalM;
+//        padding-left: Theme.spacingHorizontalS;
         for tab[i] in Navigation.tabs: VerticalLayout {
             alignment: end;
             BrowserTabItem {
@@ -66,20 +67,13 @@ export component TabBar inherits Rectangle {
 
         VerticalLayout {
             alignment: center;
+            padding-top: 4px;
 
             HorizontalLayout {
-                padding-left: Theme.spacingHorizontalS;
+                padding-left: Theme.spacingHorizontalL;
                 spacing: Theme.spacingHorizontalS;
-                add-touch := TouchArea {
-                    mouse-cursor: pointer;
-                    clicked => {
-                        if (Navigation.available-contexts.length > 0) {
-                            add-menu.show();
-                        }
-                    }
-                }
 
-                Image {
+                relative-this := Image {
                     source: Icons.arrow-up-regular;
                     colorize: Navigation.available-contexts.length > 0 ? white : Theme.colorNeutralForegroundDisabled;
                     width: 12px;
@@ -89,38 +83,53 @@ export component TabBar inherits Rectangle {
                     vertical-alignment: center;
                     transform-rotation: -90deg;
                     transform-origin: { x: 2.5px, y: 5px };
+                    add-touch := TouchArea {
+                        mouse-cursor: pointer;
+                        clicked => {
+//                            if (Navigation.available-contexts.length > 0) {
+                                popup.show();
+//                            }
+                        }
+                    }
                 }
             }
         }
     }
 
-    add-menu := PopupWindow {
-        width: 220px;
-        height: add-menu-content.preferred-height;
+    property <bool> menu-entering;
+    menu-enter-timer := Timer {
+        interval: 1ms;
+        running: false;
+        triggered => {
+            menu-enter-timer.running = false;
+            root.menu-entering = true;
+        }
+    }
 
-        add-menu-content := Rectangle {
-            background: Theme.colorNeutralBackground2;
-            border-width: 1px;
-            border-color: Theme.colorNeutralStrokeAlpha;
-            border-radius: 8px;
-            drop-shadow-blur: 8px;
-            drop-shadow-offset-y: 8px;
-            drop-shadow-color: rgba(0, 0, 0, 0.3);
+    //    export struct ContextMenuItem {
+//        id: string,
+//        title: string,
+//        icon: image,
+//        is-danger: bool,
+//        has-separator: bool,
+//    }
+    popup := ContextMenu {
+        items: [{
+            id: 0,
+            title: "lol",
+        }];
+        x: relative-this.x + self.width / 4 - relative-this.width;
+        y: 40px;
+        is-entering: true;
 
-            VerticalLayout {
-                padding: 6px;
-                spacing: 4px;
-
-                for context in Navigation.available-contexts: AvailableContextItem {
-                    title: context.title;
-                    context-key: context.context_key;
-                    icon: context.icon;
-                    selected(context-key) => {
-                        Navigation.request_tab_add(context-key);
-                        add-menu.close();
-                    }
-                }
+        changed visible => {
+            if (!self.visible) {
+                root.menu-entering = false;
             }
+        }
+
+        action(id) => {
+//            root.context-menu-action(id);
         }
     }
 }

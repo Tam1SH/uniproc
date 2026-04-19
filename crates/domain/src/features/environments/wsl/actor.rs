@@ -5,12 +5,11 @@ use crate::messages;
 use app_contracts::features::environments::{
     UiEnvironmentsPort, WslAgentRuntimeEvent, WslConnectionState, WslDistroDto,
 };
-use app_core::actor::traits::{Context, Handler};
-use app_core::app::Window;
+use app_core::actor::traits::Context;
 
 use macros::handler;
 use std::fmt::Debug;
-use tracing::{error, info, instrument};
+use tracing::{error, info};
 
 messages! {
     Init,

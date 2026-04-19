@@ -1,11 +1,11 @@
-use crate::settings::{SettingsStore, SubscriptionKind};
+use crate::settings::SettingsStore;
 use app_core::actor::event_bus::subscribe::SubscriptionId;
 use app_core::signal::{Signal, SignalSubscription};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::fmt::Debug;
 use std::sync::Arc;
-use tracing::{error, info};
+use tracing::info;
 
 pub struct SettingSubscription {
     pub settings: Arc<SettingsStore>,
@@ -14,8 +14,6 @@ pub struct SettingSubscription {
 pub struct ReactiveSettingSubscription {
     #[allow(unused)]
     pub(crate) signal_sub: SignalSubscription,
-    #[allow(unused)]
-    pub(crate) store_sub: SettingSubscription,
 }
 
 #[derive(Clone)]
@@ -60,42 +58,7 @@ where
             callback(val.clone());
         });
 
-        let settings = self._store_subscription.settings.clone();
-        let signal = self.signal.clone();
-
-        let path = self.path.clone();
-        let settings_ref = settings.clone();
-        let store_id = settings.subscribe(
-            SubscriptionKind::Prefix(path.clone()),
-            Arc::new(move |_event| {
-                // TODO: codegen settings schema so that each DashMap key becomes a separate
-                //       ReactiveSetting, eliminating the need to re-read the entire object on any child change
-                match settings_ref.get(&path) {
-                    Some(json) => match serde_json::from_value::<TValue>(json) {
-                        Ok(parsed) => signal.set(parsed),
-                        Err(e) => {
-                            error!(
-                                target: "settings",
-                                path = %path,
-                                error = %e,
-                                "Failed to deserialize setting value"
-                            );
-                        }
-                    },
-                    None => {
-                        info!(target: "settings", path = %path, "Setting value was removed");
-                    }
-                }
-            }),
-        );
-
-        ReactiveSettingSubscription {
-            signal_sub,
-            store_sub: SettingSubscription {
-                settings,
-                id: store_id,
-            },
-        }
+        ReactiveSettingSubscription { signal_sub }
     }
 
     pub fn set(&self, value: TValue) -> anyhow::Result<()> {
@@ -119,5 +82,162 @@ impl<TValue: Debug + 'static> Debug for ReactiveSetting<TValue> {
 impl Drop for SettingSubscription {
     fn drop(&mut self) {
         self.settings.unsubscribe(self.id);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::settings::SettingsStore;
+    use serde_json::{json, Map};
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::{Arc, Mutex};
+
+    fn create_temp_store() -> Arc<SettingsStore> {
+        let temp_path =
+            std::env::temp_dir().join(format!("test_settings_{}.json", uuid::Uuid::new_v4()));
+        Arc::new(SettingsStore::new(temp_path, Map::new()))
+    }
+
+    #[test]
+    fn test_signal_basic_flow() {
+        let signal = Signal::new(10);
+        assert_eq!(signal.get(), 10);
+
+        let received = Arc::new(Mutex::new(0));
+        let r_clone = received.clone();
+
+        let _sub = signal.subscribe(move |val| {
+            *r_clone.lock().unwrap() = *val;
+        });
+
+        signal.set(20);
+        assert_eq!(signal.get(), 20);
+        assert_eq!(*received.lock().unwrap(), 20);
+
+        signal.store_arc(Arc::new(30));
+        assert_eq!(signal.get_arc().as_ref(), &30);
+        assert_eq!(*received.lock().unwrap(), 30);
+    }
+
+    #[test]
+    fn test_signal_subscription_cleanup() {
+        let signal = Signal::new("a".to_string());
+        let counter = Arc::new(Mutex::new(0));
+
+        {
+            let c = counter.clone();
+            let _sub = signal.subscribe(move |_| {
+                *c.lock().unwrap() += 1;
+            });
+            signal.set("b".to_string());
+            assert_eq!(*counter.lock().unwrap(), 1);
+        }
+
+        signal.set("c".to_string());
+
+        assert_eq!(*counter.lock().unwrap(), 1);
+    }
+
+    #[test]
+    fn test_reactive_setting_full_integration() {
+        let store = create_temp_store();
+        let path = "ui.font_size";
+
+        let signal = Arc::new(Signal::new(14));
+        let store_sub = Arc::new(SettingSubscription {
+            settings: store.clone(),
+            id: 1,
+        });
+
+        let reactive = ReactiveSetting {
+            signal: signal.clone(),
+            path: Arc::from(path),
+            _store_subscription: store_sub,
+        };
+
+        assert_eq!(reactive.get(), 14);
+        assert_eq!(reactive.get_path().as_ref(), path);
+
+        reactive.set(18).expect("Failed to set value");
+
+        let store_val = store.get(path).expect("Value not found in store");
+        assert_eq!(store_val, json!(18));
+
+        let callback_val = Arc::new(Mutex::new(0));
+        let cv = callback_val.clone();
+        let _reactive_sub = reactive.subscribe(move |v| {
+            *cv.lock().unwrap() = v;
+        });
+
+        signal.set(22);
+        assert_eq!(*callback_val.lock().unwrap(), 22);
+    }
+
+    #[test]
+    fn test_reactive_setting_debug_output() {
+        let signal = Arc::new(Signal::new("test_val".to_string()));
+        let store = create_temp_store();
+        let store_sub = Arc::new(SettingSubscription {
+            settings: store,
+            id: 99,
+        });
+
+        let reactive = ReactiveSetting {
+            signal,
+            path: Arc::from("debug.path"),
+            _store_subscription: store_sub,
+        };
+
+        let debug_str = format!("{:?}", reactive);
+        assert!(debug_str.contains("ReactiveSetting"));
+        assert!(debug_str.contains("test_val"));
+    }
+
+    #[test]
+    fn test_setting_subscription_drop_really_unsubscribes() {
+        let store = create_temp_store();
+        let path = "test.field";
+
+        let calls = Arc::new(AtomicUsize::new(0));
+        let calls_clone = calls.clone();
+
+        let sub_id = store.on_field_changed(
+            Arc::from(path),
+            Arc::new(move |_| {
+                calls_clone.fetch_add(1, Ordering::SeqCst);
+            }),
+        );
+
+        {
+            let _sub = SettingSubscription {
+                settings: store.clone(),
+                id: sub_id,
+            };
+
+            store.set(path, json!("hello")).unwrap();
+            assert_eq!(calls.load(Ordering::SeqCst), 1);
+        }
+
+        store.set(path, json!("world")).unwrap();
+
+        assert_eq!(calls.load(Ordering::SeqCst), 1);
+    }
+
+    #[test]
+    fn test_as_signal() {
+        let signal = Arc::new(Signal::new(100));
+        let store = create_temp_store();
+        let reactive = ReactiveSetting {
+            signal: signal.clone(),
+            path: Arc::from("path"),
+            _store_subscription: Arc::new(SettingSubscription {
+                settings: store,
+                id: 1,
+            }),
+        };
+
+        let extracted_signal = reactive.as_signal();
+        assert!(Arc::ptr_eq(&signal, &extracted_signal));
     }
 }

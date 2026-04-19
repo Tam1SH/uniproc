@@ -88,7 +88,12 @@ impl NavigationState {
 
     pub fn switch_to_page(&mut self, tab_id: TabId, page_id: PageId) -> Option<PageSwitchPlan> {
         let target_tab = self.tabs.iter().find(|tab| tab.id == tab_id)?;
-        let target_page_index = target_tab.pages.iter().position(|page| page.id == page_id)? as i32;
+
+        let target_page_index = target_tab
+            .pages
+            .iter()
+            .position(|page| page.id == page_id)? as i32;
+
         let target_context_key = target_tab.context_key.clone();
 
         let previous_tab_id = self.active_tab_id();
@@ -187,13 +192,19 @@ impl NavigationState {
         let previous_active_page_by_context = self.active_page_by_context.clone();
 
         if self.enabled_contexts.is_empty() {
-            self.enabled_contexts = default_enabled_context_keys(&self.contexts).into_iter().collect();
+            self.enabled_contexts = default_enabled_context_keys(&self.contexts)
+                .into_iter()
+                .collect();
         } else {
-            self.enabled_contexts
-                .retain(|context_key| self.contexts.iter().any(|context| &context.key == context_key));
+            self.enabled_contexts.retain(|context_key| {
+                self.contexts
+                    .iter()
+                    .any(|context| &context.key == context_key)
+            });
             if self.enabled_contexts.is_empty() {
-                self.enabled_contexts =
-                    default_enabled_context_keys(&self.contexts).into_iter().collect();
+                self.enabled_contexts = default_enabled_context_keys(&self.contexts)
+                    .into_iter()
+                    .collect();
             }
         }
 
@@ -203,6 +214,7 @@ impl NavigationState {
             .filter(|context| self.enabled_contexts.contains(&context.key))
             .cloned()
             .collect();
+
         self.tabs = build_tabs(&enabled_contexts);
         self.available_contexts = self
             .contexts
@@ -223,7 +235,8 @@ impl NavigationState {
                 .copied()
                 .filter(|page_id| tab.pages.iter().any(|page| page.id == *page_id));
 
-            if let Some(page_id) = preserved_page.or_else(|| tab.pages.first().map(|page| page.id)) {
+            if let Some(page_id) = preserved_page.or_else(|| tab.pages.first().map(|page| page.id))
+            {
                 self.active_page_by_context
                     .insert(tab.context_key.clone(), page_id);
             }

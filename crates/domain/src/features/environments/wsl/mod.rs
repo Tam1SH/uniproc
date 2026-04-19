@@ -9,42 +9,28 @@ use app_contracts::features::environments::{
 };
 use app_core::actor::addr::Addr;
 use app_core::actor::event_bus::EventBus;
-use app_core::app::Feature;
-use app_core::reactor::Reactor;
-use app_core::SharedState;
+use app_core::feature::{WindowFeature, WindowFeatureInitContext};
+use macros::window_feature;
 
-pub struct WslFeature<F> {
-    make_ui_port: F,
-}
+#[window_feature]
+pub struct WslFeature;
 
-impl<F> WslFeature<F> {
-    pub fn new(make_ui_port: F) -> Self {
-        Self { make_ui_port }
-    }
-}
-
-impl<TWindow, F, P> Feature<TWindow> for WslFeature<F>
+#[window_feature]
+impl<TWindow, F, P> WindowFeature<TWindow> for WslFeature<F>
 where
     TWindow: Window,
-    F: Fn(&TWindow) -> P + 'static,
+    F: Fn(&TWindow) -> P + 'static + Clone,
     P: UiEnvironmentsPort + UiEnvironmentsBindings + Clone + 'static,
 {
-    fn install(
-        self,
-        _reactor: &mut Reactor,
-        ui: &TWindow,
-        _shared: &SharedState,
-    ) -> anyhow::Result<()> {
-        let ui_port = (self.make_ui_port)(ui);
-        let addr = Addr::new(WslEnvActor::new(ui_port.clone()), ui.as_weak());
+    fn install(&mut self, ctx: &mut WindowFeatureInitContext<TWindow>) -> anyhow::Result<()> {
+        let ui_port = (self.make_port)(ctx.ui);
+        let token = ctx.ui.new_token();
+        let addr = Addr::new(WslEnvActor::new(ui_port.clone()), token, &self.tracker);
 
         let a = addr.clone();
         ui_port.on_install_agent(move |distro| a.send(InstallAgent(distro)));
 
-        EventBus::subscribe::<WslEnvActor<P>, WslAgentRuntimeEvent, TWindow>(
-            &ui.new_token(),
-            addr.clone(),
-        );
+        EventBus::subscribe::<_, WslAgentRuntimeEvent>(addr.clone(), &self.tracker);
         addr.send(Init);
         Ok(())
     }

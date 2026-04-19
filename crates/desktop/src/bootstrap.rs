@@ -13,20 +13,20 @@ use domain_agents::features::agents::AgentsFeature;
 use domain_environments::features::environments::EnvironmentsFeature;
 use domain_processes::processes_impl::ProcessFeature;
 use slint::ComponentHandle;
-use slint_adapter::adapters::cosmetics::CosmeticsAdapter;
-use slint_adapter::adapters::environments::EnvironmentsUiAdapter;
-use slint_adapter::adapters::l10n::SlintL10nPort;
-use slint_adapter::adapters::navigation::NavigationUiAdapter;
-use slint_adapter::adapters::processes::ProcessesUiAdapter;
-use slint_adapter::adapters::services::ServicesUiAdapter;
-use slint_adapter::adapters::window_actions::WindowActionsAdapter;
+use slint_adapter::features::cosmetics::UiCosmeticsAdapter;
+use slint_adapter::features::environments::UiEnvironmentsAdapter;
+use slint_adapter::features::l10n::SlintL10nPort;
+use slint_adapter::features::navigation::UiNavigationAdapter;
+use slint_adapter::features::processes::UiProcessesAdapter;
+use slint_adapter::features::services::UiServicesAdapter;
+use slint_adapter::features::window_actions::UiWindowActionsAdapter;
 use slint_adapter::AppWindow;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::fmt::writer::{BoxMakeWriter, MakeWriterExt};
 
 macro_rules! with_adapter {
     ($feature:ident => $adapter:ident) => {
-        $feature::new(|ui: &AppWindow| $adapter::new(ui.as_weak()))
+        || $feature::new(|ui: &AppWindow| $adapter::new(ui.as_weak()))
     };
 }
 
@@ -38,19 +38,20 @@ pub fn run() -> anyhow::Result<()> {
     let ui = AppWindow::new()?;
 
     let app = App::new(ui)
-        .feature(SettingsFeature::default())?
-        .feature(TraceSettingsFeature)?
-        .feature(AgentsFeature)?
-        .feature(PageStatusFeature)?
-        .feature(WindowManagerFeature)?
-        .feature(with_adapter!(CosmeticsFeature => CosmeticsAdapter))?
-        .feature(with_adapter!(WindowActionsFeature => WindowActionsAdapter))?
-        .feature(with_adapter!(EnvironmentsFeature => EnvironmentsUiAdapter))?
-        .feature(with_adapter!(NavigationFeature => NavigationUiAdapter))?
-        .feature(with_adapter!(L10nFeature => SlintL10nPort))?
-        .feature(with_adapter!(ServicesFeature => ServicesUiAdapter))?
-        .feature(with_adapter!(ProcessFeature => ProcessesUiAdapter))?;
-
+        .app_feature(SettingsFeature::default())?
+        .app_feature(TraceSettingsFeature)?
+        .app_feature(AgentsFeature)?
+        .app_feature(PageStatusFeature)?
+        .app_feature(WindowManagerFeature)?
+        .feature(with_adapter!(CosmeticsFeature => UiCosmeticsAdapter))
+        .feature(with_adapter!(WindowActionsFeature => UiWindowActionsAdapter))
+        .feature(with_adapter!(EnvironmentsFeature => UiEnvironmentsAdapter))
+        .feature(with_adapter!(NavigationFeature => UiNavigationAdapter))
+        .feature(with_adapter!(L10nFeature => SlintL10nPort))
+        .feature(with_adapter!(ServicesFeature => UiServicesAdapter))
+        // .feature(with_adapter!(SidebarFeature))
+        .feature(with_adapter!(ProcessFeature => UiProcessesAdapter));
+    // SidebarFeature
     app.run()
 }
 
@@ -59,7 +60,7 @@ struct TracingRuntime {
 }
 
 fn init_tracing() -> anyhow::Result<TracingRuntime> {
-    let settings_path = SettingsStore::default_settings_path();
+    let settings_path = SettingsStore::default_settings_path()?;
     let logs_dir = settings_path
         .parent()
         .map(|parent| parent.join("logs"))

@@ -2,7 +2,7 @@ use context::page_status::{PageId, TabId};
 use macros::slint_bindings;
 
 #[slint_bindings(global = "Navigation")]
-pub trait NavigationUiBindings: 'static {
+pub trait UiNavigationBindings: 'static {
     #[manual]
     #[tracing(target = "tab_id,page_id")]
     fn on_request_page_switch<F>(&self, handler: F)

@@ -6,6 +6,17 @@ pub struct Reactor {
     _anchors: Vec<slint::Timer>,
 }
 
+pub struct DynamicLoopControl {
+    active: Arc<std::sync::atomic::AtomicBool>,
+}
+
+impl Drop for DynamicLoopControl {
+    fn drop(&mut self) {
+        self.active
+            .store(false, std::sync::atomic::Ordering::Relaxed);
+    }
+}
+
 impl Reactor {
     pub fn new() -> Self {
         Self {
@@ -13,26 +24,34 @@ impl Reactor {
         }
     }
 
-    pub fn add_loop(&mut self, interval: Duration, f: impl FnMut() + 'static) {
-        let timer = slint::Timer::default();
-        timer.start(slint::TimerMode::Repeated, interval, f);
-        self._anchors.push(timer);
-    }
-
     pub fn add_dynamic_loop(
         &mut self,
         interval_ms_setting: Arc<Signal<u64>>,
         f: impl FnMut() + 'static,
-    ) {
-        fn schedule_next(interval_ms_setting: Arc<Signal<u64>>, mut f: impl FnMut() + 'static) {
+    ) -> DynamicLoopControl {
+        use std::sync::atomic::{AtomicBool, Ordering};
+
+        let active = Arc::new(AtomicBool::new(true));
+        let active_clone = active.clone();
+
+        fn schedule_next(
+            interval_ms_setting: Arc<Signal<u64>>,
+            active: Arc<AtomicBool>,
+            mut f: impl FnMut() + 'static,
+        ) {
             let delay = Duration::from_millis(interval_ms_setting.get());
 
             slint::Timer::single_shot(delay, move || {
+                if !active.load(Ordering::Relaxed) {
+                    return;
+                }
                 f();
-                schedule_next(interval_ms_setting, f);
+                schedule_next(interval_ms_setting, active, f);
             });
         }
 
-        schedule_next(interval_ms_setting.clone(), f);
+        schedule_next(interval_ms_setting, active_clone.clone(), f);
+
+        DynamicLoopControl { active }
     }
 }

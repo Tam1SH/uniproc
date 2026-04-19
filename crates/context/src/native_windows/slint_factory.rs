@@ -1,7 +1,7 @@
 use crate::native_windows::{ManagedWindowHandle, NativeWindowManager};
 use app_core::actor::event_bus::EventBus;
 use app_core::actor::traits::Message;
-use app_core::actor::UiThreadGuard;
+use app_core::actor::UiThreadToken;
 use app_core::trace::{current_meta, is_scope_enabled, DispatchMeta};
 use slint::ComponentHandle;
 use std::any::Any;
@@ -108,7 +108,7 @@ pub trait WindowRegistry: Send + Sync + 'static {
         F: Fn() -> NativeWindowManager<T> + 'static;
     fn build_window(
         &self,
-        _guard: &UiThreadGuard,
+        _guard: &UiThreadToken,
         template: &str,
         key: &str,
     ) -> Option<Box<dyn ManagedWindowHandle>>;
@@ -182,7 +182,7 @@ impl WindowRegistry for SlintWindowRegistry {
 
     fn build_window(
         &self,
-        _guard: &UiThreadGuard,
+        _guard: &UiThreadToken,
         template: &str,
         key: &str,
     ) -> Option<Box<dyn ManagedWindowHandle>> {

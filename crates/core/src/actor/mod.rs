@@ -5,10 +5,13 @@ pub mod traits;
 
 pub mod event_bus;
 
-#[derive(Clone)]
-pub struct UiThreadGuard(std::marker::PhantomData<*const ()>);
+#[cfg(feature = "test-utils")]
+pub mod registry;
 
-impl UiThreadGuard {
+#[derive(Clone)]
+pub struct UiThreadToken(std::marker::PhantomData<*const ()>);
+
+impl UiThreadToken {
     pub(crate) fn new() -> Self {
         Self(std::marker::PhantomData)
     }

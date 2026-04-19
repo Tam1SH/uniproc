@@ -2,7 +2,7 @@ use macros::slint_bindings;
 use slint::SharedString;
 
 #[slint_bindings(global = "ProcessesFeatureGlobal")]
-pub trait ProcessesUiBindings: 'static {
+pub trait UiProcessesBindings: 'static {
     #[tracing(target = "field")]
     fn on_sort_by<F>(&self, handler: F)
     where

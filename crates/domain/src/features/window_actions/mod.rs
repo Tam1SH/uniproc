@@ -5,34 +5,23 @@ use crate::features::window_actions::actor::BreakpointChanged;
 use actor::{Close, Drag, Maximize, Minimize, Resize, WindowActor};
 use app_contracts::features::window_actions::{UiWindowActionsBindings, UiWindowActionsPort};
 use app_core::actor::addr::Addr;
-use app_core::app::Feature;
-use app_core::reactor::Reactor;
-use app_core::SharedState;
+use app_core::feature::{WindowFeature, WindowFeatureInitContext};
+use macros::window_feature;
 
-pub struct WindowActionsFeature<F> {
-    make_port: F,
-}
+#[window_feature]
+pub struct WindowActionsFeature;
 
-impl<F> WindowActionsFeature<F> {
-    pub fn new(make_port: F) -> Self {
-        Self { make_port }
-    }
-}
-
-impl<TWindow, F, P> Feature<TWindow> for WindowActionsFeature<F>
+#[window_feature]
+impl<TWindow, F, P> WindowFeature<TWindow> for WindowActionsFeature<F>
 where
     TWindow: Window,
-    F: Fn(&TWindow) -> P + 'static,
+    F: Fn(&TWindow) -> P + 'static + Clone,
     P: UiWindowActionsPort + UiWindowActionsBindings,
 {
-    fn install(
-        self,
-        _reactor: &mut Reactor,
-        ui: &TWindow,
-        _shared: &SharedState,
-    ) -> anyhow::Result<()> {
-        let port = (self.make_port)(ui);
-        let addr = Addr::new(WindowActor { port: port.clone() }, ui.as_weak());
+    fn install(&mut self, ctx: &mut WindowFeatureInitContext<TWindow>) -> anyhow::Result<()> {
+        let port = (self.make_port)(ctx.ui);
+        let token = ctx.ui.new_token();
+        let addr = Addr::new(WindowActor { port: port.clone() }, token, &self.tracker);
         let a = addr.clone();
 
         port.on_drag(addr.handler(Drag));

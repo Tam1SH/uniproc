@@ -4,7 +4,6 @@ use app_contracts::features::agents::ScanTick;
 use app_contracts::features::environments::AgentConnectionState;
 use app_core::actor::event_bus::EventBus;
 use app_core::actor::traits::{Context, Message, NoOp};
-use app_core::app::Window;
 use app_core::messages;
 use context::settings::ReactiveSetting;
 use macros::handler;
@@ -61,7 +60,7 @@ impl<B: AgentBackend> GenericAgentActor<B> {
         EventBus::publish(event);
     }
 
-    fn spawn_connect<T: Window>(&self, ctx: &Context<Self, T>) {
+    fn spawn_connect(&self, ctx: &Context<Self>) {
         let timeout = self.connect_timeout_secs.get().max(1);
         ctx.spawn_bg(async move {
             match B::connect(timeout).await {

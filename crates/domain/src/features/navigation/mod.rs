@@ -1,4 +1,4 @@
-mod actor;
+pub mod actor;
 mod model;
 mod settings;
 mod state;
@@ -9,51 +9,41 @@ use crate::features::navigation::actor::{
 };
 use crate::features::navigation::model::bootstrap_contexts;
 use crate::features::navigation::settings::NavigationSettings;
+use app_contracts::features::agents::RemoteScanResult;
 #[cfg(target_os = "windows")]
 use app_contracts::features::environments::WindowsAgentRuntimeEvent;
-use app_contracts::features::agents::RemoteScanResult;
 use app_contracts::features::environments::WslAgentRuntimeEvent;
-use app_contracts::features::navigation::{NavigationUiBindings, UiNavigationPort};
+use app_contracts::features::navigation::{UiNavigationBindings, UiNavigationPort};
 use app_core::actor::addr::Addr;
 use app_core::actor::event_bus::EventBus;
-use app_core::app::Feature;
 use app_core::app::Window;
-use app_core::reactor::Reactor;
-use app_core::SharedState;
+use app_core::feature::{WindowFeature, WindowFeatureInitContext};
 use context::page_status::{PageStatusChanged, PageStatusRegistry, TabStatusChanged};
+use macros::window_feature;
 
-pub struct NavigationFeature<F> {
-    make_ui_port: F,
-}
+#[window_feature]
+pub struct NavigationFeature;
 
-impl<F> NavigationFeature<F> {
-    pub fn new(make_ui_port: F) -> Self {
-        Self { make_ui_port }
-    }
-}
-
-impl<TWindow, F, P> Feature<TWindow> for NavigationFeature<F>
+#[window_feature]
+impl<TWindow, F, P> WindowFeature<TWindow> for NavigationFeature<F>
 where
     TWindow: Window,
-    F: Fn(&TWindow) -> P + 'static,
-    P: UiNavigationPort + NavigationUiBindings + Clone + 'static,
+    F: Fn(&TWindow) -> P + 'static + Clone,
+    P: UiNavigationPort + UiNavigationBindings + Clone + 'static,
 {
-    fn install(
-        self,
-        _reactor: &mut Reactor,
-        ui: &TWindow,
-        shared: &SharedState,
-    ) -> anyhow::Result<()> {
-        let settings = NavigationSettings::new(shared)?;
-        let ui_port = (self.make_ui_port)(ui);
+    fn install(&mut self, ctx: &mut WindowFeatureInitContext<TWindow>) -> anyhow::Result<()> {
+        let settings = NavigationSettings::new(ctx.shared)?;
+        let ui_port = (self.make_port)(ctx.ui);
+        let token = ctx.ui.new_token();
 
         let contexts = bootstrap_contexts();
         let actor = NavigationActor::new(
             ui_port.clone(),
-            shared.get::<PageStatusRegistry>().unwrap(),
+            ctx.shared.get::<PageStatusRegistry>().unwrap(),
             contexts,
             &settings,
         );
+
         let tabs = actor.tabs().to_vec();
         let available_contexts = actor.available_contexts().to_vec();
         let default_page = settings.default_page().get();
@@ -61,7 +51,13 @@ where
             tabs.first()
                 .and_then(|tab| tab.pages.first().map(|page| (tab.id, page.id)))
         });
-        let addr = Addr::new(actor, ui.as_weak());
+
+        let addr = Addr::new(actor, token, &self.tracker);
+
+        #[cfg(feature = "test-utils")]
+        if let Some(registry) = ctx.shared.get::<app_core::actor::registry::ActorRegistry>() {
+            registry.register(addr.clone());
+        }
 
         ui_port.set_navigation_tree(tabs.clone());
         ui_port.set_available_contexts(available_contexts);
@@ -86,12 +82,15 @@ where
         let a = addr.clone();
         ui_port.on_side_bar_width_changed(move |w| a.send(SideBarWidthChanged(w)));
 
-        EventBus::subscribe::<_, PageStatusChanged, _>(&ui.new_token(), addr.clone());
-        EventBus::subscribe::<_, TabStatusChanged, _>(&ui.new_token(), addr.clone());
-        EventBus::subscribe::<_, RemoteScanResult, _>(&ui.new_token(), addr.clone());
-        EventBus::subscribe::<_, WslAgentRuntimeEvent, _>(&ui.new_token(), addr.clone());
+        EventBus::subscribe_to(addr.clone(), &self.tracker).batch::<(
+            PageStatusChanged,
+            TabStatusChanged,
+            RemoteScanResult,
+            WslAgentRuntimeEvent,
+        )>();
+
         #[cfg(target_os = "windows")]
-        EventBus::subscribe::<_, WindowsAgentRuntimeEvent, _>(&ui.new_token(), addr.clone());
+        EventBus::subscribe::<_, WindowsAgentRuntimeEvent>(addr.clone(), &self.tracker);
 
         Ok(())
     }

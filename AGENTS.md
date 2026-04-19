@@ -373,26 +373,28 @@ messages! {
 }
 ```
 
-Each message gets its own `Handler<M, TWindow>` impl on the actor:
+Each message handler is defined using the #[handler] macro. It simplifies the signature by automatically adding the T:
+Window generic bound to the generated implementation and substituting it into the Context type:
 
 ```rust
-impl<P, TWindow> Handler<Sort, TWindow> for ProcessActor<P>
-where
-    P: ProcessesUiPort,
-    TWindow: Window,
-{
-    fn handle(&mut self, msg: Sort, _ctx: &Context<Self, TWindow>) {
-        self.table.toggle_sort(msg.0.clone());
-        self.ui_port.set_sort_state(msg.0, self.table.sort_state().descending);
-        self.push_batch();
-    }
+#[handler]
+fn sort_table<P: UiProcessesPort>(this: &mut ProcessActor<P>, msg: Sort) {
+    this.table.toggle_sort(msg.0.clone());
+    let sort = this.table.sort_state();
+    this.ui_port.set_sort_state(msg.0, sort.descending);
+    this.push_batch();
 }
 ```
 
 For async work, use `ctx.spawn_bg`:
 
 ```rust
-fn handle(&mut self, _: TerminateSelected, ctx: &Context<Self, TWindow>) {
+#[handler]
+fn terminate_process<P: UiProcessesPort>(
+    this: &mut ProcessActor<P>,
+    _: TerminateSelected,
+    ctx: &Context<ProcessActor<P>>
+) {
     ctx.spawn_bg(async move {
         // runs off the UI thread
         NoOp // return NoOp if no message should be sent back
@@ -521,7 +523,7 @@ UI adapter tracing/configuration lives in the contract layer, and adapter impls 
 pub trait ProcessesUiBindings: 'static {
     #[tracing(target = "pid,idx")]
     fn on_select_process<F>(&self, handler: F)
-where
+    where
         F: Fn(i32, i32) + 'static;
 }
 ```
@@ -537,43 +539,43 @@ This section documents the contract → schema → adapter macro pipeline. Follo
 `macros`, `build-utils`, or `slint-adapter` code.
 
 1. **Contract traits are the source of truth**
-   - Declare UI-facing traits in `crates/app-contracts/src/features/<feature>/` with:
-     - `#[slint_port(global = "...")]` for domain → UI calls
-     - `#[slint_bindings(global = "...")]` for UI → domain callbacks
-     - `#[slint_dto]` for DTO structs/enums that should be captured in schema
-   - Helper attributes used by codegen:
-     - `#[manual]` — method must be implemented manually in adapter impl
-     - `#[slint(name = "...", global = "...")]` — override Slint callback/property method name or global
-     - `#[tracing(target = "...")]` / `#[tracing(skip)]` — callback tracing metadata for bindings
+    - Declare UI-facing traits in `crates/app-contracts/src/features/<feature>/` with:
+        - `#[slint_port(global = "...")]` for domain → UI calls
+        - `#[slint_bindings(global = "...")]` for UI → domain callbacks
+        - `#[slint_dto]` for DTO structs/enums that should be captured in schema
+    - Helper attributes used by codegen:
+        - `#[manual]` — method must be implemented manually in adapter impl
+        - `#[slint(name = "...", global = "...")]` — override Slint callback/property method name or global
+        - `#[tracing(target = "...")]` / `#[tracing(skip)]` — callback tracing metadata for bindings
 
 2. **Schema is generated from contracts**
-   - `crates/app-contracts/build.rs` runs `build_utils::collector::main()`.
-   - Collector scans `src/features/**/*.rs` and writes `crates/app-contracts/contracts-schema.json`.
-   - `ports`, `bindings`, and `dtos` are captured there, including method argument types and tracing metadata.
+    - `crates/app-contracts/build.rs` runs `build_utils::collector::main()`.
+    - Collector scans `src/features/**/*.rs` and writes `crates/app-contracts/contracts-schema.json`.
+    - `ports`, `bindings`, and `dtos` are captured there, including method argument types and tracing metadata.
 
 3. **Adapters consume schema via proc macros**
-   - In `slint-adapter`, use:
-     - `#[slint_port_adapter(window = AppWindow)]`
-     - `#[slint_bindings_adapter(window = AppWindow)]`
-   - For methods not marked `manual`, macros auto-generate missing impl methods from schema.
-   - Existing methods in impl blocks are respected and not overwritten (safe for custom/manual conversions).
+    - In `slint-adapter`, use:
+        - `#[slint_port_adapter(window = AppWindow)]`
+        - `#[slint_bindings_adapter(window = AppWindow)]`
+    - For methods not marked `manual`, macros auto-generate missing impl methods from schema.
+    - Existing methods in impl blocks are respected and not overwritten (safe for custom/manual conversions).
 
 4. **What transform is injected**
-   - Removes explicit `ui: &AppWindow` from the *final* adapter method signature.
-   - Upgrades `self.ui` internally (`self.ui.upgrade()`).
-   - On dropped weak handle: traces under `ui.adapter.call` target and then panics.
-   - Port methods: emits `ui.adapter.call` debug traces (`Adapter::method` target).
-   - Bindings methods: wraps handlers in `app_core::trace::in_ui_action_scope`.
-     - Scope naming: `Ui.<Feature>.<method>`
-     - Feature segment is derived from trait name (`Ui...Bindings` prefix/suffix stripped)
-     - Supports handler arity up to 2 args.
+    - Removes explicit `ui: &AppWindow` from the *final* adapter method signature.
+    - Upgrades `self.ui` internally (`self.ui.upgrade()`).
+    - On dropped weak handle: traces under `ui.adapter.call` target and then panics.
+    - Port methods: emits `ui.adapter.call` debug traces (`Adapter::method` target).
+    - Bindings methods: wraps handlers in `app_core::trace::in_ui_action_scope`.
+        - Scope naming: `Ui.<Feature>.<method>`
+        - Feature segment is derived from trait name (`Ui...Bindings` prefix/suffix stripped)
+        - Supports handler arity up to 2 args.
 
 5. **Agent checklist when adding/changing callbacks or port methods**
-   - Update contract trait first (`app-contracts`).
-   - Prefer macro-generated adapter methods; add explicit impl only for non-trivial mapping.
-   - Use `#[manual]` only when generation is not enough.
-   - Keep tracing metadata at contract layer (`#[tracing(...)]`), not ad hoc in adapter code.
-   - Rebuild so `contracts-schema.json` is refreshed before validating macro behavior.
+    - Update contract trait first (`app-contracts`).
+    - Prefer macro-generated adapter methods; add explicit impl only for non-trivial mapping.
+    - Use `#[manual]` only when generation is not enough.
+    - Keep tracing metadata at contract layer (`#[tracing(...)]`), not ad hoc in adapter code.
+    - Rebuild so `contracts-schema.json` is refreshed before validating macro behavior.
 
 `Theme` is also driven from Rust via `UiCosmeticsPort`: on Windows, the cosmetics feature pushes the full system accent
 palette (`Accent`, `AccentLight1/2/3`, `AccentDark1/2/3`) into the `Theme` global; on non-Windows platforms, the

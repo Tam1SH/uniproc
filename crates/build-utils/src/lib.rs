@@ -1,10 +1,11 @@
+#![cfg_attr(coverage, feature(coverage_attribute))]
+#![cfg_attr(coverage, coverage(off))]
 pub mod collector;
+
 pub mod slint_parser;
 
-// Re-export the codegen schema types at the crate root for convenience.
 pub use collector::{
-    ArgDef, BindingDef, BindingMethodDef, DtoDef, DtoField, MethodDef, PortDef, Schema,
-    load_schema,
+    load_schema, ArgDef, BindingDef, BindingMethodDef, DtoDef, DtoField, MethodDef, PortDef, Schema,
 };
 
 use std::{fs, path::Path};

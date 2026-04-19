@@ -1,36 +1,24 @@
 use app_contracts::features::environments::{UiEnvironmentsBindings, UiEnvironmentsPort};
-use app_core::app::Feature;
 use app_core::app::Window;
-use app_core::reactor::Reactor;
-use app_core::SharedState;
+use app_core::feature::{WindowFeature, WindowFeatureInitContext};
+use macros::window_feature;
 
 pub mod host;
 pub mod wsl;
 
-pub struct EnvironmentsFeature<F> {
-    make_wsl_ui_port: F,
-}
+#[window_feature]
+pub struct EnvironmentsFeature;
 
-impl<F> EnvironmentsFeature<F> {
-    pub fn new(make_wsl_ui_port: F) -> Self {
-        Self { make_wsl_ui_port }
-    }
-}
-
-impl<TWindow, F, P> Feature<TWindow> for EnvironmentsFeature<F>
+#[window_feature]
+impl<TWindow, F, P> WindowFeature<TWindow> for EnvironmentsFeature<F>
 where
     TWindow: Window,
     F: Fn(&TWindow) -> P + Clone + 'static,
     P: UiEnvironmentsPort + UiEnvironmentsBindings + Clone + 'static,
 {
-    fn install(
-        self,
-        reactor: &mut Reactor,
-        ui: &TWindow,
-        shared: &SharedState,
-    ) -> anyhow::Result<()> {
-        host::HostFeature::new(self.make_wsl_ui_port.clone()).install(reactor, ui, shared)?;
-        wsl::WslFeature::new(self.make_wsl_ui_port).install(reactor, ui, shared)?;
+    fn install(&mut self, ctx: &mut WindowFeatureInitContext<TWindow>) -> anyhow::Result<()> {
+        host::HostFeature::new(self.make_port.clone()).install(ctx)?;
+        wsl::WslFeature::new(self.make_port.clone()).install(ctx)?;
         Ok(())
     }
 }

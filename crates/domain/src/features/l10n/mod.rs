@@ -1,28 +1,22 @@
 mod apply;
 
 use app_contracts::features::l10n::L10nPort;
-use app_core::app::{Feature, Window};
-use app_core::reactor::Reactor;
-use app_core::SharedState;
+use app_core::app::Window;
+use app_core::feature::{WindowFeature, WindowFeatureInitContext};
+use macros::window_feature;
 
-pub struct L10nFeature<F> {
-    make_port: F,
-}
+#[window_feature]
+pub struct L10nFeature;
 
-impl<F> L10nFeature<F> {
-    pub fn new(make_port: F) -> Self {
-        Self { make_port }
-    }
-}
-
-impl<TWindow, F, P> Feature<TWindow> for L10nFeature<F>
+#[window_feature]
+impl<TWindow, F, P> WindowFeature<TWindow> for L10nFeature<F>
 where
     TWindow: Window,
-    F: Fn(&TWindow) -> P + 'static,
+    F: Fn(&TWindow) -> P + 'static + Clone,
     P: L10nPort,
 {
-    fn install(self, _: &mut Reactor, ui: &TWindow, _: &SharedState) -> anyhow::Result<()> {
-        let port = (self.make_port)(ui);
+    fn install(&mut self, ctx: &mut WindowFeatureInitContext<TWindow>) -> anyhow::Result<()> {
+        let port = (self.make_port)(ctx.ui);
         apply::apply(&port);
         Ok(())
     }

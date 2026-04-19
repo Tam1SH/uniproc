@@ -10,7 +10,7 @@ use std::sync::mpsc;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
 use std::{collections::BTreeSet, thread};
-use tracing::{debug, error, info, instrument, trace, warn};
+use tracing::{debug, info, instrument, trace, warn};
 
 pub type SettingsCallback = Arc<dyn Fn(&SettingEvent) + Send + Sync + 'static>;
 
@@ -62,19 +62,19 @@ impl SettingsStore {
     const DEFAULT_SAVE_DEBOUNCE_MS: u64 = 300;
     const DEFAULT_WATCH_INTERVAL_MS: u64 = 500;
 
-    pub fn default_settings_path() -> PathBuf {
+    pub fn default_settings_path() -> anyhow::Result<PathBuf> {
         if cfg!(target_os = "windows") {
             if let Ok(base) = std::env::var("APPDATA") {
                 let p = PathBuf::from(base).join("Uniproc").join("settings.json");
                 debug!(path = %p.display(), "resolved default settings path (Windows/APPDATA)");
-                return p;
+                return Ok(p);
             }
         }
 
         if let Ok(xdg) = std::env::var("XDG_CONFIG_HOME") {
             let p = PathBuf::from(xdg).join("uniproc").join("settings.json");
             debug!(path = %p.display(), "resolved default settings path (XDG_CONFIG_HOME)");
-            return p;
+            return Ok(p);
         }
 
         if let Ok(home) = std::env::var("HOME") {
@@ -83,11 +83,12 @@ impl SettingsStore {
                 .join("uniproc")
                 .join("settings.json");
             debug!(path = %p.display(), "resolved default settings path (~/.config)");
-            return p;
+            return Ok(p);
         }
 
-        warn!("could not resolve any known config directory, falling back to cwd settings.json");
-        PathBuf::from("settings.json")
+        bail!(
+            "Failed to resolve default settings directory. Please ensure APPDATA (Windows), XDG_CONFIG_HOME or HOME (Linux/macOS) environment variables are set."
+        )
     }
 
     #[instrument(fields(path = %path.display()))]
@@ -208,10 +209,7 @@ impl SettingsStore {
     }
 
     pub fn snapshot(&self) -> Map<String, Value> {
-        let snap = self.inner.read().map(|g| g.clone()).unwrap_or_else(|_| {
-            error!("settings lock poisoned during snapshot, returning empty map");
-            Map::new()
-        });
+        let snap = self.inner.read().unwrap().clone();
         trace!(keys = snap.len(), "snapshot taken");
         snap
     }
@@ -230,41 +228,28 @@ impl SettingsStore {
         )
     }
 
-    pub fn get_u64(&self, path: &str) -> Option<u64> {
-        self.get(path).and_then(|v| v.as_u64())
-    }
-
     #[instrument(skip(self, callback), fields(kind = ?kind))]
     pub fn subscribe(&self, kind: SubscriptionKind, callback: SettingsCallback) -> SubscriptionId {
         let id = self.next_subscription_id.fetch_add(1, Ordering::Relaxed);
-        if let Ok(mut subs) = self.subscriptions.write() {
-            subs.push(SubscriptionEntry { id, kind, callback });
-        } else {
-            error!(
-                subscription_id = id,
-                "failed to register subscription: lock poisoned"
-            );
-        }
+        let mut subs = self.subscriptions.write().unwrap();
+        subs.push(SubscriptionEntry { id, kind, callback });
         id
     }
 
     #[instrument(skip(self))]
     pub fn unsubscribe(&self, id: SubscriptionId) {
-        if let Ok(mut subs) = self.subscriptions.write() {
-            let before = subs.len();
-            subs.retain(|s| s.id != id);
-            let removed = before - subs.len();
-            if removed == 0 {
-                warn!(subscription_id = id, "unsubscribe called for unknown id");
-            } else {
-                debug!(
-                    subscription_id = id,
-                    remaining = subs.len(),
-                    "subscription removed"
-                );
-            }
+        let mut subs = self.subscriptions.write().unwrap();
+        let before = subs.len();
+        subs.retain(|s| s.id != id);
+        let removed = before - subs.len();
+        if removed == 0 {
+            warn!(subscription_id = id, "unsubscribe called for unknown id");
         } else {
-            error!(subscription_id = id, "failed to unsubscribe: lock poisoned");
+            debug!(
+                subscription_id = id,
+                remaining = subs.len(),
+                "subscription removed"
+            );
         }
     }
 
@@ -327,10 +312,7 @@ impl SettingsStore {
                     debug!(coalesced, "debounced rapid save requests");
                 }
 
-                let snapshot = persist_inner.read().map(|g| g.clone()).unwrap_or_else(|_| {
-                    error!("settings lock poisoned in save worker, writing empty map");
-                    Map::new()
-                });
+                let snapshot = persist_inner.read().unwrap().clone();
 
                 debug!(keys = snapshot.len(), "persisting settings to disk");
                 if let Err(err) = persist_atomic(&persist_path, &snapshot) {
@@ -389,13 +371,7 @@ impl SettingsStore {
                 };
 
                 let events = {
-                    let mut guard = match watch_inner.write() {
-                        Ok(guard) => guard,
-                        Err(_) => {
-                            warn!("settings watch skipped: lock poisoned");
-                            continue;
-                        }
-                    };
+                    let mut guard = watch_inner.write().unwrap();
 
                     if *guard == on_disk {
                         trace!("watch tick: no changes detected");
@@ -438,8 +414,9 @@ impl SettingsStore {
                 let raw = std::fs::read(path)
                     .with_context(|| format!("failed to read settings file: {}", path.display()))?;
                 trace!(bytes = raw.len(), "read settings file");
-                let value: Value = serde_json::from_slice(&raw)
-                    .with_context(|| format!("failed to parse settings file: {}", path.display()))?;
+                let value: Value = serde_json::from_slice(&raw).with_context(|| {
+                    format!("failed to parse settings file: {}", path.display())
+                })?;
                 match value {
                     Value::Object(map) => {
                         ratelimit!(3600, debug!(keys = map.len(), "settings file loaded"));
@@ -466,13 +443,7 @@ impl SettingsStore {
                     .map(|sub| sub.callback.clone())
                     .collect::<Vec<_>>()
             })
-            .unwrap_or_else(|_| {
-                error!(
-                    "subscriptions lock poisoned, skipping callbacks for path={}",
-                    event.path
-                );
-                Vec::new()
-            });
+            .unwrap();
 
         trace!(
             path = %event.path,
@@ -572,13 +543,7 @@ fn emit_events(subscriptions: &Arc<RwLock<Vec<SubscriptionEntry>>>, events: Vec<
                     .map(|sub| sub.callback.clone())
                     .collect::<Vec<_>>()
             })
-            .unwrap_or_else(|_| {
-                error!(
-                    "subscriptions lock poisoned in emit_events for path={}",
-                    event.path
-                );
-                Vec::new()
-            });
+            .unwrap();
 
         debug!(
             path = %event.path,
@@ -770,7 +735,6 @@ fn persist_atomic(path: &Path, map: &Map<String, Value>) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Returns a short static name for a JSON value kind — used as a tracing field.
 fn value_type_name(v: &Value) -> &'static str {
     match v {
         Value::Null => "null",
@@ -794,6 +758,15 @@ mod tests {
             .expect("system time should be after epoch")
             .as_nanos();
         std::env::temp_dir().join(format!("uniproc-settings-{suffix}-{nanos}.json"))
+    }
+
+    #[test]
+    fn test_default_settings_path_resolution() {
+        let res = SettingsStore::default_settings_path();
+
+        assert!(res.is_ok(), "Path should be resolved on standard OS");
+        let path = res.unwrap();
+        assert!(path.to_string_lossy().contains("settings.json"));
     }
 
     #[test]
@@ -1014,5 +987,32 @@ mod tests {
         assert_eq!(event.op, SettingOp::Delete);
         assert_eq!(event.old, Some(Value::Bool(true)));
         assert_eq!(event.new, None);
+    }
+
+    #[test]
+    fn test_settings_store_snapshot_and_save_now() {
+        let path = std::env::temp_dir().join("test_settings_store_snapshot_and_save_now.json");
+        let store = SettingsStore::new(path, Map::new());
+        let path = store.path.clone();
+
+        store
+            .set("app.version", serde_json::json!("1.0.0"))
+            .unwrap();
+        store.set("app.debug", serde_json::json!(true)).unwrap();
+
+        let snap = store.snapshot();
+        assert_eq!(snap.len(), 1);
+        assert_eq!(snap["app"]["version"], "1.0.0");
+
+        if path.exists() {
+            std::fs::remove_file(&path).unwrap();
+        }
+
+        store.save_now().unwrap();
+
+        assert!(path.exists());
+        let file_content = std::fs::read_to_string(&path).unwrap();
+        let disk_json: Value = serde_json::from_str(&file_content).unwrap();
+        assert_eq!(disk_json["app"]["version"], "1.0.0");
     }
 }

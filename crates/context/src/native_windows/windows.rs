@@ -3,12 +3,13 @@ use i_slint_backend_winit::{winit, WinitWindowAccessor};
 use raw_window_handle::{HasWindowHandle, RawWindowHandle};
 use slint::{ComponentHandle, RgbaColor};
 use std::ptr::null_mut;
-use window_vibrancy::{apply_acrylic, apply_mica};
+use window_vibrancy::{apply_acrylic, apply_mica, apply_tabbed};
 use windows::Win32::Foundation::HWND;
 use windows::Win32::Graphics::Dwm::{
     DwmExtendFrameIntoClientArea, DwmSetWindowAttribute, DWMWA_WINDOW_CORNER_PREFERENCE, DWMWCP_DEFAULT,
     DWMWCP_ROUND,
 };
+
 use windows::Win32::UI::Controls::MARGINS;
 
 pub fn apply_to_component<T: ComponentHandle + 'static>(
@@ -57,6 +58,9 @@ pub fn apply_to_component<T: ComponentHandle + 'static>(
             match config.texture {
                 NativeWindowTexture::Mica => {
                     let _ = apply_mica(winit_window, Some(true));
+                }
+                NativeWindowTexture::MicaAlt => {
+                    let _ = apply_tabbed(winit_window, Some(true));
                 }
                 NativeWindowTexture::Acrylic => {
                     let _ = apply_acrylic(winit_window, Some((20, 20, 20, 150)));

@@ -7,6 +7,7 @@ use std::fmt::{Debug, Formatter};
 pub enum NativeWindowTexture {
     None,
     Mica,
+    MicaAlt,
     Acrylic,
 }
 

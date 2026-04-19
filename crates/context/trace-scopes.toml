@@ -29,18 +29,18 @@ result = false
 
 [policy]
 disable_messages = [
-    "agents::ScanTick",
+    "model::ScanTick",
     "actor::Ping",
     "traits::NoOp",
     "agents::WindowsReportMessage",
     "process_snapshot_actor::ProcessSnapshotReady",
     "snapshot_actor::ServiceSnapshotResult",
-    "services::ServiceSnapshot",
+    "model::ServiceSnapshot",
 ]
 disable_targets = [
-    "ProcessesUiAdapter::set_column_widths",
-    "ProcessesUiAdapter::set_column_metadata",
-    "ProcessesUiAdapter::set_total_processes_count",
-    "ServicesUiAdapter::set_total_services_count",
-    "ServicesUiAdapter::set_column_widths",
+    "UiProcessesAdapter::set_column_widths",
+    "UiProcessesAdapter::set_column_metadata",
+    "UiProcessesAdapter::set_total_processes_count",
+    "UiServicesAdapter::set_total_services_count",
+    "UiServicesAdapter::set_column_widths",
 ]

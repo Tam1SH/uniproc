@@ -4,7 +4,6 @@ use app_contracts::features::navigation::PageActivated;
 use app_contracts::features::services::{ServiceEntryDto, ServiceSnapshot, UiServicesPort};
 use app_core::actor::addr::Addr;
 use app_core::actor::traits::{Context, Handler, Message, NoOp};
-use app_core::app::Window;
 use app_core::messages;
 use context::page_status::PageId;
 
@@ -18,28 +17,26 @@ pub enum ServiceSnapshotResult {
 }
 impl Message for ServiceSnapshotResult {}
 
-pub struct ServiceSnapshotActor<P: UiServicesPort, TWindow: Window> {
-    pub target: Addr<ServiceActor<P>, TWindow>,
+pub struct ServiceSnapshotActor<P: UiServicesPort> {
+    pub target: Addr<ServiceActor<P>>,
     pub page_id: PageId,
     pub is_active: bool,
 }
 
-impl<P, TWindow> Handler<PageActivated, TWindow> for ServiceSnapshotActor<P, TWindow>
+impl<P> Handler<PageActivated> for ServiceSnapshotActor<P>
 where
     P: UiServicesPort,
-    TWindow: Window,
 {
-    fn handle(&mut self, msg: PageActivated, _ctx: &Context<Self, TWindow>) {
+    fn handle(&mut self, msg: PageActivated, _ctx: &Context<Self>) {
         self.is_active = msg.page_id == self.page_id;
     }
 }
 
-impl<P, TWindow> Handler<ScanTick, TWindow> for ServiceSnapshotActor<P, TWindow>
+impl<P> Handler<ScanTick> for ServiceSnapshotActor<P>
 where
     P: UiServicesPort,
-    TWindow: Window,
 {
-    fn handle(&mut self, _: ScanTick, ctx: &Context<Self, TWindow>) {
+    fn handle(&mut self, _: ScanTick, ctx: &Context<Self>) {
         if !self.is_active {
             return;
         }
@@ -55,12 +52,11 @@ where
     }
 }
 
-impl<P, TWindow> Handler<ServiceSnapshotResult, TWindow> for ServiceSnapshotActor<P, TWindow>
+impl<P> Handler<ServiceSnapshotResult> for ServiceSnapshotActor<P>
 where
     P: UiServicesPort,
-    TWindow: Window,
 {
-    fn handle(&mut self, result: ServiceSnapshotResult, _ctx: &Context<Self, TWindow>) {
+    fn handle(&mut self, result: ServiceSnapshotResult, _ctx: &Context<Self>) {
         if let ServiceSnapshotResult::Snapshot(services) = result {
             self.target.send(ServiceSnapshot { services })
         }

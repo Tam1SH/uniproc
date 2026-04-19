@@ -9,8 +9,6 @@ use app_contracts::features::navigation::{
     TabContextSnapshot, UiNavigationPort,
 };
 use app_core::actor::event_bus::EventBus;
-use app_core::actor::traits::{Context, Handler};
-use app_core::app::Window;
 use app_core::messages;
 use app_core::trace::{current_meta, install_current_meta};
 use context::page_status::{
@@ -130,7 +128,7 @@ impl<P: UiNavigationPort + Clone> NavigationActor<P> {
         };
 
         info!(
-            context_key = switch_plan.context_key.0.as_str(),
+            context_key = switch_plan.context_key.0.as_ref(),
             from_tab = ?switch_plan.previous_tab_id,
             to_tab = ?switch_plan.tab_id,
             from_page = ?switch_plan.previous_page_id,
@@ -141,6 +139,7 @@ impl<P: UiNavigationPort + Clone> NavigationActor<P> {
         EventBus::publish(TabActivated {
             tab_id: switch_plan.tab_id,
         });
+
         EventBus::publish(PageActivated {
             tab_id: switch_plan.tab_id,
             page_id: switch_plan.page_id,

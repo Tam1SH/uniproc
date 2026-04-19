@@ -4,6 +4,9 @@ pub mod navigation;
 pub mod page_status;
 pub mod services;
 pub mod settings;
+pub mod sidebar;
+#[cfg(feature = "test-utils")]
+pub mod test_discovery;
 pub mod trace_settings;
 pub mod window_actions;
 pub mod windows_manager;

@@ -16,14 +16,16 @@ export component BrowserTabItem inherits Rectangle {
     private property <bool> is-hovered: touch.has-hover;
 
     border-radius: Theme.borderRadiusLarge;
-    height: 32px;
+    height: 38px;
     width: 150px;
 
     animate background { duration: Theme.durationFaster; }
 
     touch := TouchArea {
         mouse-cursor: pointer;
-        clicked => { root.clicked() }
+        clicked => {
+            root.clicked()
+        }
     }
 
     Path {
@@ -31,40 +33,75 @@ export component BrowserTabItem inherits Rectangle {
         y: 0;
         width: root.width + 2 * Theme.borderRadiusLarge;
         height: root.height;
-        fill: active
-            ? Theme.colorNeutralBackgroundAlpha
-            : is-hovered
-                ? Theme.colorNeutralBackgroundAlpha3
-                : transparent;
+        fill: active ? Theme.colorNeutralBackgroundAlpha : is-hovered ? Theme.colorNeutralBackgroundAlpha3 : transparent;
         stroke-width: 1px;
 
         animate stroke { duration: Theme.durationFaster; }
 
-        stroke: active
-            ? Theme.colorNeutralStrokeAlpha
-            : transparent;
+        stroke: transparent;
 
         private property <float> r: Theme.borderRadiusLarge / 1px;
         private property <float> w: root.width / 1px;
         private property <float> h: root.height / 1px;
 
-        MoveTo { x: 0;         y: h;     }
-        ArcTo  { radius-x: r; radius-y: r; x: r;     y: h - r; sweep: false; }
+        MoveTo {
+            x: 0;
+            y: h;
+        }
 
-        LineTo { x: r;         y: r;     }
-        ArcTo  { radius-x: r; radius-y: r; x: r * 2; y: 0;     sweep: true;  }
+        ArcTo {
+            radius-x: r;
+            radius-y: r;
+            x: r;
+            y: h - r;
+            sweep: false;
+        }
 
-        LineTo { x: w;         y: 0;     }
-        ArcTo  { radius-x: r; radius-y: r; x: w + r; y: r;     sweep: true;  }
+        LineTo {
+            x: r;
+            y: r;
+        }
 
-        LineTo { x: w + r;     y: h - r; }
-        ArcTo  { radius-x: r; radius-y: r; x: w + r * 2; y: h; sweep: false;  }
+        ArcTo {
+            radius-x: r;
+            radius-y: r;
+            x: r * 2;
+            y: 0;
+            sweep: true;
+        }
+
+        LineTo {
+            x: w;
+            y: 0;
+        }
+
+        ArcTo {
+            radius-x: r;
+            radius-y: r;
+            x: w + r;
+            y: r;
+            sweep: true;
+        }
+
+        LineTo {
+            x: w + r;
+            y: h - r;
+        }
+
+        ArcTo {
+            radius-x: r;
+            radius-y: r;
+            x: w + r * 2;
+            y: h;
+            sweep: false;
+        }
     }
+
     VerticalLayout {
         alignment: center;
 
         HorizontalLayout {
-            padding-left: Theme.spacingHorizontalMNudge;
+            padding-left: Theme.spacingHorizontalL;
             padding-right: Theme.spacingHorizontalSNudge;
             spacing: 8px;
 
@@ -85,7 +122,11 @@ export component BrowserTabItem inherits Rectangle {
                 font-weight: active ? 700 : 400;
                 vertical-alignment: center;
             }
-            Rectangle { horizontal-stretch: 1; }
+
+            Rectangle {
+                horizontal-stretch: 1;
+            }
+
             if (root.is-closable): Button {
                 icon: Icons.dismiss;
                 icon-size: 14px;

@@ -5,13 +5,11 @@ use app_contracts::features::agents::{ScanTick, WindowsReportMessage};
 use app_contracts::features::environments::{
     AgentClient, AgentConnectionState, WindowsAgentRuntimeEvent,
 };
-use app_core::app::Window;
+use app_core::feature::{AppFeature, AppFeatureInitContext};
+use app_core::lifecycle_tracker::FeatureLifecycle;
 use app_core::{
     actor::{addr::Addr, event_bus::EventBus},
-    app::Feature,
     ratelimit,
-    reactor::Reactor,
-    SharedState,
 };
 use ogurpchik::discovery::Scope;
 use ogurpchik::transport::stream::adapters::uds::UdsTransport;
@@ -68,27 +66,32 @@ impl AgentBackend for WindowsBackend {
         latency: Option<i32>,
     ) -> Self::RuntimeEvent {
         WindowsAgentRuntimeEvent {
-            state: state,
+            state,
             latency_ms: latency,
         }
     }
 }
 
 pub struct WindowsAgentFeature;
-impl<T: Window> Feature<T> for WindowsAgentFeature {
-    fn install(self, reactor: &mut Reactor, ui: &T, shared: &SharedState) -> anyhow::Result<()> {
-        let settings = AgentSettings::new(shared)?;
+impl AppFeature for WindowsAgentFeature {
+    fn install(self, ctx: &mut AppFeatureInitContext) -> anyhow::Result<()> {
+        let settings = AgentSettings::new(ctx.shared)?;
+
         let addr = Addr::new(
             GenericAgentActor::<WindowsBackend>::new(settings.connect_timeout_secs()),
-            ui.as_weak(),
+            ctx.token.clone(),
+            &FeatureLifecycle::new(),
         );
+
         let a = addr.clone();
-        reactor.add_dynamic_loop(settings.ping_interval_ms().as_signal(), move || {
-            a.send(Ping)
-        });
-        EventBus::subscribe::<GenericAgentActor<WindowsBackend>, ScanTick, T>(
-            &ui.new_token(),
+        ctx.reactor
+            .add_dynamic_loop(settings.ping_interval_ms().as_signal(), move || {
+                a.send(Ping)
+            });
+
+        let _ = EventBus::subscribe::<GenericAgentActor<WindowsBackend>, ScanTick>(
             addr.clone(),
+            &FeatureLifecycle::new(),
         );
 
         addr.send(Init);

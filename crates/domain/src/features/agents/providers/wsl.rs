@@ -6,8 +6,9 @@ use app_contracts::features::environments::{
     AgentConnectionState, WslAgentRuntimeEvent, WslClient,
 };
 use app_core::actor::event_bus::EventBus;
-use app_core::app::Window;
-use app_core::{actor::addr::Addr, app::Feature, ratelimit, reactor::Reactor, SharedState};
+use app_core::feature::{AppFeature, AppFeatureInitContext};
+use app_core::lifecycle_tracker::FeatureLifecycle;
+use app_core::{actor::addr::Addr, ratelimit};
 use ogurpchik::discovery::register_vm_default;
 use ogurpchik::high::node::Node;
 use ogurpchik::transport::stream::adapters::vsock::{VsockAddr, VsockTransport};
@@ -78,20 +79,25 @@ impl AgentBackend for WslBackend {
 }
 
 pub struct WslAgentFeature;
-impl<T: Window> Feature<T> for WslAgentFeature {
-    fn install(self, reactor: &mut Reactor, ui: &T, shared: &SharedState) -> anyhow::Result<()> {
-        let settings = AgentSettings::new(shared)?;
+impl AppFeature for WslAgentFeature {
+    fn install(self, ctx: &mut AppFeatureInitContext) -> anyhow::Result<()> {
+        let settings = AgentSettings::new(ctx.shared)?;
+
         let addr = Addr::new(
             GenericAgentActor::<WslBackend>::new(settings.connect_timeout_secs()),
-            ui.as_weak(),
+            ctx.token.clone(),
+            &FeatureLifecycle::new(),
         );
+
         let a = addr.clone();
-        reactor.add_dynamic_loop(settings.ping_interval_ms().as_signal(), move || {
-            a.send(Ping)
-        });
-        EventBus::subscribe::<GenericAgentActor<WslBackend>, ScanTick, T>(
-            &ui.new_token(),
+        ctx.reactor
+            .add_dynamic_loop(settings.ping_interval_ms().as_signal(), move || {
+                a.send(Ping)
+            });
+
+        EventBus::subscribe::<GenericAgentActor<WslBackend>, ScanTick>(
             addr.clone(),
+            &FeatureLifecycle::new(),
         );
         addr.send(Init);
         Ok(())

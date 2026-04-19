@@ -1,8 +1,10 @@
 use app_core::actor::traits::Message;
 use context::page_status::{PageId, PageStatus, TabId};
+use std::borrow::Cow;
 
 pub mod page_ids {
     use super::PageId;
+    pub const DUMMY: PageId = PageId(0);
     pub const PROCESSES: PageId = PageId(1);
     pub const PERFORMANCE: PageId = PageId(2);
     pub const DISK: PageId = PageId(3);
@@ -18,7 +20,11 @@ pub mod tab_ids {
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
-pub struct TabContextKey(pub String);
+pub struct TabContextKey(pub Cow<'static, str>);
+
+impl TabContextKey {
+    pub const HOST: TabContextKey = TabContextKey(Cow::Borrowed("host/windows"));
+}
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub enum TabContextKind {

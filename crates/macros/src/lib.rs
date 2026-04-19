@@ -1,3 +1,6 @@
+#![cfg_attr(coverage, feature(coverage_attribute))]
+#![cfg_attr(coverage, coverage(off))]
+
 use proc_macro::TokenStream;
 use syn::{parse_macro_input, DeriveInput, ItemFn, ItemImpl, ItemTrait, Meta};
 
@@ -5,6 +8,12 @@ mod feature_settings;
 mod handler;
 mod schema;
 mod slint_macros;
+mod window_feature;
+
+#[proc_macro_attribute]
+pub fn window_feature(args: TokenStream, input: TokenStream) -> TokenStream {
+    window_feature::window_feature_impl(args, input)
+}
 
 #[proc_macro_attribute]
 pub fn handler(_attr: TokenStream, item: TokenStream) -> TokenStream {

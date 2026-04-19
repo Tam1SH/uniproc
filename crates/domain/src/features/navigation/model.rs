@@ -1,28 +1,28 @@
 use app_contracts::features::agents::RemoteScanResult;
+use app_contracts::features::navigation::tab_ids::MAIN;
 use app_contracts::features::navigation::{
     page_ids, CapabilityDescriptor, CapabilityStatus, PageDescriptor, TabContextKey,
     TabContextKind, TabContextSnapshot, TabDescriptor,
 };
-use context::page_status::PageStatus;
+use context::page_status::{PageStatus, TabId};
+use std::borrow::Cow;
 use sysinfo::System;
 use uniproc_protocol::LinuxEnvironmentKind;
 
 pub fn bootstrap_contexts() -> Vec<TabContextSnapshot> {
-    vec![
-        TabContextSnapshot {
-            key: TabContextKey("host/windows".into()),
-            kind: TabContextKind::Host,
-            title: System::name().unwrap_or_else(|| "Windows".into()),
-            icon_key: "windows-11".into(),
-            capabilities: vec![
-                capability("processes.list", "Processes"),
-                capability("services.list", "Services"),
-                capability("disk.overview", "Disk"),
-            ],
-            status: PageStatus::Ready,
-            ..Default::default()
-        },
-    ]
+    vec![TabContextSnapshot {
+        key: TabContextKey::HOST,
+        kind: TabContextKind::Host,
+        title: System::name().unwrap_or_else(|| "Windows".into()),
+        icon_key: "windows-11".into(),
+        capabilities: vec![
+            capability("processes.list", "Processes"),
+            capability("services.list", "Services"),
+            capability("disk.overview", "Disk"),
+        ],
+        status: PageStatus::Ready,
+        ..Default::default()
+    }]
 }
 
 pub fn build_tabs(contexts: &[TabContextSnapshot]) -> Vec<TabDescriptor> {
@@ -46,7 +46,10 @@ pub fn update_context_status(
     context_key: &str,
     status: PageStatus,
 ) -> bool {
-    if let Some(context) = contexts.iter_mut().find(|context| context.key.0 == context_key) {
+    if let Some(context) = contexts
+        .iter_mut()
+        .find(|context| context.key.0 == context_key)
+    {
         if context.status != status {
             context.status = status;
             return true;
@@ -80,7 +83,7 @@ pub fn apply_remote_contexts(
     for environment in &report.environments {
         if let LinuxEnvironmentKind::CurrentDistro { name } = &environment.kind {
             next_dynamic.push(TabContextSnapshot {
-                key: TabContextKey(format!("{dynamic_prefix}/distro/{name}")),
+                key: TabContextKey(Cow::Owned(format!("{dynamic_prefix}/distro/{name}"))),
                 kind: TabContextKind::Wsl,
                 title: name.clone(),
                 icon_key: icon_for_env_name(name).into(),
@@ -97,7 +100,10 @@ pub fn apply_remote_contexts(
     for container in &report.docker_containers {
         let short_id: String = container.id.chars().take(12).collect();
         next_dynamic.push(TabContextSnapshot {
-            key: TabContextKey(format!("{dynamic_prefix}/docker/{}", container.id)),
+            key: TabContextKey(Cow::Owned(format!(
+                "{dynamic_prefix}/docker/{}",
+                container.id
+            ))),
             kind: TabContextKind::Docker,
             title: format!("Docker {short_id}"),
             icon_key: "docker".into(),
@@ -123,14 +129,19 @@ pub fn apply_remote_contexts(
     changed
 }
 
-fn tab_id_for_context(context: &TabContextSnapshot) -> context::page_status::TabId {
-    let mut hash: u32 = 2_166_136_261;
-    for byte in context.key.0.as_bytes() {
-        hash ^= u32::from(*byte);
-        hash = hash.wrapping_mul(16_777_619);
-    }
+// TODO: idk how it works
+fn tab_id_for_context(context: &TabContextSnapshot) -> TabId {
+    if context.key == TabContextKey::HOST {
+        MAIN
+    } else {
+        let mut hash: u32 = 2_166_136_261;
+        for byte in context.key.0.as_bytes() {
+            hash ^= u32::from(*byte);
+            hash = hash.wrapping_mul(16_777_619);
+        }
 
-    context::page_status::TabId(hash.max(1))
+        TabId(hash.max(1))
+    }
 }
 
 fn project_pages(context: &TabContextSnapshot) -> Vec<PageDescriptor> {

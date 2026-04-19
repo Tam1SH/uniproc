@@ -1,8 +1,7 @@
 use app_core::actor::addr::Addr;
 use app_core::actor::event_bus::EventBus;
-use app_core::app::{Feature, Window};
-use app_core::reactor::Reactor;
-use app_core::SharedState;
+use app_core::app::Window;
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use crate::features::services::application::actor::{
@@ -18,81 +17,83 @@ use app_contracts::features::services::{
     ServicesWindowRegister, UiServicesBindings, UiServicesPort,
 };
 use app_contracts::features::windows_manager::OpenedWindow;
+use app_core::feature::{FeatureContextState, WindowFeature, WindowFeatureInitContext};
 use context::native_windows::slint_factory::SlintWindowRegistry;
 use context::page_status::PageStatusRegistry;
+use macros::window_feature;
 
-mod application;
+pub mod application;
+
 mod scanner;
 mod settings;
 mod view;
 
-pub struct ServicesFeature<F> {
-    make_ui_port: F,
-}
+#[window_feature]
+pub struct ServicesFeature;
 
-impl<F> ServicesFeature<F> {
-    pub fn new(make_ui_port: F) -> Self {
-        Self { make_ui_port }
-    }
-}
-
-impl<TWindow, F, P> Feature<TWindow> for ServicesFeature<F>
+#[window_feature]
+impl<TWindow, F, P> WindowFeature<TWindow> for ServicesFeature<F>
 where
     TWindow: Window,
-    F: Fn(&TWindow) -> P + 'static,
+    F: Fn(&TWindow) -> P + 'static + Clone,
     P: UiServicesPort + UiServicesBindings + ServicesWindowRegister + Clone + 'static,
 {
-    fn install(
-        self,
-        reactor: &mut Reactor,
-        ui: &TWindow,
-        shared: &SharedState,
-    ) -> anyhow::Result<()> {
-        let settings = ServiceSettings::new(shared)?;
-        let ui_port = (self.make_ui_port)(ui);
-        let reg = shared.get::<SlintWindowRegistry>().unwrap();
+    fn install(&mut self, ctx: &mut WindowFeatureInitContext<TWindow>) -> anyhow::Result<()> {
+        let settings = ServiceSettings::new(ctx.shared)?;
+        let ui_port = (self.make_port)(ctx.ui);
+        let token = ctx.ui.new_token();
+
+        let reg = ctx.shared.get::<SlintWindowRegistry>().unwrap();
 
         let service_actor = ServiceActor {
             page_id: page_ids::SERVICES,
             registry: reg.clone(),
             table: ServiceTable::new(settings.clone())?,
             ui_port: ui_port.clone(),
-            page_status: shared.get::<PageStatusRegistry>().unwrap(),
+            page_status: ctx.shared.get::<PageStatusRegistry>().unwrap(),
             is_active: true,
-            pending: std::collections::HashSet::new(),
+            pending: HashSet::new(),
+            ctx_state: FeatureContextState::new(ctx.window_id, "processes.list"),
         };
 
-        let addr = Addr::new(service_actor, ui.as_weak());
+        let addr = Addr::new(service_actor, token.clone(), &self.tracker);
 
         let snapshot_actor = ServiceSnapshotActor {
             target: addr.clone(),
             page_id: page_ids::SERVICES,
             is_active: true,
         };
-        let snapshot_addr = Addr::new(snapshot_actor, ui.as_weak());
+        let snapshot_addr = Addr::new(snapshot_actor, token, &self.tracker);
+
+        #[cfg(feature = "test-utils")]
+        if let Some(registry) = ctx.shared.get::<app_core::actor::registry::ActorRegistry>() {
+            registry.register(snapshot_addr.clone());
+            registry.register(addr.clone());
+        }
 
         let s_addr = snapshot_addr.clone();
-        reactor.add_dynamic_loop(settings.scan_interval_ms().as_signal(), move || {
-            s_addr.send(ScanTick)
-        });
+
+        let loop_handle = ctx
+            .reactor
+            .add_dynamic_loop(settings.scan_interval_ms().as_signal(), move || {
+                s_addr.send(ScanTick)
+            });
+
+        self.tracker.track_loop(loop_handle);
 
         bind_ui_events(addr.clone(), &ui_port, reg);
 
-        EventBus::subscribe::<_, PageActivated, _>(&ui.new_token(), addr.clone());
-        EventBus::subscribe::<_, PageActivated, _>(&ui.new_token(), snapshot_addr.clone());
-        EventBus::subscribe::<_, WindowsActionResponse, _>(&ui.new_token(), addr.clone());
-        EventBus::subscribe::<_, OpenedWindow, _>(&ui.new_token(), addr.clone());
+        EventBus::subscribe::<_, PageActivated>(addr.clone(), &self.tracker);
+        EventBus::subscribe::<_, PageActivated>(snapshot_addr.clone(), &self.tracker);
+        EventBus::subscribe::<_, WindowsActionResponse>(addr.clone(), &self.tracker);
+        EventBus::subscribe::<_, OpenedWindow>(addr.clone(), &self.tracker);
 
         Ok(())
     }
 }
 
-fn bind_ui_events<P, TWindow>(
-    addr: Addr<ServiceActor<P>, TWindow>,
-    ui_port: &P,
-    registry: Arc<SlintWindowRegistry>,
-) where
-    TWindow: Window,
+fn bind_ui_events<P>(addr: Addr<ServiceActor<P>>, ui_port: &P, registry: Arc<SlintWindowRegistry>)
+where
     P: UiServicesPort + UiServicesBindings + ServicesWindowRegister + Clone + 'static,
 {
     let a = addr.clone();

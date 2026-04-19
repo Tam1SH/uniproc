@@ -10,8 +10,6 @@ use app_contracts::features::processes::{
     FieldDefDto, ProcessFieldDto, ProcessNodeDto, UiProcessesPort,
 };
 use app_core::actor::addr::Addr;
-use app_core::actor::traits::{Context, Handler};
-use app_core::app::Window;
 use app_core::{messages, ratelimit};
 use context::page_status::PageId;
 use macros::handler;
@@ -20,10 +18,10 @@ use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 use tracing::Span;
 
-pub struct ProcessSnapshotActor<P: UiProcessesPort, TWindow: Window> {
+pub struct ProcessSnapshotActor<P: UiProcessesPort> {
     pub snapshots: HashMap<&'static str, BridgeSnapshot>,
     pub contexts: HashMap<&'static str, Arc<StatefulContext>>,
-    pub target: Addr<ProcessActor<P>, TWindow>,
+    pub target: Addr<ProcessActor<P>>,
 
     pub page_id: PageId,
     pub is_active: bool,
@@ -39,7 +37,7 @@ messages! {
     }
 }
 
-impl<P: UiProcessesPort, TWindow: Window> ProcessSnapshotActor<P, TWindow> {
+impl<P: UiProcessesPort> ProcessSnapshotActor<P> {
     fn context_for(&mut self, schema_id: &'static str) -> Arc<StatefulContext> {
         self.contexts
             .entry(schema_id)
@@ -90,16 +88,13 @@ impl<P: UiProcessesPort, TWindow: Window> ProcessSnapshotActor<P, TWindow> {
 }
 
 #[handler]
-fn activate_page<P: UiProcessesPort, T: Window>(
-    this: &mut ProcessSnapshotActor<P, T>,
-    msg: PageActivated,
-) {
+fn activate_page<P: UiProcessesPort>(this: &mut ProcessSnapshotActor<P>, msg: PageActivated) {
     this.is_active = msg.page_id == this.page_id;
 }
 
 #[handler]
-fn process_remote_scan<P: UiProcessesPort, T: Window>(
-    this: &mut ProcessSnapshotActor<P, T>,
+fn process_remote_scan<P: UiProcessesPort>(
+    this: &mut ProcessSnapshotActor<P>,
     msg: RemoteScanResult,
 ) {
     if !this.is_active {
@@ -119,8 +114,8 @@ fn process_remote_scan<P: UiProcessesPort, T: Window>(
 
 #[cfg(target_os = "windows")]
 #[handler]
-fn process_windows_report<P: UiProcessesPort, T: Window>(
-    this: &mut ProcessSnapshotActor<P, T>,
+fn process_windows_report<P: UiProcessesPort>(
+    this: &mut ProcessSnapshotActor<P>,
     msg: WindowsReportMessage,
 ) {
     if !this.is_active {

@@ -176,17 +176,45 @@ where
     let dump_capacity = trace_policy.dump_capacity;
     app_core::trace::install_policy(trace_policy);
 
+    init_internal(writer, dump_capacity, None)
+}
+
+pub fn init_test_subscriber<W>(
+    writer: W,
+    test_storage: Arc<Mutex<Vec<String>>>,
+) -> anyhow::Result<()>
+where
+    W: for<'writer> MakeWriter<'writer> + Send + Sync + 'static,
+{
+    install_defaults();
+
+    let dump_capacity = 64;
+
+    init_internal(writer, dump_capacity, Some(test_storage))
+}
+
+fn init_internal<W>(
+    writer: W,
+    dump_capacity: usize,
+    test_storage: Option<Arc<Mutex<Vec<String>>>>,
+) -> anyhow::Result<()>
+where
+    W: for<'writer> MakeWriter<'writer> + Send + Sync + 'static,
+{
+    let test_layer = test_storage.map(|storage| TestCaptureLayer(storage));
+
+    let fmt_layer = tracing_subscriber::fmt::layer()
+        .with_target(false)
+        .with_file(false)
+        .with_line_number(false)
+        .event_format(CompactTraceFormatter)
+        .with_writer(writer);
+
     tracing_subscriber::registry()
         .with(default_targets())
         .with(TraceDumpLayer::new(dump_capacity))
-        .with(
-            tracing_subscriber::fmt::layer()
-                .with_target(false)
-                .with_file(false)
-                .with_line_number(false)
-                .event_format(CompactTraceFormatter)
-                .with_writer(writer),
-        )
+        .with(fmt_layer)
+        .with(test_layer)
         .try_init()
         .context("failed to initialize tracing subscriber")?;
 
@@ -294,11 +322,9 @@ impl TraceFieldVisitor {
 }
 
 impl Visit for PlainFieldVisitor<'_> {
-    fn record_str(&mut self, field: &tracing::field::Field, value: &str) {
-        self.values.push((
-            field.name().to_string(),
-            trim_debug_string(value.to_string()),
-        ));
+    fn record_i64(&mut self, field: &tracing::field::Field, value: i64) {
+        self.values
+            .push((field.name().to_string(), value.to_string()));
     }
 
     fn record_u64(&mut self, field: &tracing::field::Field, value: u64) {
@@ -306,14 +332,16 @@ impl Visit for PlainFieldVisitor<'_> {
             .push((field.name().to_string(), value.to_string()));
     }
 
-    fn record_i64(&mut self, field: &tracing::field::Field, value: i64) {
+    fn record_bool(&mut self, field: &tracing::field::Field, value: bool) {
         self.values
             .push((field.name().to_string(), value.to_string()));
     }
 
-    fn record_bool(&mut self, field: &tracing::field::Field, value: bool) {
-        self.values
-            .push((field.name().to_string(), value.to_string()));
+    fn record_str(&mut self, field: &tracing::field::Field, value: &str) {
+        self.values.push((
+            field.name().to_string(),
+            trim_debug_string(value.to_string()),
+        ));
     }
 
     fn record_debug(&mut self, field: &tracing::field::Field, value: &dyn fmt::Debug) {
@@ -783,4 +811,34 @@ fn push_dump_entry(entries: &mut VecDeque<DumpEntry>, incoming: DumpEntry) {
     }
 
     entries.push_back(incoming);
+}
+
+pub struct TestCaptureLayer(Arc<Mutex<Vec<String>>>);
+
+impl<S> Layer<S> for TestCaptureLayer
+where
+    S: Subscriber + for<'a> LookupSpan<'a>,
+{
+    fn on_event(&self, event: &Event<'_>, ctx: LayerContext<'_, S>) {
+        let mut visitor = TraceFieldVisitor::default();
+        event.record(&mut visitor);
+        let mut fields = visitor.finish();
+
+        if let Some(scope) = ctx.event_scope(event) {
+            for span in scope.from_root() {
+                if let Some(span_fields) = span.extensions().get::<TraceFields>() {
+                    merge_missing(&mut fields, span_fields);
+                }
+            }
+        }
+
+        let scope_chain = scope_chain_for_event(&ctx, event);
+        let plain_fields = collect_plain_fields(event);
+
+        let fingerprint = dump_fingerprint(&fields, scope_chain.as_deref(), &plain_fields);
+
+        if let Ok(mut logs) = self.0.lock() {
+            logs.push(fingerprint);
+        }
+    }
 }

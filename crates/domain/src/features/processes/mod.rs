@@ -1,6 +1,5 @@
-use app_core::app::Feature;
 use app_core::app::Window;
-use app_core::reactor::Reactor;
+use app_core::feature::{WindowFeature, WindowFeatureInitContext};
 
 use crate::features::processes::application::actor::*;
 use crate::features::processes::domain::table::ProcessTable;
@@ -15,11 +14,11 @@ use app_contracts::features::agents::{RemoteScanResult, ScanTick};
 use app_contracts::features::environments::WindowsAgentRuntimeEvent;
 use app_contracts::features::environments::WslAgentRuntimeEvent;
 use app_contracts::features::navigation::{page_ids, PageActivated};
-use app_contracts::features::processes::{ProcessesUiBindings, UiProcessesPort};
+use app_contracts::features::processes::{UiProcessesBindings, UiProcessesPort};
 use app_core::actor::addr::Addr;
 use app_core::actor::event_bus::EventBus;
-use app_core::SharedState;
 use context::page_status::PageStatusRegistry;
+use macros::window_feature;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
@@ -29,37 +28,27 @@ mod scanner;
 mod services;
 mod settings;
 
-pub struct ProcessFeature<F> {
-    make_ui_port: F,
-}
+#[window_feature]
+pub struct ProcessFeature;
 
-impl<F> ProcessFeature<F> {
-    pub fn new(make_ui_port: F) -> Self {
-        Self { make_ui_port }
-    }
-}
-
-impl<TWindow, F, P> Feature<TWindow> for ProcessFeature<F>
+#[window_feature]
+impl<TWindow, F, P> WindowFeature<TWindow> for ProcessFeature<F>
 where
     TWindow: Window,
-    F: Fn(&TWindow) -> P + 'static,
-    P: UiProcessesPort + ProcessesUiBindings + Clone + 'static,
+    F: Fn(&TWindow) -> P + 'static + Clone,
+    P: UiProcessesPort + UiProcessesBindings + Clone + 'static,
 {
-    fn install(
-        self,
-        reactor: &mut Reactor,
-        ui: &TWindow,
-        shared: &SharedState,
-    ) -> anyhow::Result<()> {
-        let settings = ProcessSettings::new(shared)?;
-        let ui_port = (self.make_ui_port)(ui);
+    fn install(&mut self, ctx: &mut WindowFeatureInitContext<TWindow>) -> anyhow::Result<()> {
+        let settings = ProcessSettings::new(ctx.shared)?;
+        let ui_port = (self.make_port)(ctx.ui);
+        let token = ctx.ui.new_token();
         let scan_interval_ms = settings.scan_interval_ms();
 
         let process_actor = ProcessActor {
             page_id: page_ids::PROCESSES,
             table: ProcessTable::new(settings.clone())?,
             metadata: ProcessMetadataService,
-            page_status: shared.get::<PageStatusRegistry>().unwrap(),
+            page_status: ctx.shared.get::<PageStatusRegistry>().unwrap(),
             is_active: true,
             is_grouped: false,
             ui_port: ui_port.clone(),
@@ -67,7 +56,7 @@ where
             subs: vec![],
         };
 
-        let addr = Addr::new(process_actor, ui.as_weak());
+        let addr = Addr::new(process_actor, token.clone(), &self.tracker);
 
         let snapshot_actor = ProcessSnapshotActor {
             snapshots: HashMap::new(),
@@ -78,20 +67,28 @@ where
             scratch_processes: Arc::new(Mutex::new(Vec::new())),
             scratch_seen: Default::default(),
         };
-        let snapshot_addr = Addr::new(snapshot_actor, ui.as_weak());
+
+        let snapshot_addr = Addr::new(snapshot_actor, token, &self.tracker);
 
         bind_ui_events(addr.clone(), &ui_port);
 
-        EventBus::subscribe::<_, PageActivated, _>(&ui.new_token(), addr.clone());
-        EventBus::subscribe::<_, PageActivated, _>(&ui.new_token(), snapshot_addr.clone());
-        EventBus::subscribe::<_, RemoteScanResult, _>(&ui.new_token(), snapshot_addr.clone());
-        EventBus::subscribe::<_, WslAgentRuntimeEvent, _>(&ui.new_token(), addr.clone());
-        #[cfg(target_os = "windows")]
-        EventBus::subscribe::<_, WindowsAgentRuntimeEvent, _>(&ui.new_token(), addr.clone());
-        #[cfg(target_os = "windows")]
-        EventBus::subscribe::<_, WindowsReportMessage, _>(&ui.new_token(), snapshot_addr.clone());
+        let builder = EventBus::subscribe_to(addr.clone(), &self.tracker)
+            .batch::<(PageActivated, WslAgentRuntimeEvent)>();
 
-        reactor.add_dynamic_loop(scan_interval_ms.as_signal(), || EventBus::publish(ScanTick));
+        #[cfg(target_os = "windows")]
+        builder.batch::<WindowsAgentRuntimeEvent>();
+
+        let builder = EventBus::subscribe_to(snapshot_addr.clone(), &self.tracker)
+            .batch::<(PageActivated, RemoteScanResult)>();
+
+        #[cfg(target_os = "windows")]
+        builder.batch::<WindowsReportMessage>();
+
+        let loop_handle = ctx
+            .reactor
+            .add_dynamic_loop(scan_interval_ms.as_signal(), || EventBus::publish(ScanTick));
+
+        self.tracker.track_loop(loop_handle);
 
         //TODO: it broken + need translate
         ui_port.set_empty_state_visible(true);
@@ -105,10 +102,9 @@ where
     }
 }
 
-fn bind_ui_events<P, TWindow>(addr: Addr<ProcessActor<P>, TWindow>, ui_port: &P)
+fn bind_ui_events<P>(addr: Addr<ProcessActor<P>>, ui_port: &P)
 where
-    TWindow: Window,
-    P: UiProcessesPort + ProcessesUiBindings + Clone + 'static,
+    P: UiProcessesPort + UiProcessesBindings + Clone + 'static,
 {
     let a = addr.clone();
     ui_port.on_sort_by(move |field| a.send(Sort(field)));
