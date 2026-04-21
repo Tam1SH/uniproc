@@ -1,9 +1,9 @@
+use crate::actor::UiThreadToken;
 use crate::actor::addr::Addr;
 use crate::actor::event_bus::subscribe::{Event, Subscriber, SubscriptionId, UntypedSubscriber};
 use crate::actor::short_type_name;
 use crate::actor::traits::Handler;
-use crate::actor::UiThreadToken;
-use crate::trace::{current_meta, is_scope_enabled, DispatchMeta};
+use crate::trace::{DispatchMeta, current_meta, is_scope_enabled};
 use once_cell::sync::Lazy;
 use parking_lot::RwLock;
 use std::any::TypeId;

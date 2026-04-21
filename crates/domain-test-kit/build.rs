@@ -1,13 +1,13 @@
 use build_utils::collector::{BindingDef, PortDef, Schema};
 use build_utils::load_schema;
 use proc_macro2::TokenStream;
-use quote::{format_ident, quote, ToTokens};
+use quote::{ToTokens, format_ident, quote};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use syn::{parse_str, GenericArgument, Ident, PathArguments, Type};
+use syn::{GenericArgument, Ident, PathArguments, Type, parse_str};
 
 #[derive(Default)]
 struct FeatureTraits {

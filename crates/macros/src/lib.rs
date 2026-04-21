@@ -2,7 +2,7 @@
 #![cfg_attr(coverage, coverage(off))]
 
 use proc_macro::TokenStream;
-use syn::{parse_macro_input, DeriveInput, ItemFn, ItemImpl, ItemTrait, Meta};
+use syn::{DeriveInput, ItemFn, ItemImpl, ItemTrait, Meta, parse_macro_input};
 
 mod feature_settings;
 mod handler;

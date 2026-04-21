@@ -1,6 +1,6 @@
 use app_contracts::features::services::ServiceEntryDto;
-use windows::core::PWSTR;
 use windows::Win32::System::Services::*;
+use windows::core::PWSTR;
 
 pub fn scan_services() -> anyhow::Result<Vec<ServiceEntryDto>> {
     let mut results = Vec::new();

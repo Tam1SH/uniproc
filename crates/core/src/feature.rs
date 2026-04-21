@@ -1,8 +1,8 @@
-use crate::actor::traits::{Context, Handler, Message};
+use crate::SharedState;
 use crate::actor::UiThreadToken;
+use crate::actor::traits::{Context, Handler, Message};
 use crate::app::Window;
 use crate::reactor::Reactor;
-use crate::SharedState;
 
 pub struct WindowFeatureInitContext<'a, TWindow: Window> {
     pub window_id: usize,

@@ -1,7 +1,7 @@
-use crate::actor::addr::Addr;
-use crate::actor::event_bus::subscribe::SubscriptionId;
-use crate::actor::event_bus::EventBus;
 use crate::actor::UiThreadToken;
+use crate::actor::addr::Addr;
+use crate::actor::event_bus::EventBus;
+use crate::actor::event_bus::subscribe::SubscriptionId;
 use std::any::Any;
 use std::cell::RefCell;
 use std::rc::Rc;

@@ -5,7 +5,7 @@ pub mod collector;
 pub mod slint_parser;
 
 pub use collector::{
-    load_schema, ArgDef, BindingDef, BindingMethodDef, DtoDef, DtoField, MethodDef, PortDef, Schema,
+    ArgDef, BindingDef, BindingMethodDef, DtoDef, DtoField, MethodDef, PortDef, Schema, load_schema,
 };
 
 use std::{fs, path::Path};

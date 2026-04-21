@@ -1,8 +1,8 @@
+use crate::SharedState;
 use crate::actor::UiThreadToken;
 use crate::feature::{AppFeature, AppFeatureInitContext, WindowFeature, WindowFeatureInitContext};
 use crate::reactor::Reactor;
 use crate::trace::in_named_scope;
-use crate::SharedState;
 use slint::ComponentHandle;
 use std::cell::RefCell;
 use std::rc::Rc;

@@ -1,8 +1,8 @@
 use crate::native_windows::{ManagedWindowHandle, NativeWindowManager};
+use app_core::actor::UiThreadToken;
 use app_core::actor::event_bus::EventBus;
 use app_core::actor::traits::Message;
-use app_core::actor::UiThreadToken;
-use app_core::trace::{current_meta, is_scope_enabled, DispatchMeta};
+use app_core::trace::{DispatchMeta, current_meta, is_scope_enabled};
 use slint::ComponentHandle;
 use std::any::Any;
 use std::cell::RefCell;

@@ -3,7 +3,7 @@ use crate::{
     TableColWidth, Theme,
 };
 use app_contracts::features::services::{
-    ServicesWindowRegister, UiServiceDetailsPort, PROPERTIES_DIALOG_KEY,
+    PROPERTIES_DIALOG_KEY, ServicesWindowRegister, UiServiceDetailsPort,
 };
 use context::native_windows::slint_factory::{SlintWindowRegistry, WindowRegistry};
 use context::native_windows::{NativeWindowConfig, NativeWindowManager, UiAdapter};

@@ -1,7 +1,7 @@
 use crate::features::cosmetics::UiCosmeticsAdapter;
 use app_contracts::features::cosmetics::{AccentPalette, UiCosmeticsPort};
-use context::native_windows::platform::apply_to_component;
 use context::native_windows::NativeWindowConfig;
+use context::native_windows::platform::apply_to_component;
 use macros::slint_port_adapter;
 use slint::ComponentHandle;
 

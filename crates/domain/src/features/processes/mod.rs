@@ -13,7 +13,7 @@ use app_contracts::features::agents::{RemoteScanResult, ScanTick};
 #[cfg(target_os = "windows")]
 use app_contracts::features::environments::WindowsAgentRuntimeEvent;
 use app_contracts::features::environments::WslAgentRuntimeEvent;
-use app_contracts::features::navigation::{page_ids, PageActivated};
+use app_contracts::features::navigation::{PageActivated, page_ids};
 use app_contracts::features::processes::{UiProcessesBindings, UiProcessesPort};
 use app_core::actor::addr::Addr;
 use app_core::actor::event_bus::EventBus;

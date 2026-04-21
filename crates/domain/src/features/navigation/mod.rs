@@ -5,7 +5,6 @@ mod state;
 
 use crate::features::navigation::actor::{
     NavigationActor, RequestPageSwitch, RequestTabAdd, RequestTabClose, RequestTabSwitch,
-    SideBarWidthChanged,
 };
 use crate::features::navigation::model::bootstrap_contexts;
 use crate::features::navigation::settings::NavigationSettings;
@@ -61,7 +60,6 @@ where
 
         ui_port.set_navigation_tree(tabs.clone());
         ui_port.set_available_contexts(available_contexts);
-        ui_port.set_side_bar_width(settings.side_bar_width().get());
 
         if let Some((tab_id, page_id)) = initial_route {
             addr.send(RequestPageSwitch(tab_id, page_id));
@@ -78,9 +76,6 @@ where
 
         let a = addr.clone();
         ui_port.on_request_tab_add(move |context_key| a.send(RequestTabAdd(context_key)));
-
-        let a = addr.clone();
-        ui_port.on_side_bar_width_changed(move |w| a.send(SideBarWidthChanged(w)));
 
         EventBus::subscribe_to(addr.clone(), &self.tracker).batch::<(
             PageStatusChanged,

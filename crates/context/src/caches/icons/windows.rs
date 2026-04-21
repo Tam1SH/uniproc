@@ -1,15 +1,15 @@
 use slint::{Image, Rgba8Pixel, SharedPixelBuffer};
 use std::ptr::null_mut;
 use tracing::{debug, error, info, info_span, warn};
-use windows::core::{Interface, HRESULT, HSTRING, PCWSTR, PWSTR};
 use windows::Win32::Foundation::*;
 use windows::Win32::Graphics::Gdi::*;
 use windows::Win32::Storage::Packaging::Appx::{
     ClosePackageInfo, GetPackageApplicationIds, PackageFamilyNameFromFullName,
 };
-use windows::Win32::System::Com::{CoInitializeEx, COINIT_APARTMENTTHREADED};
+use windows::Win32::System::Com::{COINIT_APARTMENTTHREADED, CoInitializeEx};
 use windows::Win32::UI::Shell::*;
 use windows::Win32::UI::WindowsAndMessaging::*;
+use windows::core::{HRESULT, HSTRING, Interface, PCWSTR, PWSTR};
 
 pub fn extract_appx_icon(package_full_name: &str, size: i32) -> Option<Image> {
     let span = info_span!("extract_appx_icon", package_full_name, size);

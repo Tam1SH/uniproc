@@ -4,5 +4,5 @@ pub mod l10n;
 pub mod navigation;
 pub mod processes;
 pub mod services;
+pub mod sidebar;
 pub mod window_actions;
-

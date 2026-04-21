@@ -5,7 +5,7 @@ use crate::processes_impl::domain::snapshot::BridgeSnapshot;
 #[cfg(target_os = "windows")]
 use app_contracts::features::environments::WindowsAgentRuntimeEvent;
 use app_contracts::features::environments::{AgentConnectionState, WslAgentRuntimeEvent};
-use app_contracts::features::navigation::{tab_ids, PageActivated};
+use app_contracts::features::navigation::{PageActivated, tab_ids};
 use app_contracts::features::processes::UiProcessesPort;
 use app_core::actor::traits::{Context, NoOp};
 use app_core::messages;

@@ -1,9 +1,9 @@
 use crate::features::services::view::ServiceTable;
 use app_contracts::features::agents::{WindowsActionRequest, WindowsActionResponse};
-use app_contracts::features::navigation::{tab_ids, PageActivated};
+use app_contracts::features::navigation::{PageActivated, tab_ids};
 use app_contracts::features::services::{
-    ServiceActionKind, ServiceEntryVm, ServiceSnapshot, UiServiceDetailsPort,
-    UiServicesPort, PROPERTIES_DIALOG_KEY,
+    PROPERTIES_DIALOG_KEY, ServiceActionKind, ServiceEntryVm, ServiceSnapshot,
+    UiServiceDetailsPort, UiServicesPort,
 };
 use app_contracts::features::windows_manager::OpenedWindow;
 use app_core::actor::event_bus::EventBus;

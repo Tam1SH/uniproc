@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, Item, ItemImpl, ItemStruct};
+use syn::{Item, ItemImpl, ItemStruct, parse_macro_input};
 
 pub fn window_feature_impl(_args: TokenStream, input: TokenStream) -> TokenStream {
     let item = parse_macro_input!(input as Item);

@@ -1,6 +1,6 @@
 use crate::actor::traits::{Context, Handler, Message};
 use crate::actor::{short_type_name, should_trace_actor_message};
-use crate::trace::{install_current_meta, is_message_enabled, is_scope_enabled, DispatchMeta};
+use crate::trace::{DispatchMeta, install_current_meta, is_message_enabled, is_scope_enabled};
 
 pub trait Envelope<A> {
     fn handle(&mut self, actor: &mut A, ctx: &Context<A>);

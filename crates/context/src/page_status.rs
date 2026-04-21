@@ -134,7 +134,10 @@ impl PageStatusRegistry {
         in_named_scope(
             "context.page_status.update",
             Some("tab_id,page_id,status"),
-            Some(format!("{:?} | {:?} | {:?}", msg.tab_id, msg.page_id, msg.status)),
+            Some(format!(
+                "{:?} | {:?} | {:?}",
+                msg.tab_id, msg.page_id, msg.status
+            )),
             || {
                 if self.update_page(msg.tab_id, msg.page_id, msg.status, msg.error.clone()) {
                     EventBus::publish(msg);

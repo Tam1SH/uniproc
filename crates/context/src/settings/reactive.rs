@@ -1,8 +1,8 @@
 use crate::settings::SettingsStore;
 use app_core::actor::event_bus::subscribe::SubscriptionId;
 use app_core::signal::{Signal, SignalSubscription};
-use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 use std::fmt::Debug;
 use std::sync::Arc;
 use tracing::info;
@@ -89,7 +89,7 @@ impl Drop for SettingSubscription {
 mod tests {
     use super::*;
     use crate::settings::SettingsStore;
-    use serde_json::{json, Map};
+    use serde_json::{Map, json};
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::{Arc, Mutex};
 

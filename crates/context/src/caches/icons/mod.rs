@@ -1,5 +1,5 @@
-use bon::Builder;
 use crate::icons::Icons;
+use bon::Builder;
 use slint::Image;
 use std::cell::RefCell;
 use std::time::Duration;
@@ -71,4 +71,3 @@ impl IconProvider {
         icon
     }
 }
-

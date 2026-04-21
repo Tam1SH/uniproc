@@ -1,5 +1,5 @@
 use i_slint_compiler::diagnostics::BuildDiagnostics;
-use i_slint_compiler::parser::{identifier_text, parse_file, SyntaxKind};
+use i_slint_compiler::parser::{SyntaxKind, identifier_text, parse_file};
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;

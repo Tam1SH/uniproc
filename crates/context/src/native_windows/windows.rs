@@ -1,13 +1,13 @@
-use super::{platform_types::AccentPalette, NativeWindowConfig, NativeWindowTexture};
-use i_slint_backend_winit::{winit, WinitWindowAccessor};
+use super::{NativeWindowConfig, NativeWindowTexture, platform_types::AccentPalette};
+use i_slint_backend_winit::{WinitWindowAccessor, winit};
 use raw_window_handle::{HasWindowHandle, RawWindowHandle};
 use slint::{ComponentHandle, RgbaColor};
 use std::ptr::null_mut;
 use window_vibrancy::{apply_acrylic, apply_mica, apply_tabbed};
 use windows::Win32::Foundation::HWND;
 use windows::Win32::Graphics::Dwm::{
-    DwmExtendFrameIntoClientArea, DwmSetWindowAttribute, DWMWA_WINDOW_CORNER_PREFERENCE, DWMWCP_DEFAULT,
-    DWMWCP_ROUND,
+    DWMWA_WINDOW_CORNER_PREFERENCE, DWMWCP_DEFAULT, DWMWCP_ROUND, DwmExtendFrameIntoClientArea,
+    DwmSetWindowAttribute,
 };
 
 use windows::Win32::UI::Controls::MARGINS;

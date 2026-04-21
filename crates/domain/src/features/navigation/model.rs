@@ -1,8 +1,8 @@
 use app_contracts::features::agents::RemoteScanResult;
 use app_contracts::features::navigation::tab_ids::MAIN;
 use app_contracts::features::navigation::{
-    page_ids, CapabilityDescriptor, CapabilityStatus, PageDescriptor, TabContextKey,
-    TabContextKind, TabContextSnapshot, TabDescriptor,
+    CapabilityDescriptor, CapabilityStatus, PageDescriptor, TabContextKey, TabContextKind,
+    TabContextSnapshot, TabDescriptor, page_ids,
 };
 use context::page_status::{PageStatus, TabId};
 use std::borrow::Cow;

@@ -1,4 +1,5 @@
 use anyhow::Context as _;
+use app_core::SharedState;
 use app_core::actor::event_bus::EventBus;
 use app_core::app::UiContext;
 use app_core::feature::{
@@ -6,7 +7,6 @@ use app_core::feature::{
 };
 use app_core::reactor::Reactor;
 use app_core::test_kit::Stabilizer;
-use app_core::SharedState;
 use context::settings::SettingsStore;
 use std::path::PathBuf;
 use std::sync::{Arc, LazyLock, Mutex, Once};

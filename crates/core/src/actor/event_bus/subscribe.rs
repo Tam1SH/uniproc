@@ -1,7 +1,7 @@
 use crate::actor::addr::Addr;
 use crate::actor::short_type_name;
 use crate::actor::traits::{Handler, Message};
-use crate::trace::{is_scope_enabled, DispatchMeta};
+use crate::trace::{DispatchMeta, is_scope_enabled};
 
 use std::any::Any;
 use std::marker::PhantomData;

@@ -1,7 +1,7 @@
 use crate::actor::addr::{Addr, REGISTRY};
 
 use crate::actor::short_type_name;
-use crate::trace::{current_meta, install_current_meta, DispatchMeta};
+use crate::trace::{DispatchMeta, current_meta, install_current_meta};
 
 pub trait Message: 'static {}
 

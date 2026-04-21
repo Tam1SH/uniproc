@@ -260,7 +260,13 @@ fn extract_handler_args(method: &syn::TraitItemFn) -> Vec<ArgDef> {
         let syn::Type::Path(type_path) = &pred.bounded_ty else {
             continue;
         };
-        if type_path.path.segments.last().map(|s| s.ident != "F").unwrap_or(true) {
+        if type_path
+            .path
+            .segments
+            .last()
+            .map(|s| s.ident != "F")
+            .unwrap_or(true)
+        {
             continue;
         }
         for bound in &pred.bounds {
@@ -308,7 +314,10 @@ fn extract_args(sig: &syn::Signature) -> Vec<ArgDef> {
                 "unknown".to_string()
             };
 
-            args.push(ArgDef { name, ty: type_str.replace(' ', "") });
+            args.push(ArgDef {
+                name,
+                ty: type_str.replace(' ', ""),
+            });
         }
     }
     args
@@ -317,9 +326,7 @@ fn extract_args(sig: &syn::Signature) -> Vec<ArgDef> {
 fn extract_output_ty(sig: &syn::Signature) -> Option<String> {
     match &sig.output {
         syn::ReturnType::Default => None,
-        syn::ReturnType::Type(_, ty) => {
-            Some(quote::quote!(#ty).to_string().replace(' ', ""))
-        }
+        syn::ReturnType::Type(_, ty) => Some(quote::quote!(#ty).to_string().replace(' ', "")),
     }
 }
 

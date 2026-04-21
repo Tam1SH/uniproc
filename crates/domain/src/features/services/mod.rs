@@ -12,7 +12,7 @@ use crate::features::services::application::snapshot_actor::ServiceSnapshotActor
 use crate::features::services::settings::ServiceSettings;
 use crate::features::services::view::ServiceTable;
 use app_contracts::features::agents::{ScanTick, WindowsActionResponse};
-use app_contracts::features::navigation::{page_ids, PageActivated};
+use app_contracts::features::navigation::{PageActivated, page_ids};
 use app_contracts::features::services::{
     ServicesWindowRegister, UiServicesBindings, UiServicesPort,
 };

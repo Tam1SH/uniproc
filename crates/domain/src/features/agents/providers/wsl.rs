@@ -15,7 +15,7 @@ use ogurpchik::transport::stream::adapters::vsock::{VsockAddr, VsockTransport};
 use std::ops::Deref;
 use std::time::Instant;
 use tracing::{error, instrument, warn};
-use uniproc_protocol::{services, LinuxCodec, LinuxRequest, LinuxResponse};
+use uniproc_protocol::{LinuxCodec, LinuxRequest, LinuxResponse, services};
 
 pub struct WslBackend;
 

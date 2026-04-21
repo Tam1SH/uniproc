@@ -1,9 +1,9 @@
+use crate::actor::UiThreadToken;
 use crate::actor::envelope::{Envelope, MessageEnvelope};
 use crate::actor::traits::{Context, Handler, Message};
-use crate::actor::UiThreadToken;
 use crate::actor::{short_type_name, should_trace_actor_message};
 use crate::lifecycle_tracker::FeatureLifecycle;
-use crate::trace::{current_meta, is_message_enabled, is_scope_enabled, DispatchMeta};
+use crate::trace::{DispatchMeta, current_meta, is_message_enabled, is_scope_enabled};
 use std::any::Any;
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, VecDeque};

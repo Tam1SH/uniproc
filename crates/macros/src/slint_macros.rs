@@ -2,7 +2,7 @@ use proc_macro::TokenStream;
 use proc_macro2::Ident;
 use quote::{format_ident, quote};
 use syn::{
-    parse_quote, FnArg, ImplItem, ImplItemFn, ItemEnum, ItemImpl, ItemStruct, ItemTrait, Pat,
+    FnArg, ImplItem, ImplItemFn, ItemEnum, ItemImpl, ItemStruct, ItemTrait, Pat, parse_quote,
 };
 
 use crate::schema::load_schema;

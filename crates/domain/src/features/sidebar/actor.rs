@@ -3,8 +3,8 @@ use app_contracts::features::sidebar::{RequestTransition, UiSidebarPort};
 use app_core::messages;
 use app_core::trace::{current_meta, install_current_meta};
 use macros::handler;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
 messages! {

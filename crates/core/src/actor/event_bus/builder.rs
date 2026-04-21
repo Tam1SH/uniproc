@@ -1,6 +1,6 @@
 use crate::actor::addr::Addr;
-use crate::actor::event_bus::subscribe::Event;
 use crate::actor::event_bus::EventBus;
+use crate::actor::event_bus::subscribe::Event;
 use crate::actor::traits::Handler;
 use crate::lifecycle_tracker::FeatureLifecycle;
 

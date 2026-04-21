@@ -1,5 +1,5 @@
 use anyhow::Context;
-use app_core::trace::{register_scopes, TracePolicy};
+use app_core::trace::{TracePolicy, register_scopes};
 use serde_json::Value;
 use std::collections::{HashMap, VecDeque};
 use std::fmt;

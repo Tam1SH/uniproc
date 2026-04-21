@@ -1,4 +1,4 @@
-use super::{platform_types::AccentPalette, NativeWindowConfig};
+use super::{NativeWindowConfig, platform_types::AccentPalette};
 use slint::{ComponentHandle, RgbaColor};
 
 pub fn apply_to_component<T: ComponentHandle + 'static>(

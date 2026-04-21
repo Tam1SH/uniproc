@@ -1,5 +1,5 @@
-use crate::features::services::UiServicesAdapter;
 use crate::ServicesFeatureGlobal;
+use crate::features::services::UiServicesAdapter;
 use app_contracts::features::services::{ServiceActionKind, ServiceEntryVm, UiServicesBindings};
 use macros::slint_bindings_adapter;
 use slint::{ComponentHandle, SharedString};

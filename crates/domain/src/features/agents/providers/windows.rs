@@ -16,7 +16,7 @@ use ogurpchik::transport::stream::adapters::uds::UdsTransport;
 use std::ops::Deref;
 use std::time::Instant;
 use tracing::{error, instrument, warn};
-use uniproc_protocol::{services, WindowsCodec, WindowsRequest, WindowsResponse};
+use uniproc_protocol::{WindowsCodec, WindowsRequest, WindowsResponse, services};
 
 pub struct WindowsBackend;
 
