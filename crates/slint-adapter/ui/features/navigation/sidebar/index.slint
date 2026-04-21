@@ -1,6 +1,7 @@
 import { Environments } from "../../environments/views/environments.slint";
 import { ScrollView } from "std-widgets.slint";
 import { Navigation } from "../globals/tabs-navigation.slint";
+import { Sidebar } from "../../sidebar/globals.slint";
 import { WindowClickHandler } from "title/title-bar.slint";
 import { NavItem } from "components/nav-item.slint";
 import { PageData } from "content/globals.slint";
@@ -17,9 +18,9 @@ export component SideBar inherits Rectangle {
     private property <length> prop-max-width: 500px;
     private property <length> collapse-threshold: 80px;
     private property <length> collapsed-width: 58px;
-    private property <bool> is-collapsed: WindowAdapter.size == WindowSize.sm || Navigation.side_bar_width <= root.collapsed-width;
+    private property <bool> is-collapsed: WindowAdapter.size == WindowSize.sm || Sidebar.side_bar_width <= root.collapsed-width;
 
-    width: WindowAdapter.size == WindowSize.sm ? root.collapsed-width : Navigation.side_bar_width;
+    width: WindowAdapter.size == WindowSize.sm ? root.collapsed-width : Sidebar.side_bar_width;
 
     states [
         collapsed when root.is-collapsed: {
@@ -32,7 +33,7 @@ export component SideBar inherits Rectangle {
             }
         }
         expanded when !root.is-collapsed: {
-            width: Navigation.side_bar_width;
+            width: Sidebar.side_bar_width;
             in {
                 animate width {
                     duration: Theme.durationFast;
@@ -49,10 +50,10 @@ export component SideBar inherits Rectangle {
 
     private property <int> active-sidebar-index: root.current-pages.length > 0 ? min(max(Navigation.active_page_index, 0), root.current-pages.length - 1) : 0;
 
-    private property <float> indicator-progress: Navigation.switch_progress;
+    private property <float> indicator-progress: Sidebar.switch_progress;
     private property <float> indicator-eased-progress: root.indicator-progress * root.indicator-progress * (3.0 - 2.0 * root.indicator-progress) - 0.38;
-    private property <bool> indicator-transition-active: Navigation.switch_from_index >= 0 && Navigation.switch_to_index >= 0 && Navigation.switch_from_index != Navigation.switch_to_index && root.indicator-progress > 0.001 && root.indicator-progress < 0.999;
-    private property <float> indicator-direction: Navigation.switch_to_index >= Navigation.switch_from_index ? 1.0 : -1.0;
+    private property <bool> indicator-transition-active: Sidebar.switch_from_index >= 0 && Sidebar.switch_to_index >= 0 && Sidebar.switch_from_index != Sidebar.switch_to_index && root.indicator-progress > 0.001 && root.indicator-progress < 0.999;
+    private property <float> indicator-direction: Sidebar.switch_to_index >= Sidebar.switch_from_index ? 1.0 : -1.0;
     private property <length> indicator-center-y: (root.nav-item-height - Theme.selection_indicator_height) / 2;
     private property <length> indicator-max-height: Theme.selection_indicator_height + 12px;
     private property <float> from-phase: min(root.indicator-eased-progress / 0.5, 1.0);
@@ -96,9 +97,9 @@ export component SideBar inherits Rectangle {
                             active: Navigation.active_page_index == idx;
                             colorize: false;
                             text-visible: !root.is-collapsed;
-                            indicator-visible: root.indicator-transition-active ? ((idx == Navigation.switch_from_index && root.from-indicator-height > 10px) || (idx == Navigation.switch_to_index && root.to-indicator-height > 10px)) : (idx == root.active-sidebar-index);
-                            indicator-height: root.indicator-transition-active ? (idx == Navigation.switch_from_index ? root.from-indicator-height : (idx == Navigation.switch_to_index ? root.to-indicator-height : Theme.selection_indicator_height)) : Theme.selection_indicator_height;
-                            indicator-offset-y: root.indicator-transition-active ? (idx == Navigation.switch_from_index ? root.from-indicator-y : (idx == Navigation.switch_to_index ? root.to-indicator-y : root.indicator-center-y)) : root.indicator-center-y;
+                            indicator-visible: root.indicator-transition-active ? ((idx == Sidebar.switch_from_index && root.from-indicator-height > 10px) || (idx == Sidebar.switch_to_index && root.to-indicator-height > 10px)) : (idx == root.active-sidebar-index);
+                            indicator-height: root.indicator-transition-active ? (idx == Sidebar.switch_from_index ? root.from-indicator-height : (idx == Sidebar.switch_to_index ? root.to-indicator-height : Theme.selection_indicator_height)) : Theme.selection_indicator_height;
+                            indicator-offset-y: root.indicator-transition-active ? (idx == Sidebar.switch_from_index ? root.from-indicator-y : (idx == Sidebar.switch_to_index ? root.to-indicator-y : root.indicator-center-y)) : root.indicator-center-y;
                             clicked => {
                                 Navigation.request_page_switch(Navigation.tabs[Navigation.active_tab_index].id, page.id);
                             }
@@ -131,18 +132,18 @@ export component SideBar inherits Rectangle {
         visible-height: parent.height - 20px;
         visible: WindowAdapter.size != WindowSize.sm;
         resized(delta) => {
-            let potential-width = Navigation.side_bar_width + delta;
+            let potential-width = Sidebar.side_bar_width + delta;
 
             if (potential-width < root.collapse-threshold) {
-                Navigation.side_bar_width = root.collapsed-width;
+                Sidebar.side_bar_width = root.collapsed-width;
             } else if (potential-width < root.prop-min-width) {
-                Navigation.side_bar_width = root.prop-min-width;
+                Sidebar.side_bar_width = root.prop-min-width;
             } else if (potential-width > root.prop-max-width) {
-                Navigation.side_bar_width = root.prop-max-width;
+                Sidebar.side_bar_width = root.prop-max-width;
             } else {
-                Navigation.side_bar_width = potential-width;
+                Sidebar.side_bar_width = potential-width;
             }
-            Navigation.side_bar_width_changed(Navigation.side_bar_width);
+            Sidebar.side_bar_width_changed(Sidebar.side_bar_width);
         }
     }
 }

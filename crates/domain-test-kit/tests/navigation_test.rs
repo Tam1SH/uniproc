@@ -4,12 +4,13 @@ use app_core::actor::registry::ActorRegistry;
 use context::page_status::PageStatusRegistry;
 use domain::features::navigation::NavigationFeature;
 use domain::features::page_status::PageStatusFeature;
-use domain::features::services::application::snapshot_actor::ServiceSnapshotActor;
 use domain::features::services::ServicesFeature;
+use domain::features::services::application::snapshot_actor::ServiceSnapshotActor;
+use domain::features::sidebar::SidebarFeature;
 use domain::features::test_discovery::TestDiscoveryFeature;
 use domain::features::windows_manager::WindowManagerFeature;
 use domain_test_kit::generated::*;
-use domain_test_kit::utils::{temp_settings_path, DomainTestWindow, FeatureHarness};
+use domain_test_kit::utils::{DomainTestWindow, FeatureHarness, temp_settings_path};
 use rstest::{fixture, rstest};
 use serial_test::serial;
 
@@ -113,6 +114,75 @@ fn generated_navigation_stub_receives_initial_navigation_state(mut h: FeatureHar
         1
     );
     assert!(h.shared.get::<PageStatusRegistry>().is_some());
+}
+
+#[rstest]
+#[serial]
+fn generated_navigation_stub_handles_page_switch_without_sidebar_contract(mut h: FeatureHarness) {
+    let stub = NavigationUiStub::new();
+    let port = stub.clone();
+
+    h.install(NavigationFeature::new(move |_: &DomainTestWindow| {
+        port.clone()
+    }))
+    .unwrap();
+
+    let initial_page_calls = stub.set_active_page_call_count().stabilize(&mut h);
+    let initial_tab_calls = stub.set_active_tab_call_count().stabilize(&mut h);
+
+    stub.emit_on_request_page_switch(tab_ids::MAIN, page_ids::SERVICES)
+        .stabilize(&mut h);
+
+    assert!(stub.set_active_page_call_count().stabilize(&mut h) > initial_page_calls);
+    assert!(stub.set_active_tab_call_count().stabilize(&mut h) >= initial_tab_calls);
+}
+
+#[rstest]
+#[serial]
+fn navigation_and_sidebar_features_integrate_via_transition_bus(mut h: FeatureHarness) {
+    let nav_stub = NavigationUiStub::new();
+    let sidebar_stub = SidebarUiStub::new();
+    let nav_port = nav_stub.clone();
+    let sidebar_port = sidebar_stub.clone();
+
+    h.install(NavigationFeature::new(move |_: &DomainTestWindow| {
+        nav_port.clone()
+    }))
+    .unwrap();
+    h.install(SidebarFeature::new(move |_: &DomainTestWindow| {
+        sidebar_port.clone()
+    }))
+    .unwrap();
+
+    assert_eq!(
+        sidebar_stub
+            .set_side_bar_width_call_count()
+            .stabilize(&mut h),
+        1
+    );
+
+    nav_stub
+        .emit_on_request_page_switch(tab_ids::MAIN, page_ids::SERVICES)
+        .stabilize(&mut h);
+
+    assert!(
+        sidebar_stub
+            .set_switch_transition_call_count()
+            .stabilize(&mut h)
+            >= 1
+    );
+    assert!(
+        sidebar_stub
+            .set_content_visible_call_count()
+            .stabilize(&mut h)
+            >= 1
+    );
+    assert!(
+        sidebar_stub
+            .set_switch_progress_call_count()
+            .stabilize(&mut h)
+            >= 1
+    );
 }
 
 #[rstest]

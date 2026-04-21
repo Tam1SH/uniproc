@@ -1,6 +1,7 @@
 import { Theme } from "theme.slint";
 import { PageStatus, PageData, TabData } from "../content/globals.slint";
 import { SideBar } from "../features/navigation/sidebar/index.slint";
+import { Sidebar } from "../features/sidebar/globals.slint";
 import {
     Navigation,
 } from "../features/navigation/globals/tabs-navigation.slint";
@@ -88,7 +89,7 @@ export component BuiltinDashboard inherits HorizontalLayout {
                         visible: root.is-ready;
 
                         states [
-                            visible when Navigation.content-visible && root.is-ready: {
+                            visible when Sidebar.content-visible && root.is-ready: {
                                 opacity: 1;
                                 y: 0px;
                                 in {

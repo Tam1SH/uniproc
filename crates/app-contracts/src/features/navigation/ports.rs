@@ -21,10 +21,4 @@ pub trait UiNavigationPort: 'static {
     fn set_tab_status(&self, tab_id: TabId, status: PageStatus);
     #[manual]
     fn set_tab_error(&self, tab_id: TabId, msg: String);
-    #[manual]
-    fn set_switch_transition(&self, from_index: i32, to_index: i32, progress: f32);
-    #[manual]
-    fn set_side_bar_width(&self, width: u64);
-    fn set_switch_progress(&self, progress: f32);
-    fn set_content_visible(&self, visible: bool);
 }

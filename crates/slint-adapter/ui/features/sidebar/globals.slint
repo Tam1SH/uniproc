@@ -1,0 +1,10 @@
+export global Sidebar {
+    in-out property <int> switch_from_index: -1;
+    in-out property <int> switch_to_index: -1;
+    in-out property <float> switch_progress: 1.0;
+
+    in-out property <length> side_bar_width: 260px;
+    in-out property <bool> content_visible: true;
+
+    callback side_bar_width_changed(length);
+}

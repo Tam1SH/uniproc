@@ -5,7 +5,6 @@ use app_contracts::features::navigation::{
 use context::icons::Icons;
 use context::page_status::{PageId, PageStatus, TabId};
 use macros::slint_port_adapter;
-use slint::private_unstable_api::re_exports::Coord;
 use slint::{ComponentHandle, Model, ModelRc, VecModel};
 
 fn update_row<T: Clone + 'static>(
@@ -135,18 +134,6 @@ impl UiNavigationPort for UiNavigationAdapter {
             |t| t.id,
             |t| t.error_msg = msg.into(),
         );
-    }
-
-    fn set_switch_transition(&self, ui: &AppWindow, from_index: i32, to_index: i32, progress: f32) {
-        let nav = ui.global::<crate::Navigation>();
-        nav.set_switch_from_index(from_index);
-        nav.set_switch_to_index(to_index);
-        nav.set_switch_progress(progress);
-    }
-
-    fn set_side_bar_width(&self, ui: &AppWindow, width: u64) {
-        ui.global::<crate::Navigation>()
-            .set_side_bar_width(width as Coord)
     }
 }
 

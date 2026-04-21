@@ -10,12 +10,6 @@ pub trait UiNavigationBindings: 'static {
         F: Fn(TabId, PageId) + 'static;
 
     #[manual]
-    #[tracing(target = "width")]
-    fn on_side_bar_width_changed<F>(&self, handler: F)
-    where
-        F: Fn(u64) + 'static;
-
-    #[manual]
     #[tracing(target = "tab_id")]
     fn on_request_tab_switch<F>(&self, handler: F)
     where

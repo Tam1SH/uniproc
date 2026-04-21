@@ -8,6 +8,7 @@ use app_contracts::features::navigation::{
     AvailableContextDescriptor, NavigationContextsChanged, PageActivated, TabActivated,
     TabContextSnapshot, UiNavigationPort,
 };
+use app_contracts::features::sidebar::RequestTransition;
 use app_core::actor::event_bus::EventBus;
 use app_core::messages;
 use app_core::trace::{current_meta, install_current_meta};
@@ -15,9 +16,7 @@ use context::page_status::{
     PageId, PageStatus, PageStatusChanged, PageStatusRegistry, TabId, TabStatusChanged,
 };
 use macros::handler;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
-use std::time::{Duration, Instant};
 use tracing::instrument;
 use tracing::{debug, info, warn};
 
@@ -26,17 +25,12 @@ messages! {
     RequestTabSwitch(TabId),
     RequestTabClose(TabId),
     RequestTabAdd(String),
-    SideBarWidthChanged(u64),
 }
 
 pub struct NavigationActor<P: UiNavigationPort + Clone> {
     ui_port: P,
     registry: Arc<PageStatusRegistry>,
     state: NavigationState,
-    anim_token: Arc<AtomicU64>,
-    switch_duration: Duration,
-    hide_delay: Duration,
-    show_delay: Duration,
 }
 
 impl<P: UiNavigationPort + Clone> NavigationActor<P> {
@@ -44,16 +38,12 @@ impl<P: UiNavigationPort + Clone> NavigationActor<P> {
         ui_port: P,
         registry: Arc<PageStatusRegistry>,
         contexts: Vec<TabContextSnapshot>,
-        settings: &NavigationSettings,
+        _settings: &NavigationSettings,
     ) -> Self {
         Self {
             ui_port,
             registry,
             state: NavigationState::new(contexts),
-            anim_token: Arc::new(AtomicU64::new(0)),
-            switch_duration: Duration::from_millis(600),
-            hide_delay: Duration::from_millis(settings.switch_hide_delay_ms().get()),
-            show_delay: Duration::from_millis(settings.switch_show_delay_ms().get()),
         }
     }
 
@@ -67,40 +57,6 @@ impl<P: UiNavigationPort + Clone> NavigationActor<P> {
 
     pub fn resolve_initial_route(&self, candidate: (TabId, PageId)) -> Option<(TabId, PageId)> {
         self.state.resolve_initial_route(candidate)
-    }
-
-    fn run_animation_step(
-        ui: P,
-        token_ref: Arc<AtomicU64>,
-        target_token: u64,
-        start: Instant,
-        duration: Duration,
-    ) {
-        let meta = current_meta();
-        slint::Timer::single_shot(Duration::from_millis(16), move || {
-            let _meta_guard = meta.clone().map(install_current_meta);
-            if token_ref.load(Ordering::SeqCst) != target_token {
-                return;
-            }
-
-            let elapsed = start.elapsed().as_secs_f32();
-            let total = duration.as_secs_f32().max(0.001);
-            let t = (elapsed / total).clamp(0.0, 1.0);
-
-            let eased = if t < 0.5 {
-                8.0 * t * t * t * t
-            } else {
-                1.0 - f32::powi(-2.0 * t + 2.0, 4) / 2.0
-            };
-
-            ui.set_switch_progress(eased);
-
-            if t < 1.0 {
-                Self::run_animation_step(ui, token_ref, target_token, start, duration);
-            } else {
-                ui.set_switch_progress(1.0);
-            }
-        });
     }
 
     fn sync_ui_to_state(&self) {
@@ -150,46 +106,22 @@ impl<P: UiNavigationPort + Clone> NavigationActor<P> {
             .get_page_state(switch_plan.tab_id, switch_plan.page_id);
         self.ui_port
             .set_page_status(switch_plan.tab_id, switch_plan.page_id, page_state.status);
-
         if switch_plan.from_index != -1 {
             debug!(
                 from_index = switch_plan.from_index,
                 to_index = switch_plan.to_index,
-                "Starting transition animation"
+                "Switching page within active context"
             );
-            self.ui_port
-                .set_switch_transition(switch_plan.from_index, switch_plan.to_index, 0.0);
-            let next_token = self.anim_token.fetch_add(1, Ordering::SeqCst) + 1;
-
-            Self::run_animation_step(
-                self.ui_port.clone(),
-                self.anim_token.clone(),
-                next_token,
-                Instant::now(),
-                self.switch_duration,
-            );
+            EventBus::publish(RequestTransition {
+                from_index: switch_plan.from_index,
+                to_index: switch_plan.to_index,
+            });
         }
 
-        self.ui_port.set_content_visible(false);
-
-        let h_delay = self.hide_delay;
-        let s_delay = self.show_delay;
-        let ui = self.ui_port.clone();
-        let meta = current_meta();
-
-        slint::Timer::single_shot(h_delay, move || {
-            let _meta_guard = meta.clone().map(install_current_meta);
-            let ui2 = ui.clone();
-            let inner_meta = current_meta();
-
-            ui2.set_active_tab(switch_plan.tab_id);
-            ui2.set_active_page(switch_plan.tab_id, switch_plan.page_id);
-            slint::Timer::single_shot(s_delay, move || {
-                let _meta_guard = inner_meta.clone().map(install_current_meta);
-                debug!("Setting content visible after delay");
-                ui2.set_content_visible(true);
-            });
-        });
+        let _meta_guard = current_meta().map(install_current_meta);
+        self.ui_port.set_active_tab(switch_plan.tab_id);
+        self.ui_port
+            .set_active_page(switch_plan.tab_id, switch_plan.page_id);
     }
 }
 
@@ -284,14 +216,6 @@ fn update_tab_status<P: UiNavigationPort + Clone>(
         warn!(error = %err, "Tab error reported");
         this.ui_port.set_tab_error(msg.tab_id, err);
     }
-}
-
-#[handler]
-fn resize_sidebar<P: UiNavigationPort + Clone>(
-    this: &mut NavigationActor<P>,
-    msg: SideBarWidthChanged,
-) {
-    this.ui_port.set_side_bar_width(msg.0);
 }
 
 #[handler]
