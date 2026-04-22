@@ -12,14 +12,14 @@ use crate::features::services::application::snapshot_actor::ServiceSnapshotActor
 use crate::features::services::settings::ServiceSettings;
 use crate::features::services::view::ServiceTable;
 use app_contracts::features::agents::{ScanTick, WindowsActionResponse};
-use app_contracts::features::navigation::{PageActivated, page_ids};
+use app_contracts::features::navigation::{RouteActivated, TabContextKey};
 use app_contracts::features::services::{
     ServicesWindowRegister, UiServicesBindings, UiServicesPort,
 };
 use app_contracts::features::windows_manager::OpenedWindow;
 use app_core::feature::{FeatureContextState, WindowFeature, WindowFeatureInitContext};
 use context::native_windows::slint_factory::SlintWindowRegistry;
-use context::page_status::PageStatusRegistry;
+use context::page_status::RouteStatusRegistry;
 use macros::window_feature;
 
 pub mod application;
@@ -46,12 +46,12 @@ where
         let reg = ctx.shared.get::<SlintWindowRegistry>().unwrap();
 
         let service_actor = ServiceActor {
-            page_id: page_ids::SERVICES,
             registry: reg.clone(),
             table: ServiceTable::new(settings.clone())?,
             ui_port: ui_port.clone(),
-            page_status: ctx.shared.get::<PageStatusRegistry>().unwrap(),
+            route_status: ctx.shared.get::<RouteStatusRegistry>().unwrap(),
             is_active: true,
+            active_context_key: TabContextKey::HOST,
             pending: HashSet::new(),
             ctx_state: FeatureContextState::new(ctx.window_id, "processes.list"),
         };
@@ -60,7 +60,6 @@ where
 
         let snapshot_actor = ServiceSnapshotActor {
             target: addr.clone(),
-            page_id: page_ids::SERVICES,
             is_active: true,
         };
         let snapshot_addr = Addr::new(snapshot_actor, token, &self.tracker);
@@ -83,8 +82,8 @@ where
 
         bind_ui_events(addr.clone(), &ui_port, reg);
 
-        EventBus::subscribe::<_, PageActivated>(addr.clone(), &self.tracker);
-        EventBus::subscribe::<_, PageActivated>(snapshot_addr.clone(), &self.tracker);
+        EventBus::subscribe::<_, RouteActivated>(addr.clone(), &self.tracker);
+        EventBus::subscribe::<_, RouteActivated>(snapshot_addr.clone(), &self.tracker);
         EventBus::subscribe::<_, WindowsActionResponse>(addr.clone(), &self.tracker);
         EventBus::subscribe::<_, OpenedWindow>(addr.clone(), &self.tracker);
 

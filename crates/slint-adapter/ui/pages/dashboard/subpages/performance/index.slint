@@ -1,5 +1,9 @@
 import { PlaceholderPage } from "../shared/placeholder-page.slint";
 
+export global PerformancePageSpec {
+    out property <string> layout: "with-sidebar";
+}
+
 export component PerformancePage inherits Rectangle {
     PlaceholderPage {
         title: "Performance";

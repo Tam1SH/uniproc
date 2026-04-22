@@ -3,6 +3,10 @@ import {
     ProcessViewHeader,
 } from "../../../../features/processes/process-view.slint";
 
+export global ProcessesPageSpec {
+    out property <string> layout: "with-sidebar";
+}
+
 export component ProcessesPageBody {
     ProcessViewBody { }
 }

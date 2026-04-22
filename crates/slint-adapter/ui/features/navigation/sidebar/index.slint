@@ -101,7 +101,7 @@ export component SideBar inherits Rectangle {
                             indicator-height: root.indicator-transition-active ? (idx == Sidebar.switch_from_index ? root.from-indicator-height : (idx == Sidebar.switch_to_index ? root.to-indicator-height : Theme.selection_indicator_height)) : Theme.selection_indicator_height;
                             indicator-offset-y: root.indicator-transition-active ? (idx == Sidebar.switch_from_index ? root.from-indicator-y : (idx == Sidebar.switch_to_index ? root.to-indicator-y : root.indicator-center-y)) : root.indicator-center-y;
                             clicked => {
-                                Navigation.request_page_switch(Navigation.tabs[Navigation.active_tab_index].id, page.id);
+                                Navigation.request_route_switch(page.route_segment);
                             }
                         }
                     }
@@ -121,7 +121,7 @@ export component SideBar inherits Rectangle {
             colorize: false;
             text-visible: !root.is-collapsed;
             clicked => {
-                Navigation.request_page_switch(0, 100);
+                Navigation.request_route_switch("settings");
             }
         }
     }

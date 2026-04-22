@@ -5,13 +5,12 @@ use crate::processes_impl::scanner::ctx::StatefulContext;
 use crate::processes_impl::scanner::visitors::linux::WslScanResult;
 use crate::processes_impl::scanner::visitors::windows::WindowsScanResult;
 use app_contracts::features::agents::{RemoteScanResult, WindowsReportMessage};
-use app_contracts::features::navigation::PageActivated;
+use app_contracts::features::navigation::RouteActivated;
 use app_contracts::features::processes::{
     FieldDefDto, ProcessFieldDto, ProcessNodeDto, UiProcessesPort,
 };
 use app_core::actor::addr::Addr;
 use app_core::{messages, ratelimit};
-use context::page_status::PageId;
 use macros::handler;
 use slint::SharedString;
 use std::collections::{HashMap, HashSet};
@@ -23,7 +22,6 @@ pub struct ProcessSnapshotActor<P: UiProcessesPort> {
     pub contexts: HashMap<&'static str, Arc<StatefulContext>>,
     pub target: Addr<ProcessActor<P>>,
 
-    pub page_id: PageId,
     pub is_active: bool,
     pub scratch_processes: Arc<Mutex<Vec<ProcessNodeDto>>>,
     pub scratch_seen: HashSet<SharedString>,
@@ -88,8 +86,8 @@ impl<P: UiProcessesPort> ProcessSnapshotActor<P> {
 }
 
 #[handler]
-fn activate_page<P: UiProcessesPort>(this: &mut ProcessSnapshotActor<P>, msg: PageActivated) {
-    this.is_active = msg.page_id == this.page_id;
+fn activate_page<P: UiProcessesPort>(this: &mut ProcessSnapshotActor<P>, msg: RouteActivated) {
+    this.is_active = msg.route_segment == "processes";
 }
 
 #[handler]

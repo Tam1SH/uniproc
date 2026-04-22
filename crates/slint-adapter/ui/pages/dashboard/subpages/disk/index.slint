@@ -1,5 +1,9 @@
 import { PlaceholderPage } from "../shared/placeholder-page.slint";
 
+export global DiskPageSpec {
+    out property <string> layout: "with-sidebar";
+}
+
 export component DiskPage inherits Rectangle {
     PlaceholderPage {
         title: "Disk";

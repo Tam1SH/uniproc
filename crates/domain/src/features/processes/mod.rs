@@ -13,11 +13,11 @@ use app_contracts::features::agents::{RemoteScanResult, ScanTick};
 #[cfg(target_os = "windows")]
 use app_contracts::features::environments::WindowsAgentRuntimeEvent;
 use app_contracts::features::environments::WslAgentRuntimeEvent;
-use app_contracts::features::navigation::{PageActivated, page_ids};
+use app_contracts::features::navigation::{RouteActivated, TabContextKey};
 use app_contracts::features::processes::{UiProcessesBindings, UiProcessesPort};
 use app_core::actor::addr::Addr;
 use app_core::actor::event_bus::EventBus;
-use context::page_status::PageStatusRegistry;
+use context::page_status::RouteStatusRegistry;
 use macros::window_feature;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -45,11 +45,11 @@ where
         let scan_interval_ms = settings.scan_interval_ms();
 
         let process_actor = ProcessActor {
-            page_id: page_ids::PROCESSES,
             table: ProcessTable::new(settings.clone())?,
             metadata: ProcessMetadataService,
-            page_status: ctx.shared.get::<PageStatusRegistry>().unwrap(),
+            route_status: ctx.shared.get::<RouteStatusRegistry>().unwrap(),
             is_active: true,
+            active_context_key: TabContextKey::HOST,
             is_grouped: false,
             ui_port: ui_port.clone(),
             has_snapshot_data: false,
@@ -62,7 +62,6 @@ where
             snapshots: HashMap::new(),
             contexts: HashMap::new(),
             target: addr.clone(),
-            page_id: page_ids::PROCESSES,
             is_active: true,
             scratch_processes: Arc::new(Mutex::new(Vec::new())),
             scratch_seen: Default::default(),
@@ -73,13 +72,13 @@ where
         bind_ui_events(addr.clone(), &ui_port);
 
         let builder = EventBus::subscribe_to(addr.clone(), &self.tracker)
-            .batch::<(PageActivated, WslAgentRuntimeEvent)>();
+            .batch::<(RouteActivated, WslAgentRuntimeEvent)>();
 
         #[cfg(target_os = "windows")]
         builder.batch::<WindowsAgentRuntimeEvent>();
 
         let builder = EventBus::subscribe_to(snapshot_addr.clone(), &self.tracker)
-            .batch::<(PageActivated, RemoteScanResult)>();
+            .batch::<(RouteActivated, RemoteScanResult)>();
 
         #[cfg(target_os = "windows")]
         builder.batch::<WindowsReportMessage>();

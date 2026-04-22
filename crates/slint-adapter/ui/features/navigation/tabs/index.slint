@@ -57,10 +57,10 @@ export component TabBar inherits Rectangle {
                 is-closable: tab.is_closable;
                 status: tab.status;
                 clicked => {
-                    Navigation.request_tab_switch(i);
+                    Navigation.request_tab_switch(tab.context_key);
                 }
                 close_clicked => {
-                    Navigation.request_tab_close(i);
+                    Navigation.request_tab_close(tab.context_key);
                 }
             }
         }

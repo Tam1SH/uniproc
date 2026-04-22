@@ -1,11 +1,10 @@
 use crate::features::services::{application::actor::ServiceActor, scanner};
 use app_contracts::features::agents::ScanTick;
-use app_contracts::features::navigation::PageActivated;
+use app_contracts::features::navigation::RouteActivated;
 use app_contracts::features::services::{ServiceEntryDto, ServiceSnapshot, UiServicesPort};
 use app_core::actor::addr::Addr;
 use app_core::actor::traits::{Context, Handler, Message, NoOp};
 use app_core::messages;
-use context::page_status::PageId;
 
 messages! {
     ServiceSnapshotReady(ServiceSnapshotResult)
@@ -19,16 +18,15 @@ impl Message for ServiceSnapshotResult {}
 
 pub struct ServiceSnapshotActor<P: UiServicesPort> {
     pub target: Addr<ServiceActor<P>>,
-    pub page_id: PageId,
     pub is_active: bool,
 }
 
-impl<P> Handler<PageActivated> for ServiceSnapshotActor<P>
+impl<P> Handler<RouteActivated> for ServiceSnapshotActor<P>
 where
     P: UiServicesPort,
 {
-    fn handle(&mut self, msg: PageActivated, _ctx: &Context<Self>) {
-        self.is_active = msg.page_id == self.page_id;
+    fn handle(&mut self, msg: RouteActivated, _ctx: &Context<Self>) {
+        self.is_active = msg.route_segment == "services";
     }
 }
 

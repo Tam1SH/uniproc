@@ -14,6 +14,13 @@ import { RunEnv, RunTaskDialog, RunTaskProxy } from "features/processes/run-task
 import { ServiceEntry, ServicesFeatureGlobal } from "features/services/globals.slint";
 import { ServicePropertiesDialogWindow } from "features/services/service-properties-dialog.slint";
 import { Sidebar } from "features/sidebar/globals.slint";
+import { DiskPageSpec } from "pages/dashboard/subpages/disk/index.slint";
+import { PerformancePageSpec } from "pages/dashboard/subpages/performance/index.slint";
+import { ProcessesPageSpec } from "pages/dashboard/subpages/processes/index.slint";
+import { ServicesPageSpec } from "pages/dashboard/subpages/services/index.slint";
+import { StartupAppsPageSpec } from "pages/dashboard/subpages/startup-apps/index.slint";
+import { StatisticsPageSpec } from "pages/dashboard/subpages/statistics/index.slint";
+import { UsersPageSpec } from "pages/dashboard/subpages/users/index.slint";
 import { Icons } from "shared/icons.slint";
 import { L10n } from "shared/localization.slint";
 import { Theme } from "shared/theme.slint";
@@ -26,6 +33,7 @@ export {
     ContentDialogMode,
     ContentDialogWindow,
     ContextMenuItem,
+    DiskPageSpec,
     EnvironmentCount,
     EnvironmentsFeatureGlobal,
     EnvsLoading,
@@ -34,16 +42,21 @@ export {
     Navigation,
     PageData,
     PageStatus,
+    PerformancePageSpec,
     ProcessEntry,
     ProcessGroup,
     ProcessesFeatureGlobal,
+    ProcessesPageSpec,
     RunEnv,
     RunTaskDialog,
     RunTaskProxy,
     ServiceEntry,
     ServicePropertiesDialogWindow,
     ServicesFeatureGlobal,
+    ServicesPageSpec,
     Sidebar,
+    StartupAppsPageSpec,
+    StatisticsPageSpec,
     TabData,
     TableCellData,
     TableColDef,
@@ -52,6 +65,7 @@ export {
     TableUtils,
     Theme,
     TitleBarActions,
+    UsersPageSpec,
     WindowAdapter,
     WindowClickHandler,
     WindowSize,

@@ -1,25 +1,24 @@
-use context::page_status::{PageId, TabId};
 use macros::slint_bindings;
 
 #[slint_bindings(global = "Navigation")]
 pub trait UiNavigationBindings: 'static {
     #[manual]
-    #[tracing(target = "tab_id,page_id")]
-    fn on_request_page_switch<F>(&self, handler: F)
+    #[tracing(target = "route_segment")]
+    fn on_request_route_switch<F>(&self, handler: F)
     where
-        F: Fn(TabId, PageId) + 'static;
+        F: Fn(String) + 'static;
 
     #[manual]
-    #[tracing(target = "tab_id")]
+    #[tracing(target = "context_key")]
     fn on_request_tab_switch<F>(&self, handler: F)
     where
-        F: Fn(TabId) + 'static;
+        F: Fn(String) + 'static;
 
     #[manual]
-    #[tracing(target = "tab_id")]
+    #[tracing(target = "context_key")]
     fn on_request_tab_close<F>(&self, handler: F)
     where
-        F: Fn(TabId) + 'static;
+        F: Fn(String) + 'static;
 
     #[manual]
     #[tracing(target = "context_key")]

@@ -16,6 +16,9 @@ struct FeatureTraits {
 }
 
 fn main() {
+    println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rerun-if-changed=../app-contracts/contracts-schema.json");
+
     let schema: Schema = load_schema();
 
     let mut features_map: BTreeMap<String, FeatureTraits> = BTreeMap::new();
