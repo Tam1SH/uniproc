@@ -3,9 +3,11 @@ import {
     ServiceViewBody,
     ServicePropertiesInlineOverlay,
 } from "../../../../features/services/service-view.slint";
+import { Capabilities } from "capabilities.slint";
 
 export global ServicesPageSpec {
     out property <string> layout: "with-sidebar";
+    out property <[string]> features: [Capabilities.services];
 }
 
 export component ServicesPageHeader {

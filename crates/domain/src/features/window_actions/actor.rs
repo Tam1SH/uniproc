@@ -2,16 +2,20 @@ use app_contracts::features::window_actions::{
     ResizeEdge, UiWindowActionsPort, WindowBreakpoint, WindowConfigChanged,
 };
 use app_core::actor::event_bus::EventBus;
-use app_core::messages;
-use macros::handler;
+use app_core::actor::ManagedActor;
+use macros::{actor_manifest, handler};
 
-messages! {
-    Drag,
-    Close,
-    Minimize,
-    Maximize,
-    Resize(ResizeEdge),
-    BreakpointChanged(WindowBreakpoint, u64)
+#[actor_manifest]
+impl<P: UiWindowActionsPort> ManagedActor for WindowActor<P> {
+    type Bus = bus!();
+    type Handlers = handlers!(
+        Drag,
+        Close,
+        Minimize,
+        Maximize,
+        Resize(ResizeEdge),
+        BreakpointChanged(WindowBreakpoint, u64)
+    );
 }
 
 pub struct WindowActor<P> {

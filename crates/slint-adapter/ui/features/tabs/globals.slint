@@ -1,0 +1,19 @@
+import { AvailableContextData, PageStatus, TabData } from "../../content/globals.slint";
+
+export global Tabs {
+    in property <[TabData]> tabs: [{
+        id: 0,
+        context_key: "host/windows",
+        title: "Windows",
+        icon: @image-url("../../assets/windows-11.svg"),
+        status: PageStatus.ready,
+        is_closable: false,
+    }];
+    in property <[AvailableContextData]> available-contexts: [];
+
+    in-out property <int> active_tab_index: 0;
+    in-out property <int> active_page_index: 0;
+    callback request_tab_switch(string);
+    callback request_tab_close(string);
+    callback request_tab_add(string);
+}

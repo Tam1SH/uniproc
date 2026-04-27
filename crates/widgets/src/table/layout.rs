@@ -1,6 +1,6 @@
 use app_core::signal::Signal;
-use context::settings::reactive::ReactiveSettingSubscription;
 use dashmap::DashMap;
+use framework::settings::reactive::ReactiveSettingSubscription;
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::sync::Arc;

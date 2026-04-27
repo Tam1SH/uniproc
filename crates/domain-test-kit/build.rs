@@ -1,7 +1,7 @@
 use build_utils::collector::{BindingDef, PortDef, Schema};
 use build_utils::load_schema;
 use proc_macro2::TokenStream;
-use quote::{ToTokens, format_ident, quote};
+use quote::{format_ident, quote};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::io::Write;
@@ -319,6 +319,9 @@ fn is_std_type(ident: &str) -> bool {
 fn resolved_path_for(source_file: &str, ident: &str) -> syn::Path {
     if ident == "SharedString" {
         return parse_str("slint::SharedString").unwrap();
+    }
+    if ident == "TabContextKey" {
+        return parse_str("app_contracts::features::tabs::TabContextKey").unwrap();
     }
     if matches!(ident, "PageId" | "TabId" | "PageStatus") {
         return parse_str(&format!("context::page_status::{}", ident)).unwrap();

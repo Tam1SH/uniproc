@@ -2,14 +2,26 @@
 #![cfg_attr(coverage, coverage(off))]
 
 use proc_macro::TokenStream;
-use syn::{DeriveInput, ItemFn, ItemImpl, ItemTrait, Meta, parse_macro_input};
+use syn::{parse_macro_input, DeriveInput, ItemFn, ItemImpl, ItemTrait, Meta};
 
+mod actor_manifest;
+mod binder_gen;
 mod feature_settings;
 mod handler;
 mod schema;
 mod slint_macros;
 mod window_feature;
 
+#[proc_macro_attribute]
+pub fn actor_manifest(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let impl_block = parse_macro_input!(item as ItemImpl);
+    actor_manifest::actor_manifest_impl(attr.into(), impl_block).into()
+}
+
+#[proc_macro_attribute]
+pub fn capability(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    item
+}
 #[proc_macro_attribute]
 pub fn window_feature(args: TokenStream, input: TokenStream) -> TokenStream {
     window_feature::window_feature_impl(args, input)
@@ -29,8 +41,22 @@ pub fn slint_port(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
 #[proc_macro_attribute]
 pub fn slint_bindings(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    let trait_item = parse_macro_input!(item as ItemTrait);
-    slint_macros::strip_trait_helper_attrs(trait_item)
+    let mut trait_item = syn::parse_macro_input!(item as syn::ItemTrait);
+
+    let binder_code = binder_gen::generate_binder(&trait_item);
+
+    for item in &mut trait_item.items {
+        if let syn::TraitItem::Fn(method) = item {
+            slint_macros::strip_helper_attrs(&mut method.attrs);
+        }
+    }
+
+    let output = quote::quote! {
+        #trait_item
+        #binder_code
+    };
+
+    output.into()
 }
 
 #[proc_macro_attribute]

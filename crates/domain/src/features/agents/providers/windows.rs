@@ -5,18 +5,18 @@ use app_contracts::features::agents::{ScanTick, WindowsReportMessage};
 use app_contracts::features::environments::{
     AgentClient, AgentConnectionState, WindowsAgentRuntimeEvent,
 };
-use app_core::feature::{AppFeature, AppFeatureInitContext};
-use app_core::lifecycle_tracker::FeatureLifecycle;
 use app_core::{
-    actor::{addr::Addr, event_bus::EventBus},
+    actor::{event_bus::EventBus, Addr},
     ratelimit,
 };
+use framework::feature::{AppFeature, AppFeatureInitContext};
+use framework::lifecycle_tracker::FeatureLifecycle;
 use ogurpchik::discovery::Scope;
 use ogurpchik::transport::stream::adapters::uds::UdsTransport;
 use std::ops::Deref;
 use std::time::Instant;
 use tracing::{error, instrument, warn};
-use uniproc_protocol::{WindowsCodec, WindowsRequest, WindowsResponse, services};
+use uniproc_protocol::{services, WindowsCodec, WindowsRequest, WindowsResponse};
 
 pub struct WindowsBackend;
 

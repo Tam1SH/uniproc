@@ -6,7 +6,6 @@ edition.workspace = true
 [dependencies]
 anyhow.workspace = true
 arc-swap.workspace = true
-slint.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 uuid.workspace = true

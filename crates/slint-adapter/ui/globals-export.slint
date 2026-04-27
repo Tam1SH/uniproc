@@ -7,13 +7,14 @@ import { TableCellData, TableColDef, TableColMetadata, TableColWidth } from "com
 import { TableUtils } from "components/table/utils.slint";
 import { AvailableContextData, PageData, PageStatus, TabData } from "content/globals.slint";
 import { EnvironmentsFeatureGlobal, EnvsLoading, WslDistro } from "features/environments/globals.slint";
-import { Navigation } from "features/navigation/globals/tabs-navigation.slint";
 import { ProcessEntry, ProcessGroup, ProcessesFeatureGlobal } from "features/processes/globals.slint";
 import { EnvironmentCount } from "features/processes/process-status-bar.slint";
 import { RunEnv, RunTaskDialog, RunTaskProxy } from "features/processes/run-task-dialog.slint";
 import { ServiceEntry, ServicesFeatureGlobal } from "features/services/globals.slint";
 import { ServicePropertiesDialogWindow } from "features/services/service-properties-dialog.slint";
 import { Sidebar } from "features/sidebar/globals.slint";
+import { TabVisualState } from "features/tabs/components/tab-item.slint";
+import { Tabs } from "features/tabs/globals.slint";
 import { DiskPageSpec } from "pages/dashboard/subpages/disk/index.slint";
 import { PerformancePageSpec } from "pages/dashboard/subpages/performance/index.slint";
 import { ProcessesPageSpec } from "pages/dashboard/subpages/processes/index.slint";
@@ -21,14 +22,17 @@ import { ServicesPageSpec } from "pages/dashboard/subpages/services/index.slint"
 import { StartupAppsPageSpec } from "pages/dashboard/subpages/startup-apps/index.slint";
 import { StatisticsPageSpec } from "pages/dashboard/subpages/statistics/index.slint";
 import { UsersPageSpec } from "pages/dashboard/subpages/users/index.slint";
+import { Capabilities } from "shared/capabilities.slint";
 import { Icons } from "shared/icons.slint";
 import { L10n } from "shared/localization.slint";
+import { Navigation } from "shared/navigation.slint";
 import { Theme } from "shared/theme.slint";
 import { TitleBarActions, WindowClickHandler } from "title/title-bar.slint";
 import { WindowAdapter, WindowSize } from "window-adapter.slint";
 
 export {
     AvailableContextData,
+    Capabilities,
     ComboBoxItem,
     ContentDialogMode,
     ContentDialogWindow,
@@ -58,11 +62,13 @@ export {
     StartupAppsPageSpec,
     StatisticsPageSpec,
     TabData,
+    TabVisualState,
     TableCellData,
     TableColDef,
     TableColMetadata,
     TableColWidth,
     TableUtils,
+    Tabs,
     Theme,
     TitleBarActions,
     UsersPageSpec,

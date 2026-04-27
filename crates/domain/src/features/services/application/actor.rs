@@ -1,43 +1,78 @@
+use crate::features::services::application::snapshot_actor::ActiveStatus;
 use crate::features::services::view::ServiceTable;
 use app_contracts::features::agents::{WindowsActionRequest, WindowsActionResponse};
-use app_contracts::features::navigation::{PageActivated, tab_ids};
 use app_contracts::features::services::{
-    PROPERTIES_DIALOG_KEY, ServiceActionKind, ServiceEntryVm, ServiceSnapshot,
-    UiServiceDetailsPort, UiServicesPort,
+    ServiceActionKind, ServiceEntryVm, ServiceSnapshot, UiServiceDetailsPort,
+    UiServicesPort, PROPERTIES_DIALOG_KEY,
 };
 use app_contracts::features::windows_manager::OpenedWindow;
 use app_core::actor::event_bus::EventBus;
-use app_core::feature::FeatureContextState;
-use app_core::messages;
+use app_core::actor::Context;
+use app_core::actor::ManagedActor;
 use app_core::trace::current_or_new_correlation_uuid;
-use context::native_windows::slint_factory::{OpenWindow, SlintWindowRegistry, WindowRegistry};
-use context::page_status::{PageId, PageStatus, PageStatusChanged, PageStatusRegistry};
-use macros::handler;
+use context::page_status::{PageStatus, RouteStatusChanged, RouteStatusRegistry};
+use framework::feature::{Events, FeatureComponent, FeatureContextState};
+use framework::native_windows::slint_factory::{OpenWindow, SlintWindowRegistry, WindowRegistry};
+use framework::uri::AppUri;
+use macros::{actor_manifest, handler};
 use slint::SharedString;
+use std::borrow::Cow;
 use std::collections::HashSet;
 use std::sync::Arc;
 use uniproc_protocol::{ServiceCommand, WindowsRequest};
 use uuid::Uuid;
 
-messages! {
-    ServiceAction { name: String, kind: ServiceActionKind },
-    Sort(SharedString),
-    ViewportChanged { start: usize, count: usize },
-    ResizeCol { id: SharedString, width: f32 },
-    OpenServices,
-    SelectedService(SharedString, usize),
-    OpenPropertiesWindow(ServiceEntryVm),
+#[actor_manifest]
+impl<P: UiServicesPort> ManagedActor for ServiceActor<P> {
+    type Bus = Events<bus!(ServiceSnapshot, WindowsActionResponse, OpenedWindow)>;
+    type Handlers = handlers!(
+        @ServiceSnapshot,
+        @WindowsActionResponse,
+        @OpenedWindow,
+        ServiceAction {
+            name: String,
+            kind: ServiceActionKind
+        },
+        Sort(SharedString),
+        ViewportChanged {
+            start: usize,
+            count: usize
+        },
+        ResizeCol {
+            id: SharedString,
+            width: f32
+        },
+        SelectedService(SharedString, usize),
+        OpenPropertiesWindow(ServiceEntryVm)
+    );
 }
 
 pub struct ServiceActor<P: UiServicesPort> {
-    pub page_id: PageId,
     pub table: ServiceTable,
     pub registry: Arc<SlintWindowRegistry>,
     pub ui_port: P,
-    pub page_status: Arc<PageStatusRegistry>,
+    pub route_status: Arc<RouteStatusRegistry>,
     pub is_active: bool,
+    pub active_context_key: Cow<'static, str>,
     pub pending: HashSet<Uuid>,
     pub ctx_state: FeatureContextState,
+}
+
+impl<P: UiServicesPort> FeatureComponent for ServiceActor<P> {
+    fn context_state(&mut self) -> &mut FeatureContextState {
+        &mut self.ctx_state
+    }
+
+    fn on_activated(&mut self, uri: &AppUri, _: &Context<Self>) {
+        self.is_active = true;
+        EventBus::publish(ActiveStatus(true));
+        self.active_context_key = uri.context_name.clone();
+    }
+
+    fn on_deactivated(&mut self, _: &AppUri, _: &Context<Self>) {
+        self.is_active = false;
+        EventBus::publish(ActiveStatus(false));
+    }
 }
 
 impl<P: UiServicesPort> ServiceActor<P> {
@@ -58,9 +93,9 @@ fn service_snapshot<P: UiServicesPort>(this: &mut ServiceActor<P>, msg: ServiceS
     this.table.update_data(msg.services);
     this.ui_port.set_column_widths(this.table.column_widths());
 
-    this.page_status.report_page(PageStatusChanged {
-        tab_id: tab_ids::MAIN,
-        page_id: this.page_id,
+    this.route_status.report_route(RouteStatusChanged {
+        context_key: this.active_context_key.to_string(),
+        route_segment: "services".into(),
         status: PageStatus::Ready,
         error: None,
     });
@@ -97,19 +132,6 @@ fn resize_service_column<P: UiServicesPort>(this: &mut ServiceActor<P>, msg: Res
         .table
         .resize_column(msg.id.to_string(), msg.width as u64);
     this.ui_port.set_column_widths(this.table.column_widths());
-}
-
-#[handler]
-fn open_external_services<P: UiServicesPort>(_: &mut ServiceActor<P>, _: OpenServices) {
-    // #[cfg(target_os = "windows")]
-    // let _ = std::process::Command::new("mmc.exe")
-    //     .arg("services.msc")
-    //     .spawn();
-}
-
-#[handler]
-fn activate_page<P: UiServicesPort>(this: &mut ServiceActor<P>, msg: PageActivated) {
-    this.is_active = msg.page_id == this.page_id;
 }
 
 #[handler]

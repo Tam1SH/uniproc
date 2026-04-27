@@ -1,13 +1,15 @@
 use anyhow::Context as _;
-use app_core::SharedState;
 use app_core::actor::event_bus::EventBus;
-use app_core::app::UiContext;
-use app_core::feature::{
+use app_core::actor::UiDispatcher;
+use app_core::test_kit::Stabilizer;
+use app_core::SharedState;
+use framework::app::{App, UiContext, Window};
+use framework::feature::{
     AppFeature, AppFeatureInitContext, WindowFeature, WindowFeatureInitContext,
 };
-use app_core::reactor::Reactor;
-use app_core::test_kit::Stabilizer;
-use context::settings::SettingsStore;
+use framework::reactor::Reactor;
+use framework::settings::SettingsStore;
+use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::{Arc, LazyLock, Mutex, Once};
 use std::thread;
@@ -17,11 +19,6 @@ use tracing_subscriber::fmt::writer::BoxMakeWriter;
 
 slint::slint! {
     export component DomainTestWindow inherits Window {}
-}
-
-pub fn new_test_window() -> DomainTestWindow {
-    i_slint_backend_testing::init_no_event_loop();
-    DomainTestWindow::new().expect("failed to create DomainTestWindow")
 }
 
 pub fn pump_ui(ms: u64) {
@@ -61,10 +58,47 @@ pub fn stabilize_ui() {
     }
 }
 
-pub struct FeatureHarness {
-    pub ui: DomainTestWindow,
-    pub reactor: Reactor,
-    pub shared: SharedState,
+pub struct FeatureHarness(pub Option<App<DomainTestWindow>>);
+
+impl FeatureHarness {
+    pub fn new(settings_path: PathBuf) -> Self {
+        //do not change the sequence
+        i_slint_backend_testing::init_no_event_loop();
+        let ui = DomainTestWindow::new().expect("failed to create window");
+
+        let app = App::with_dispatcher(ui, TestUiDispatcher { settings_path });
+        Self(Some(app))
+    }
+
+    pub fn app_feature<F: AppFeature>(mut self, feature: F) -> anyhow::Result<Self> {
+        let app = self.0.take().expect("App is missing");
+        self.0 = Some(app.app_feature(feature)?);
+
+        Ok(self)
+    }
+
+    pub fn window_feature<F, Builder>(mut self, builder: Builder) -> Self
+    where
+        Builder: Fn() -> F + 'static,
+        F: WindowFeature<DomainTestWindow> + 'static,
+    {
+        let app = self.0.take().expect("App is missing");
+        self.0 = Some(app.window_feature(builder));
+        self
+    }
+
+    pub fn shared(&self) -> &SharedState {
+        &self.0.as_ref().unwrap().shared()
+    }
+}
+
+impl Drop for FeatureHarness {
+    fn drop(&mut self) {
+        if let Some(app) = self.0.take() {
+            app.ui().window().hide();
+            stabilize_ui();
+        }
+    }
 }
 
 impl Stabilizer for FeatureHarness {
@@ -73,52 +107,42 @@ impl Stabilizer for FeatureHarness {
     }
 }
 
-impl FeatureHarness {
-    pub fn new(settings_path: PathBuf) -> Self {
-        init_tracing(settings_path).unwrap();
+impl Deref for FeatureHarness {
+    type Target = App<DomainTestWindow>;
+    fn deref(&self) -> &Self::Target {
+        self.0.as_ref().expect("App was moved out")
+    }
+}
+
+impl std::ops::DerefMut for FeatureHarness {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.0.as_mut().expect("App was moved out")
+    }
+}
+
+pub struct TestUiDispatcher {
+    pub settings_path: std::path::PathBuf,
+}
+
+static TEST_ENV_INIT: Once = Once::new();
+
+impl UiDispatcher for TestUiDispatcher {
+    fn init(&self) {
+        init_tracing(self.settings_path.clone()).unwrap();
+
+        app_core::actor::set_ui_dispatcher(self.clone());
+    }
+
+    fn dispatch(&self, task: app_core::actor::UiTask) {
+        let _ = slint::invoke_from_event_loop(task);
+    }
+}
+
+impl Clone for TestUiDispatcher {
+    fn clone(&self) -> Self {
         Self {
-            ui: new_test_window(),
-            reactor: Reactor::new(),
-            shared: SharedState::new(),
+            settings_path: self.settings_path.clone(),
         }
-    }
-
-    pub fn step(&mut self, action: impl FnOnce()) {
-        action();
-        pump_ui(16);
-    }
-
-    pub fn app_install<F>(&mut self, feature: F) -> anyhow::Result<()>
-    where
-        F: AppFeature,
-    {
-        feature.install(&mut AppFeatureInitContext {
-            token: self.ui.new_token(),
-            reactor: &mut self.reactor,
-            shared: &self.shared,
-        })
-    }
-
-    pub fn install<F>(&mut self, mut feature: F) -> anyhow::Result<()>
-    where
-        F: WindowFeature<DomainTestWindow>,
-    {
-        feature.install(&mut WindowFeatureInitContext {
-            window_id: 0,
-            reactor: &mut self.reactor,
-            ui: &self.ui,
-            shared: &self.shared,
-        })
-    }
-
-    pub fn install_settings_at(&mut self, path: PathBuf) -> anyhow::Result<()> {
-        domain::features::settings::SettingsFeature::with_path(path)
-            .install(&mut AppFeatureInitContext {
-                token: self.ui.new_token(),
-                reactor: &mut self.reactor,
-                shared: &self.shared,
-            })
-            .context("failed to install SettingsFeature")
     }
 }
 

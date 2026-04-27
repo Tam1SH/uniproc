@@ -1,5 +1,6 @@
 use anyhow::Context as _;
-use app_core::feature::WindowFeature;
+use framework::feature::WindowFeature;
 
 pub mod generated;
+pub mod test_env;
 pub mod utils;

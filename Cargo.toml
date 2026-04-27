@@ -13,6 +13,7 @@ members = [
     "crates/domain-test-kit",
     "crates/domain/src/features/agents",
     "crates/domain/src/features/environments",
+    "crates/domain/src/features/navigation",
     "crates/domain/src/features/processes",
     "crates/app-contracts",
     "crates/slint-adapter",
@@ -20,10 +21,11 @@ members = [
     "crates/macros",
     "crates/desktop",
     "crates/build-utils",
+    "crates/framework",
 ]
 
 [workspace.dependencies]
-# --- Internal Crates (Project Architecture) ---
+# --- Internal Crates ---
 app-contracts = { path = "crates/app-contracts" }
 app-core = { path = "crates/core" }
 build-utils = { path = "crates/build-utils" }
@@ -32,10 +34,12 @@ domain = { path = "crates/domain" }
 domain-test-kit = { path = "crates/domain-test-kit" }
 domain-agents = { path = "crates/domain/src/features/agents" }
 domain-environments = { path = "crates/domain/src/features/environments" }
+domain-navigation = { path = "crates/domain/src/features/navigation" }
 domain-processes = { path = "crates/domain/src/features/processes" }
 macros = { path = "crates/macros" }
 slint-adapter = { path = "crates/slint-adapter" }
 widgets = { path = "crates/widgets" }
+framework = { path = "crates/framework" }
 
 # --- Custom & Git Dependencies ---
 ogurpchik = { git = "https://github.com/Tam1SH/oguRPChik", branch = "master", features = ["rkyv-codec", "vsock", "uds"] }
@@ -104,6 +108,7 @@ smallvec = "1.15.1"
 static_assertions = "1.1.0"
 ttl_cache = "0.5"
 walkdir = "2.5.0"
+derive_more = "2.1.1"
 
 [workspace.lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage)'] }

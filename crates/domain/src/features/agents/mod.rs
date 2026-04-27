@@ -1,4 +1,3 @@
-use app_core::feature::{AppFeature, AppFeatureInitContext};
 pub mod actor;
 pub mod backend;
 pub mod connection;
@@ -6,6 +5,7 @@ pub mod providers;
 pub mod settings;
 
 use crate::agents_impl::providers::{windows, wsl};
+use framework::feature::{AppFeature, AppFeatureInitContext};
 use tracing::info;
 
 pub struct AgentsFeature;

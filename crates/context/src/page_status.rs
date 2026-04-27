@@ -33,14 +33,14 @@ pub enum PageStatus {
 }
 
 #[derive(Clone, Debug)]
-pub struct PageStatusChanged {
-    pub tab_id: TabId,
-    pub page_id: PageId,
+pub struct RouteStatusChanged {
+    pub context_key: String,
+    pub route_segment: String,
     pub status: PageStatus,
     pub error: Option<String>,
 }
 
-impl Message for PageStatusChanged {}
+impl Message for RouteStatusChanged {}
 
 #[derive(Clone, Debug)]
 pub struct TabStatusChanged {
@@ -57,28 +57,42 @@ pub struct FeatureState {
     pub error_msg: String,
 }
 
-pub struct PageStatusRegistry {
-    page_states: RwLock<HashMap<(TabId, PageId), FeatureState>>,
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub struct RouteStatusKey {
+    pub context_key: String,
+    pub route_segment: String,
+}
+
+impl RouteStatusKey {
+    pub fn new(context_key: impl Into<String>, route_segment: impl Into<String>) -> Self {
+        Self {
+            context_key: context_key.into(),
+            route_segment: route_segment.into(),
+        }
+    }
+}
+
+pub struct RouteStatusRegistry {
+    route_states: RwLock<HashMap<RouteStatusKey, FeatureState>>,
     tab_states: RwLock<HashMap<TabId, FeatureState>>,
 }
 
-impl PageStatusRegistry {
+impl RouteStatusRegistry {
     pub fn new() -> Self {
         Self {
-            page_states: RwLock::new(HashMap::new()),
+            route_states: RwLock::new(HashMap::new()),
             tab_states: RwLock::new(HashMap::new()),
         }
     }
 
-    pub fn update_page(
+    pub fn update_route(
         &self,
-        tab_id: TabId,
-        page_id: PageId,
+        key: RouteStatusKey,
         status: PageStatus,
         error: Option<String>,
     ) -> bool {
-        let mut map = self.page_states.write().unwrap();
-        let entry = map.entry((tab_id, page_id)).or_insert(FeatureState {
+        let mut map = self.route_states.write().unwrap();
+        let entry = map.entry(key).or_insert(FeatureState {
             status: PageStatus::Loading,
             error_msg: String::new(),
         });
@@ -112,9 +126,9 @@ impl PageStatusRegistry {
         true
     }
 
-    pub fn get_page_state(&self, tab_id: TabId, page_id: PageId) -> FeatureState {
-        let map = self.page_states.read().unwrap();
-        map.get(&(tab_id, page_id))
+    pub fn get_route_state(&self, key: &RouteStatusKey) -> FeatureState {
+        let map = self.route_states.read().unwrap();
+        map.get(key)
             .cloned()
             .unwrap_or(FeatureState {
                 status: PageStatus::Loading,
@@ -130,16 +144,20 @@ impl PageStatusRegistry {
         })
     }
 
-    pub fn report_page(&self, msg: PageStatusChanged) {
+    pub fn report_route(&self, msg: RouteStatusChanged) {
         in_named_scope(
             "context.page_status.update",
-            Some("tab_id,page_id,status"),
+            Some("context_key,route_segment,status"),
             Some(format!(
-                "{:?} | {:?} | {:?}",
-                msg.tab_id, msg.page_id, msg.status
+                "{} | {} | {:?}",
+                msg.context_key, msg.route_segment, msg.status
             )),
             || {
-                if self.update_page(msg.tab_id, msg.page_id, msg.status, msg.error.clone()) {
+                if self.update_route(
+                    RouteStatusKey::new(&msg.context_key, &msg.route_segment),
+                    msg.status,
+                    msg.error.clone(),
+                ) {
                     EventBus::publish(msg);
                 }
             },

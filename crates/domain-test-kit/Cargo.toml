@@ -9,6 +9,8 @@ app-contracts.workspace = true
 app-core = { workspace = true, features = ["test-utils"] }
 context.workspace = true
 domain = { workspace = true, features = ["test-utils"] }
+domain-navigation = { workspace = true, features = ["test-utils"] }
+macros.workspace = true
 i-slint-backend-testing.workspace = true
 i-slint-core.workspace = true
 slint.workspace = true
@@ -16,7 +18,7 @@ tokio.workspace = true
 tracing.workspace = true
 tracing-appender.workspace = true
 tracing-subscriber.workspace = true
-
+framework.workspace = true
 rstest = "0.26.1"
 serial_test = "3.4.0"
 

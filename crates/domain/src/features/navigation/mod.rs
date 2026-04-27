@@ -3,22 +3,45 @@ mod model;
 mod settings;
 mod state;
 
-use crate::features::navigation::actor::{
-    NavigationActor, RequestPageSwitch, RequestTabAdd, RequestTabClose, RequestTabSwitch,
-};
-use crate::features::navigation::model::bootstrap_contexts;
+use crate::features::navigation::actor::{NavigationActor, Push};
 use crate::features::navigation::settings::NavigationSettings;
-use app_contracts::features::agents::RemoteScanResult;
-#[cfg(target_os = "windows")]
-use app_contracts::features::environments::WindowsAgentRuntimeEvent;
-use app_contracts::features::environments::WslAgentRuntimeEvent;
-use app_contracts::features::navigation::{UiNavigationBindings, UiNavigationPort};
+use app_contracts::features::navigation::PAGE_ROUTES;
+use app_contracts::features::navigation::{NavigationBinder, UiNavigationBindings};
 use app_core::actor::addr::Addr;
-use app_core::actor::event_bus::EventBus;
-use app_core::app::Window;
-use app_core::feature::{WindowFeature, WindowFeatureInitContext};
-use context::page_status::{PageStatusChanged, PageStatusRegistry, TabStatusChanged};
+use framework::app::Window;
+use framework::feature::{
+    AppFeature, AppFeatureInitContext, WindowFeature, WindowFeatureInitContext,
+};
+use framework::navigation::{Route, RouteRegistry};
+use framework::uri::ContextlessAppUri;
 use macros::window_feature;
+use std::borrow::Cow;
+use std::sync::Arc;
+
+pub struct NavigationRegistryFeature;
+
+impl AppFeature for NavigationRegistryFeature {
+    fn install(self, ctx: &mut AppFeatureInitContext) -> anyhow::Result<()> {
+        let registry = Arc::new(RouteRegistry::new());
+        registry.replace_routes(
+            PAGE_ROUTES
+                .iter()
+                .map(|route| Route {
+                    uri: ContextlessAppUri::new(
+                        Cow::from(route.segment),
+                        route
+                            .features
+                            .iter()
+                            .map(|&s| Cow::from(s))
+                            .collect::<Vec<_>>(),
+                    ),
+                })
+                .collect(),
+        );
+        ctx.shared.insert_arc(registry);
+        Ok(())
+    }
+}
 
 #[window_feature]
 pub struct NavigationFeature;
@@ -28,64 +51,26 @@ impl<TWindow, F, P> WindowFeature<TWindow> for NavigationFeature<F>
 where
     TWindow: Window,
     F: Fn(&TWindow) -> P + 'static + Clone,
-    P: UiNavigationPort + UiNavigationBindings + Clone + 'static,
+    P: UiNavigationBindings + Clone + 'static,
 {
     fn install(&mut self, ctx: &mut WindowFeatureInitContext<TWindow>) -> anyhow::Result<()> {
         let settings = NavigationSettings::new(ctx.shared)?;
         let ui_port = (self.make_port)(ctx.ui);
         let token = ctx.ui.new_token();
 
-        let contexts = bootstrap_contexts();
-        let actor = NavigationActor::new(
-            ui_port.clone(),
-            ctx.shared.get::<PageStatusRegistry>().unwrap(),
-            contexts,
-            &settings,
-        );
+        let registry = ctx.shared.get::<RouteRegistry>().unwrap();
+        let actor = NavigationActor::new(registry.clone(), ctx.window_id);
 
-        let tabs = actor.tabs().to_vec();
-        let available_contexts = actor.available_contexts().to_vec();
-        let default_page = settings.default_page().get();
-        let initial_route = actor.resolve_initial_route(default_page).or_else(|| {
-            tabs.first()
-                .and_then(|tab| tab.pages.first().map(|page| (tab.id, page.id)))
-        });
-
-        let addr = Addr::new(actor, token, &self.tracker);
+        let addr = Addr::new_managed(actor, token, &self.tracker);
+        let initial_path = settings.default_route_segment().get();
+        addr.send(Push(initial_path));
 
         #[cfg(feature = "test-utils")]
         if let Some(registry) = ctx.shared.get::<app_core::actor::registry::ActorRegistry>() {
             registry.register(addr.clone());
         }
 
-        ui_port.set_navigation_tree(tabs.clone());
-        ui_port.set_available_contexts(available_contexts);
-
-        if let Some((tab_id, page_id)) = initial_route {
-            addr.send(RequestPageSwitch(tab_id, page_id));
-        }
-
-        let a = addr.clone();
-        ui_port.on_request_page_switch(move |t_id, p_id| a.send(RequestPageSwitch(t_id, p_id)));
-
-        let a = addr.clone();
-        ui_port.on_request_tab_switch(move |t_id| a.send(RequestTabSwitch(t_id)));
-
-        let a = addr.clone();
-        ui_port.on_request_tab_close(move |t_id| a.send(RequestTabClose(t_id)));
-
-        let a = addr.clone();
-        ui_port.on_request_tab_add(move |context_key| a.send(RequestTabAdd(context_key)));
-
-        EventBus::subscribe_to(addr.clone(), &self.tracker).batch::<(
-            PageStatusChanged,
-            TabStatusChanged,
-            RemoteScanResult,
-            WslAgentRuntimeEvent,
-        )>();
-
-        #[cfg(target_os = "windows")]
-        EventBus::subscribe::<_, WindowsAgentRuntimeEvent>(addr.clone(), &self.tracker);
+        NavigationBinder::new(&addr, &ui_port).on_push(Push);
 
         Ok(())
     }

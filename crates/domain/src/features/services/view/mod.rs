@@ -1,8 +1,8 @@
 use crate::features::services::settings::ServiceSettings;
 use app_contracts::features::services::{ServiceEntryDto, ServiceEntryVm};
 use context::caches::strings::StringsProvider;
-use context::settings::reactive::ReactiveSettingSubscription;
 use dashmap::DashMap;
+use framework::settings::reactive::ReactiveSettingSubscription;
 use slint::SharedString;
 use std::collections::HashSet;
 use widgets::table::flow::{SortState, TableDataBuilder, TableNode};

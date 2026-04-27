@@ -1,5 +1,5 @@
-use app_core::feature::{AppFeature, AppFeatureInitContext};
 use context::page_status::RouteStatusRegistry;
+use framework::feature::{AppFeature, AppFeatureInitContext};
 use std::sync::Arc;
 
 pub struct PageStatusFeature;

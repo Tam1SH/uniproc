@@ -3,10 +3,10 @@ use crate::{
     TableColWidth, Theme,
 };
 use app_contracts::features::services::{
-    PROPERTIES_DIALOG_KEY, ServicesWindowRegister, UiServiceDetailsPort,
+    ServicesWindowRegister, UiServiceDetailsPort, PROPERTIES_DIALOG_KEY,
 };
-use context::native_windows::slint_factory::{SlintWindowRegistry, WindowRegistry};
-use context::native_windows::{NativeWindowConfig, NativeWindowManager, UiAdapter};
+use framework::native_windows::slint_factory::{SlintWindowRegistry, WindowRegistry};
+use framework::native_windows::{NativeWindowConfig, NativeWindowManager, UiAdapter};
 use i_slint_backend_winit::WinitWindowAccessor;
 use slint::platform::WindowEvent;
 use slint::{ComponentHandle, VecModel};
@@ -78,7 +78,7 @@ impl ServicesWindowRegister for UiServicesAdapter {
             let theme = dialog.global::<Theme>();
 
             if let Ok(accent_palette) =
-                context::native_windows::platform::get_system_accent_palette()
+                framework::native_windows::platform::get_system_accent_palette()
             {
                 theme.set_accent(accent_palette.accent.into());
                 theme.set_accent_light_1(accent_palette.accent_light_1.into());

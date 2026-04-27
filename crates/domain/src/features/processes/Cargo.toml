@@ -23,6 +23,7 @@ tracing.workspace = true
 uniproc-protocol.workspace = true
 uuid.workspace = true
 widgets.workspace = true
+framework.workspace = true
 
 [target.'cfg(target_os = "windows")'.dependencies]
 windows = { workspace = true, features = [

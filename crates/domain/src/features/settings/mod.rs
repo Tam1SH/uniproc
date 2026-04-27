@@ -1,8 +1,8 @@
 mod settings;
 
 use crate::features::settings::settings::SettingsPersistenceSettings;
-use app_core::feature::{AppFeature, AppFeatureInitContext};
-pub use context::settings::*;
+use framework::feature::{AppFeature, AppFeatureInitContext};
+pub use framework::settings::*;
 use std::path::PathBuf;
 use std::sync::Arc;
 

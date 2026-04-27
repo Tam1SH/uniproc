@@ -9,6 +9,7 @@ app-contracts.workspace = true
 app-core.workspace = true
 cfg-if.workspace = true
 context.workspace = true
+framework.workspace = true
 i-slint-backend-winit.workspace = true
 macros.workspace = true
 slint.workspace = true

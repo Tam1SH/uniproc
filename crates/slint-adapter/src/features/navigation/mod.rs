@@ -1,11 +1,10 @@
 use crate::AppWindow;
 
 mod bindings;
-mod port;
 
 #[derive(Clone)]
 pub struct UiNavigationAdapter {
-    ui: slint::Weak<AppWindow>,
+    pub(crate) ui: slint::Weak<AppWindow>,
 }
 
 impl UiNavigationAdapter {

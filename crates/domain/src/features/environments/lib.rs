@@ -1,5 +1,3 @@
-pub use app_core::messages;
-
 #[path = "mod.rs"]
 pub mod environments_impl;
 

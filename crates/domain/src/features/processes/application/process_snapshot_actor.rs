@@ -4,14 +4,17 @@ use crate::processes_impl::scanner::base::ScanResult;
 use crate::processes_impl::scanner::ctx::StatefulContext;
 use crate::processes_impl::scanner::visitors::linux::WslScanResult;
 use crate::processes_impl::scanner::visitors::windows::WindowsScanResult;
-use app_contracts::features::agents::{RemoteScanResult, WindowsReportMessage};
-use app_contracts::features::navigation::RouteActivated;
+use app_contracts::features::agents::RemoteScanResult;
+use app_contracts::features::environments::WslAgentRuntimeEvent;
 use app_contracts::features::processes::{
     FieldDefDto, ProcessFieldDto, ProcessNodeDto, UiProcessesPort,
 };
 use app_core::actor::addr::Addr;
+use app_core::actor::ManagedActor;
 use app_core::{messages, ratelimit};
-use macros::handler;
+use framework::feature::Events;
+use framework::navigation::RouteActivated;
+use macros::{actor_manifest, handler};
 use slint::SharedString;
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
@@ -33,6 +36,22 @@ messages! {
         processes: Arc<Mutex<Vec<ProcessNodeDto>>>,
         total_count: usize,
     }
+}
+
+#[actor_manifest]
+impl<P: UiProcessesPort> ManagedActor for ProcessSnapshotActor<P> {
+    type Bus = bus!(
+        ActiveStatus,
+        RemoteScanResult,
+        #[cfg(target_os = "windows")]
+        app_contracts::features::agents::WindowsReportMessage,
+    );
+    type Handlers = handlers!(
+        ActiveStatus(bool),
+        @RemoteScanResult,
+        #[cfg(target_os = "windows")]
+        @app_contracts::features::agents::WindowsReportMessage,
+    );
 }
 
 impl<P: UiProcessesPort> ProcessSnapshotActor<P> {
@@ -86,8 +105,8 @@ impl<P: UiProcessesPort> ProcessSnapshotActor<P> {
 }
 
 #[handler]
-fn activate_page<P: UiProcessesPort>(this: &mut ProcessSnapshotActor<P>, msg: RouteActivated) {
-    this.is_active = msg.route_segment == "processes";
+fn active_status<P: UiProcessesPort>(this: &mut ProcessSnapshotActor<P>, msg: ActiveStatus) {
+    this.is_active = msg.0;
 }
 
 #[handler]
@@ -114,7 +133,7 @@ fn process_remote_scan<P: UiProcessesPort>(
 #[handler]
 fn process_windows_report<P: UiProcessesPort>(
     this: &mut ProcessSnapshotActor<P>,
-    msg: WindowsReportMessage,
+    msg: app_contracts::features::agents::WindowsReportMessage,
 ) {
     if !this.is_active {
         return;

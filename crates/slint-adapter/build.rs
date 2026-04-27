@@ -7,6 +7,7 @@ fn main() {
     download_missing_assets();
     generate_icons_slint();
     generate_slint_l10n();
+    generate_capabilities_slint();
 
     slint_parser::generate_globals_export(Path::new("ui"));
 
@@ -19,6 +20,11 @@ fn main() {
         ]);
 
     slint_build::compile_with_config("ui/app-window.slint", config).expect("Slint build failed");
+}
+
+fn generate_capabilities_slint() {
+    let schema = build_utils::load_schema();
+    build_utils::generate_capabilities_slint(&schema, Path::new("ui/shared/capabilities.slint"));
 }
 
 fn collect_string_entries(prefix: &str, table: &Table, acc: &mut Vec<(String, String)>) {

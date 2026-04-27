@@ -1,6 +1,6 @@
 use app_contracts::features::environments::{UiEnvironmentsBindings, UiEnvironmentsPort};
-use app_core::app::Window;
-use app_core::feature::{WindowFeature, WindowFeatureInitContext};
+use framework::app::Window;
+use framework::feature::{WindowFeature, WindowFeatureInitContext};
 use macros::window_feature;
 
 pub mod host;

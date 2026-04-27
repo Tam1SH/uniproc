@@ -1,14 +1,21 @@
 use crate::features::sidebar::settings::SidebarSettings;
 use app_contracts::features::sidebar::{RequestTransition, UiSidebarPort};
-use app_core::messages;
+use app_core::actor::ManagedActor;
 use app_core::trace::{current_meta, install_current_meta};
-use macros::handler;
-use std::sync::Arc;
+use macros::{actor_manifest, handler};
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-messages! {
-    SideBarWidthChanged(u64)
+#[actor_manifest]
+impl<P: UiSidebarPort + Clone> ManagedActor for SidebarActor<P> {
+    type Bus = bus!(
+        @RequestTransition
+    );
+    type Handlers = handlers!(
+        @RequestTransition,
+        SideBarWidthChanged(u64)
+    );
 }
 
 pub struct SidebarActor<P: UiSidebarPort> {

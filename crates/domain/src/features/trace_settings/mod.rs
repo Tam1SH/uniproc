@@ -1,9 +1,9 @@
 mod settings;
 
 use self::settings::TraceSettings;
-use app_core::feature::{AppFeature, AppFeatureInitContext};
 use app_core::trace::TracePolicy;
-use context::settings::reactive::ReactiveSettingSubscription;
+use framework::feature::{AppFeature, AppFeatureInitContext};
+use framework::settings::reactive::ReactiveSettingSubscription;
 use std::sync::Arc;
 
 #[derive(Default)]

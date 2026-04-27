@@ -1,5 +1,5 @@
 use app_core::actor::registry::ActorRegistry;
-use app_core::feature::{AppFeature, AppFeatureInitContext};
+use framework::feature::{AppFeature, AppFeatureInitContext};
 
 #[derive(Clone)]
 pub struct TestDiscoveryFeature;

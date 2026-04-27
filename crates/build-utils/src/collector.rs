@@ -4,15 +4,12 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
-// ─── Schema types ────────────────────────────────────────────────────────────
-// Single source of truth for codegen types shared between build scripts
-// (build-utils/collector) and proc-macros (macros/schema).
-
 #[derive(Deserialize, Serialize, Default, Debug)]
 pub struct Schema {
     pub ports: Vec<PortDef>,
     pub bindings: Vec<BindingDef>,
     pub dtos: Vec<DtoDef>,
+    pub capabilities: Vec<CapabilityDef>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -72,13 +69,13 @@ pub struct DtoField {
     pub ty: String,
 }
 
-// ─── Schema loader ────────────────────────────────────────────────────────────
+#[derive(Deserialize, Serialize, Debug)]
+pub struct CapabilityDef {
+    pub name: String,
+    pub key: String,
+    pub source_file: String,
+}
 
-/// Loads `contracts-schema.json` produced by the `app-contracts` build script.
-///
-/// Resolves the path relative to `CARGO_MANIFEST_DIR`, walking up one level to
-/// the workspace root and then into `app-contracts/`. Usable both from build
-/// scripts and from proc-macros.
 pub fn load_schema() -> Schema {
     let manifest_dir = env::var("CARGO_MANIFEST_DIR")
         .expect("CARGO_MANIFEST_DIR must be set (are you running outside of Cargo?)");
@@ -96,9 +93,7 @@ pub fn load_schema() -> Schema {
     serde_json::from_str(&json).expect("Failed to parse contracts-schema.json")
 }
 
-// ─── Collector (called from app-contracts/build.rs) ──────────────────────────
-
-pub fn main() {
+pub fn main() -> Schema {
     println!("cargo:rerun-if-changed=src/features/");
 
     let manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
@@ -119,6 +114,8 @@ pub fn main() {
     let schema_path = codegen_dir.join("contracts-schema.json");
     let json = serde_json::to_string_pretty(&schema).unwrap();
     fs::write(&schema_path, json).expect("Failed to write contracts-schema.json");
+
+    schema
 }
 
 fn parse_file(file_path: &Path, workspace_dir: &Path, schema: &mut Schema) {
@@ -177,6 +174,14 @@ fn parse_file(file_path: &Path, workspace_dir: &Path, schema: &mut Schema) {
                         source_file: relative_path.clone(),
                         fields,
                         variants: vec![],
+                    });
+                }
+
+                if let Some(key) = extract_name_value_attribute(&item_struct.attrs, "capability") {
+                    schema.capabilities.push(CapabilityDef {
+                        name: item_struct.ident.to_string(),
+                        key,
+                        source_file: relative_path.clone(),
                     });
                 }
             }
@@ -368,6 +373,19 @@ fn extract_attribute_arg(attrs: &[syn::Attribute], attr_name: &str, key: &str) -
             });
             if value.is_some() {
                 return value;
+            }
+        }
+    }
+    None
+}
+
+fn extract_name_value_attribute(attrs: &[syn::Attribute], attr_name: &str) -> Option<String> {
+    for attr in attrs {
+        if attr.path().is_ident(attr_name) {
+            if let syn::Meta::List(list) = &attr.meta {
+                if let Ok(lit_str) = list.parse_args::<syn::LitStr>() {
+                    return Some(lit_str.value());
+                }
             }
         }
     }

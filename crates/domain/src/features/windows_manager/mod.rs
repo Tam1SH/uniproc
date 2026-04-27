@@ -1,9 +1,8 @@
 use crate::features::windows_manager::actor::WindowManagerActor;
 use app_core::actor::addr::Addr;
-use app_core::actor::event_bus::EventBus;
-use app_core::feature::{AppFeature, AppFeatureInitContext};
-use app_core::lifecycle_tracker::FeatureLifecycle;
-use context::native_windows::slint_factory::{OpenWindow, SlintWindowRegistry, WindowClosed};
+use framework::feature::{AppFeature, AppFeatureInitContext};
+use framework::lifecycle_tracker::FeatureLifecycle;
+use framework::native_windows::slint_factory::SlintWindowRegistry;
 
 mod actor;
 
@@ -17,10 +16,7 @@ impl AppFeature for WindowManagerFeature {
         let reg = ctx.shared.get::<SlintWindowRegistry>().unwrap();
 
         let actor = WindowManagerActor::new(reg);
-        let addr = Addr::new(actor, ctx.token.clone(), &FeatureLifecycle::new());
-
-        EventBus::subscribe::<_, WindowClosed>(addr.clone(), &FeatureLifecycle::new());
-        EventBus::subscribe::<_, OpenWindow>(addr, &FeatureLifecycle::new());
+        let _ = Addr::new_managed(actor, ctx.token.clone(), &FeatureLifecycle::new());
 
         Ok(())
     }

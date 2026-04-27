@@ -1,7 +1,7 @@
 use super::get_icon_for_env;
 use app_contracts::features::environments::UiEnvironmentsPort;
-use app_core::app::Window;
-use app_core::feature::{WindowFeature, WindowFeatureInitContext};
+use framework::app::Window;
+use framework::feature::{WindowFeature, WindowFeatureInitContext};
 use macros::window_feature;
 use sysinfo::System;
 

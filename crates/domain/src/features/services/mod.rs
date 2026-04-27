@@ -1,26 +1,23 @@
-use app_core::actor::addr::Addr;
-use app_core::actor::event_bus::EventBus;
-use app_core::app::Window;
-use std::collections::HashSet;
-use std::sync::Arc;
-
 use crate::features::services::application::actor::{
-    OpenPropertiesWindow, OpenServices, ResizeCol, SelectedService, ServiceAction, ServiceActor,
-    Sort, ViewportChanged,
+    OpenPropertiesWindow, ResizeCol, SelectedService, ServiceAction, ServiceActor, Sort,
+    ViewportChanged,
 };
 use crate::features::services::application::snapshot_actor::ServiceSnapshotActor;
 use crate::features::services::settings::ServiceSettings;
 use crate::features::services::view::ServiceTable;
-use app_contracts::features::agents::{ScanTick, WindowsActionResponse};
-use app_contracts::features::navigation::{RouteActivated, TabContextKey};
+use app_contracts::capabilities;
+use app_contracts::features::agents::ScanTick;
 use app_contracts::features::services::{
-    ServicesWindowRegister, UiServicesBindings, UiServicesPort,
+    ServicesBinder, ServicesWindowRegister, UiServicesBindings, UiServicesPort,
 };
-use app_contracts::features::windows_manager::OpenedWindow;
-use app_core::feature::{FeatureContextState, WindowFeature, WindowFeatureInitContext};
-use context::native_windows::slint_factory::SlintWindowRegistry;
+use app_core::actor::addr::Addr;
 use context::page_status::RouteStatusRegistry;
+use framework::app::Window;
+use framework::feature::{FeatureContextState, WindowFeature, WindowFeatureInitContext};
+use framework::native_windows::slint_factory::SlintWindowRegistry;
 use macros::window_feature;
+use std::borrow::Cow;
+use std::collections::HashSet;
 
 pub mod application;
 
@@ -51,18 +48,18 @@ where
             ui_port: ui_port.clone(),
             route_status: ctx.shared.get::<RouteStatusRegistry>().unwrap(),
             is_active: true,
-            active_context_key: TabContextKey::HOST,
+            active_context_key: Cow::Borrowed("host"),
             pending: HashSet::new(),
-            ctx_state: FeatureContextState::new(ctx.window_id, "processes.list"),
+            ctx_state: FeatureContextState::new(ctx.window_id, capabilities::SERVICES),
         };
 
-        let addr = Addr::new(service_actor, token.clone(), &self.tracker);
+        let addr = Addr::new_managed(service_actor, token.clone(), &self.tracker);
 
         let snapshot_actor = ServiceSnapshotActor {
             target: addr.clone(),
             is_active: true,
         };
-        let snapshot_addr = Addr::new(snapshot_actor, token, &self.tracker);
+        let snapshot_addr = Addr::new_managed(snapshot_actor, token, &self.tracker);
 
         #[cfg(feature = "test-utils")]
         if let Some(registry) = ctx.shared.get::<app_core::actor::registry::ActorRegistry>() {
@@ -80,52 +77,22 @@ where
 
         self.tracker.track_loop(loop_handle);
 
-        bind_ui_events(addr.clone(), &ui_port, reg);
+        ServicesBinder::new(&addr, &ui_port)
+            .on_service_action(|name, action| ServiceAction {
+                name: name.to_string(),
+                kind: action.into(),
+            })
+            .on_select_service(|s_name, idx| SelectedService(s_name, idx as usize))
+            .on_sort_by(Sort)
+            .on_column_resized(|id, width| ResizeCol { id, width })
+            .on_rows_viewport_changed(|start, count| ViewportChanged {
+                start: start as usize,
+                count: count as usize,
+            })
+            .on_open_properties_window(OpenPropertiesWindow);
 
-        EventBus::subscribe::<_, RouteActivated>(addr.clone(), &self.tracker);
-        EventBus::subscribe::<_, RouteActivated>(snapshot_addr.clone(), &self.tracker);
-        EventBus::subscribe::<_, WindowsActionResponse>(addr.clone(), &self.tracker);
-        EventBus::subscribe::<_, OpenedWindow>(addr.clone(), &self.tracker);
+        ui_port.register(&reg);
 
         Ok(())
     }
-}
-
-fn bind_ui_events<P>(addr: Addr<ServiceActor<P>>, ui_port: &P, registry: Arc<SlintWindowRegistry>)
-where
-    P: UiServicesPort + UiServicesBindings + ServicesWindowRegister + Clone + 'static,
-{
-    let a = addr.clone();
-    ui_port.on_service_action(move |name, action| {
-        a.send(ServiceAction {
-            name: name.to_string(),
-            kind: action.into(),
-        });
-    });
-    let a = addr.clone();
-    ui_port.on_select_service(move |s_name, idx| a.send(SelectedService(s_name, idx as usize)));
-
-    let a = addr.clone();
-    ui_port.on_open_system_services(move || a.send(OpenServices));
-
-    let a = addr.clone();
-    ui_port.on_sort_by(move |field| a.send(Sort(field)));
-
-    let a = addr.clone();
-    ui_port.on_column_resized(move |id, width| a.send(ResizeCol { id, width }));
-
-    let a = addr.clone();
-    ui_port.on_rows_viewport_changed(move |start, count| {
-        a.send(ViewportChanged {
-            start: start as usize,
-            count: count as usize,
-        });
-    });
-
-    let a = addr.clone();
-    ui_port.on_open_properties_window(move |service_entry| {
-        a.send(OpenPropertiesWindow(service_entry));
-    });
-
-    ui_port.register(&registry);
 }

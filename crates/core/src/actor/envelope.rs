@@ -1,6 +1,7 @@
-use crate::actor::traits::{Context, Handler, Message};
-use crate::actor::{short_type_name, should_trace_actor_message};
-use crate::trace::{DispatchMeta, install_current_meta, is_message_enabled, is_scope_enabled};
+use crate::actor::{short_type_name, Context};
+use crate::actor::traits::{Handler, Message};
+use crate::trace::{install_current_meta, is_message_enabled, is_scope_enabled, DispatchMeta};
+use std::marker::PhantomData;
 
 pub trait Envelope<A> {
     fn handle(&mut self, actor: &mut A, ctx: &Context<A>);
@@ -19,10 +20,7 @@ where
         if let Some(m) = self.message.take() {
             let _meta_guard = install_current_meta(self.meta.clone());
             let message_name = short_type_name::<M>();
-            if is_scope_enabled("core.actor.handle")
-                && should_trace_actor_message(message_name)
-                && is_message_enabled(message_name)
-            {
+            if is_scope_enabled("core.actor.handle") && is_message_enabled(message_name) {
                 tracing::debug!(
                     parent: &self.meta.span,
                     actor = short_type_name::<A>(),
@@ -43,6 +41,28 @@ where
             let _enter = span.enter();
 
             actor.handle(m, ctx);
+        }
+    }
+}
+
+pub struct FnEnvelope<A, F>
+where
+    F: FnOnce(&mut A, &Context<A>) + Send + 'static,
+{
+    pub(super) func: Option<F>,
+    pub(super) meta: DispatchMeta,
+    pub(super) phantom: PhantomData<A>,
+}
+
+impl<A, F> Envelope<A> for FnEnvelope<A, F>
+where
+    F: FnOnce(&mut A, &Context<A>) + Send + 'static,
+{
+    fn handle(&mut self, actor: &mut A, ctx: &Context<A>) {
+        if let Some(f) = self.func.take() {
+            let _meta_guard = install_current_meta(self.meta.clone());
+            let _enter = self.meta.span.enter();
+            f(actor, ctx);
         }
     }
 }

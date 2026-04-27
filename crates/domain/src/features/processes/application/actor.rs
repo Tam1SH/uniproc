@@ -1,43 +1,87 @@
 use crate::features::processes::domain::table::ProcessTable;
 use crate::features::processes::services::metadata::ProcessMetadataService;
-use crate::processes_impl::application::process_snapshot_actor::ProcessSnapshotReady;
+use crate::processes_impl::application::process_snapshot_actor::{
+    ActiveStatus, ProcessSnapshotReady,
+};
 use crate::processes_impl::domain::snapshot::BridgeSnapshot;
 #[cfg(target_os = "windows")]
 use app_contracts::features::environments::WindowsAgentRuntimeEvent;
 use app_contracts::features::environments::{AgentConnectionState, WslAgentRuntimeEvent};
-use app_contracts::features::navigation::{PageActivated, tab_ids};
 use app_contracts::features::processes::UiProcessesPort;
-use app_core::actor::traits::{Context, NoOp};
-use app_core::messages;
-use context::page_status::{PageId, PageStatus, PageStatusChanged, PageStatusRegistry};
-use context::settings::SettingSubscription;
-use macros::handler;
+use app_contracts::features::tabs::TabContextKey;
+use app_core::actor::event_bus::EventBus;
+use app_core::actor::ManagedActor;
+use app_core::actor::{Context, Handler, Message, NoOp};
+use context::page_status::{PageStatus, RouteStatusChanged, RouteStatusRegistry};
+use framework::feature::{Events, FeatureComponent, FeatureContextState};
+use framework::navigation::RouteActivated;
+use framework::settings::SettingSubscription;
+use framework::uri::AppUri;
+use macros::{actor_manifest, handler};
 use slint::SharedString;
+use std::borrow::Cow;
 use std::sync::Arc;
 use sysinfo::{Pid, ProcessesToUpdate, System};
 use tracing::{info, instrument};
 
-messages! {
-    Sort(SharedString),
-    ToggleExpand(SharedString),
-    ViewportChanged { start: usize, count: usize },
-    Select { pid: u32, idx: usize },
-    TerminateSelected,
-    ResizeColumn { id: String, width: f32 },
-    GroupClicked,
-}
-
 pub struct ProcessActor<P: UiProcessesPort> {
-    pub page_id: PageId,
     pub table: ProcessTable,
     pub metadata: ProcessMetadataService,
-    pub page_status: Arc<PageStatusRegistry>,
+    pub route_status: Arc<RouteStatusRegistry>,
     pub is_active: bool,
+    pub active_context_key: Cow<'static, str>,
     pub is_grouped: bool,
     pub ui_port: P,
     pub has_snapshot_data: bool,
-    #[allow(unused)]
-    pub subs: Vec<SettingSubscription>,
+    pub ctx: FeatureContextState,
+}
+
+#[actor_manifest]
+impl<P: UiProcessesPort> ManagedActor for ProcessActor<P> {
+    type Bus = Events<
+        bus!(
+            WslAgentRuntimeEvent,
+            #[cfg(target_os = "windows")]
+            WindowsAgentRuntimeEvent,
+        ),
+    >;
+    type Handlers = handlers!(
+        @WslAgentRuntimeEvent,
+        @WindowsAgentRuntimeEvent,
+        GroupClicked,
+        Sort(SharedString),
+        ToggleExpand(SharedString),
+        ViewportChanged {
+            start: usize,
+            count: usize
+        },
+        Select {
+            pid: u32,
+            idx: usize
+        },
+        TerminateSelected,
+        ResizeColumn {
+            id: String,
+            width: f32
+        }
+    );
+}
+
+impl<P: UiProcessesPort> FeatureComponent for ProcessActor<P> {
+    fn context_state(&mut self) -> &mut FeatureContextState {
+        &mut self.ctx
+    }
+
+    fn on_activated(&mut self, uri: &AppUri, _: &Context<Self>) {
+        self.is_active = true;
+        EventBus::publish(ActiveStatus(true));
+        self.active_context_key = uri.context_name.clone();
+    }
+
+    fn on_deactivated(&mut self, _: &AppUri, _: &Context<Self>) {
+        self.is_active = false;
+        EventBus::publish(ActiveStatus(false));
+    }
 }
 
 impl<P: UiProcessesPort> ProcessActor<P> {
@@ -95,19 +139,14 @@ fn process_snapshot_ready<P: UiProcessesPort>(
         this.set_empty_state(false, "", "");
     }
 
-    this.page_status.report_page(PageStatusChanged {
-        tab_id: tab_ids::MAIN,
-        page_id: this.page_id,
+    this.route_status.report_route(RouteStatusChanged {
+        context_key: this.active_context_key.to_string(),
+        route_segment: "processes".into(),
         status: PageStatus::Ready,
         error: None,
     });
 
     this.push_batch();
-}
-
-#[handler]
-fn activate_page<P: UiProcessesPort>(this: &mut ProcessActor<P>, msg: PageActivated) {
-    this.is_active = msg.page_id == this.page_id;
 }
 
 #[handler]

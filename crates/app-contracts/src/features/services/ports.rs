@@ -1,4 +1,4 @@
-use context::native_windows::slint_factory::SlintWindowRegistry;
+use framework::native_windows::slint_factory::SlintWindowRegistry;
 use macros::slint_port;
 use slint::SharedString;
 use std::fmt::Debug;

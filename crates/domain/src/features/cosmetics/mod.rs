@@ -1,10 +1,10 @@
 use app_contracts::features::cosmetics::UiCosmeticsPort;
-use app_core::app::Window;
-use app_core::feature::{WindowFeature, WindowFeatureInitContext};
+use framework::app::Window;
+use framework::feature::{WindowFeature, WindowFeatureInitContext};
 use macros::window_feature;
 
 #[derive(Clone, Copy, Debug)]
-pub struct AccentState(pub context::native_windows::platform_types::AccentPalette);
+pub struct AccentState(pub framework::native_windows::platform_types::AccentPalette);
 
 #[window_feature]
 pub struct CosmeticsFeature;
@@ -19,7 +19,8 @@ where
     fn install(&mut self, ctx: &mut WindowFeatureInitContext<TWindow>) -> anyhow::Result<()> {
         let port = (self.make_port)(ctx.ui);
 
-        if let Ok(accent_palette) = context::native_windows::platform::get_system_accent_palette() {
+        if let Ok(accent_palette) = framework::native_windows::platform::get_system_accent_palette()
+        {
             port.set_accent_palette(app_contracts::features::cosmetics::AccentPalette {
                 accent: accent_palette.accent.into(),
                 accent_light_1: accent_palette.accent_light_1.into(),

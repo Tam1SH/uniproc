@@ -1,0 +1,29 @@
+[package]
+name = "framework"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+app-core.workspace = true
+slint.workspace = true
+tracing.workspace = true
+anyhow.workspace = true
+derive_more.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+i-slint-backend-winit.workspace = true
+raw-window-handle.workspace = true
+
+[target.'cfg(target_os = "windows")'.dependencies]
+window-vibrancy.workspace = true
+windows.workspace = true
+
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+tempfile = "3.27.0"
+uuid.workspace = true
+i-slint-core.workspace = true
+i-slint-backend-testing.workspace = true

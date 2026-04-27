@@ -1,10 +1,9 @@
 import { Theme } from "theme.slint";
 import { PageStatus, PageData, TabData } from "../content/globals.slint";
-import { SideBar } from "../features/navigation/sidebar/index.slint";
+import { SideBar } from "../features/sidebar/index.slint";
 import { Sidebar } from "../features/sidebar/globals.slint";
-import {
-    Navigation,
-} from "../features/navigation/globals/tabs-navigation.slint";
+import { Navigation } from "navigation.slint";
+import { Tabs } from "../features/tabs/globals.slint";
 import {
     ProcessesPageBody,
     ProcessesPageHeader,
@@ -25,12 +24,11 @@ import {
     ServicesPageHeader,
 } from "../pages/dashboard/subpages/services/index.slint";
 import { LoadingSpinner } from "loader-area.slint";
-import { TabBar } from "../features/navigation/tabs/index.slint";
 
 export component BuiltinDashboard inherits HorizontalLayout {
 
-    private property <TabData> tab_data: Navigation.tabs[Navigation.active_tab_index];
-    private property <int> cur: Navigation.active_page_index;
+    private property <TabData> tab_data: Tabs.tabs[Tabs.active_tab_index];
+    private property <int> cur: Tabs.active_page_index;
     private property <PageData> current-page: root.tab_data.pages[root.cur];
 
     private property <PageStatus> cur-status: root.current-page.status;
@@ -52,8 +50,8 @@ export component BuiltinDashboard inherits HorizontalLayout {
 
             VerticalLayout {
 
-                if (root.current-page.id == 1): ProcessesPageHeader { }
-                if (root.current-page.id == 7): ServicesPageHeader { }
+                if (root.current-page.route_segment == "processes"): ProcessesPageHeader { }
+                if (root.current-page.route_segment == "services"): ServicesPageHeader { }
 
                 page-body-layer := Rectangle {
 
@@ -112,11 +110,11 @@ export component BuiltinDashboard inherits HorizontalLayout {
                             }
                         ]
 
-                        if (root.current-page.id == 1): ProcessesPageBody {
+                        if (root.current-page.route_segment == "processes"): ProcessesPageBody {
                             width: 100%;
                             height: 100%;
                         }
-                        if (root.current-page.id == 7): ServicesPageBody {
+                        if (root.current-page.route_segment == "services"): ServicesPageBody {
                             width: 100%;
                             height: 100%;
                         }

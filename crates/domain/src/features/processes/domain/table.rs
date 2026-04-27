@@ -5,8 +5,8 @@ use crate::processes_impl::settings::ProcessSettings;
 use app_contracts::features::processes::{
     FieldDefDto, FieldMetadata, ProcessEntryVm, ProcessNodeDto,
 };
-use context::settings::reactive::ReactiveSettingSubscription;
 use dashmap::DashMap;
+use framework::settings::reactive::ReactiveSettingSubscription;
 use slint::SharedString;
 use widgets::table::flow::{SortState, TableNode};
 use widgets::table::layout::TableSettingsProvider;

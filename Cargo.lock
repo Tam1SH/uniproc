@@ -237,6 +237,7 @@ dependencies = [
  "build-utils",
  "cfg-if",
  "context",
+ "framework",
  "macros",
  "ogurpchik",
  "rkyv",
@@ -254,7 +255,6 @@ dependencies = [
  "arc-swap",
  "once_cell",
  "parking_lot",
- "slint",
  "tokio",
  "tracing",
  "uuid",
@@ -1241,6 +1241,7 @@ dependencies = [
  "anyhow",
  "app-core",
  "bon",
+ "framework",
  "i-slint-backend-winit",
  "macros",
  "raw-window-handle",
@@ -1248,7 +1249,6 @@ dependencies = [
  "serde",
  "serde_json",
  "slint",
- "tempfile",
  "toml 0.9.11+spec-1.1.0",
  "tracing",
  "tracing-subscriber",
@@ -1647,7 +1647,9 @@ dependencies = [
  "domain",
  "domain-agents",
  "domain-environments",
+ "domain-navigation",
  "domain-processes",
+ "framework",
  "slint",
  "slint-adapter",
  "tokio",
@@ -1729,6 +1731,7 @@ dependencies = [
  "app-core",
  "context",
  "dashmap",
+ "framework",
  "macros",
  "rust-i18n",
  "serde",
@@ -1754,6 +1757,7 @@ dependencies = [
  "async-trait",
  "cfg-if",
  "context",
+ "framework",
  "macros",
  "ogurpchik",
  "rkyv",
@@ -1772,10 +1776,24 @@ dependencies = [
  "anyhow",
  "app-contracts",
  "app-core",
+ "framework",
  "macros",
  "slint",
  "sysinfo",
  "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "domain-navigation"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "app-contracts",
+ "app-core",
+ "context",
+ "framework",
+ "macros",
  "tracing",
 ]
 
@@ -1789,6 +1807,7 @@ dependencies = [
  "bon",
  "context",
  "dashmap",
+ "framework",
  "lazy_static",
  "macros",
  "serde",
@@ -1812,8 +1831,11 @@ dependencies = [
  "build-utils",
  "context",
  "domain",
+ "domain-navigation",
+ "framework",
  "i-slint-backend-testing",
  "i-slint-core",
+ "macros",
  "proc-macro2",
  "quote",
  "rstest",
@@ -2239,6 +2261,27 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cb4cb245038516f5f85277875cdaa4f7d2c9a0fa0468de06ed190163b1581fcf"
 dependencies = [
  "percent-encoding",
+]
+
+[[package]]
+name = "framework"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "app-core",
+ "derive_more",
+ "i-slint-backend-testing",
+ "i-slint-backend-winit",
+ "i-slint-core",
+ "raw-window-handle",
+ "serde",
+ "serde_json",
+ "slint",
+ "tempfile",
+ "tracing",
+ "uuid",
+ "window-vibrancy",
+ "windows 0.61.3",
 ]
 
 [[package]]
@@ -5570,6 +5613,7 @@ dependencies = [
  "build-utils",
  "cfg-if",
  "context",
+ "framework",
  "i-slint-backend-winit",
  "macros",
  "slint",
@@ -6871,8 +6915,8 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "app-core",
- "context",
  "dashmap",
+ "framework",
  "slint",
  "tracing",
 ]

@@ -1,206 +1,102 @@
-use app_contracts::features::agents::ScanTick;
-use app_contracts::features::navigation::{page_ids, tab_ids};
-use app_core::actor::registry::ActorRegistry;
-use context::page_status::PageStatusRegistry;
-use domain::features::navigation::NavigationFeature;
 use domain::features::page_status::PageStatusFeature;
-use domain::features::services::ServicesFeature;
-use domain::features::services::application::snapshot_actor::ServiceSnapshotActor;
-use domain::features::sidebar::SidebarFeature;
 use domain::features::test_discovery::TestDiscoveryFeature;
 use domain::features::windows_manager::WindowManagerFeature;
+use domain_navigation::features::navigation::{NavigationFeature, NavigationRegistryFeature};
 use domain_test_kit::generated::*;
-use domain_test_kit::utils::{DomainTestWindow, FeatureHarness, temp_settings_path};
+use domain_test_kit::test_env::navigation::{MockWindowFeature, TestFeatureState};
+use domain_test_kit::utils::{temp_settings_path, DomainTestWindow, FeatureHarness};
+use framework::navigation::{Route, RouteRegistry};
+use framework::uri::ContextlessAppUri;
+use i_slint_core::api::ComponentHandle;
 use rstest::{fixture, rstest};
 use serial_test::serial;
+use std::borrow::Cow;
+use std::sync::atomic::Ordering;
 
 #[fixture]
 fn h() -> FeatureHarness {
     let temp_path = temp_settings_path();
-    let mut harness = FeatureHarness::new(temp_path.clone());
-    harness.install_settings_at(temp_path).unwrap();
-    harness.app_install(TestDiscoveryFeature).unwrap();
-    harness.app_install(PageStatusFeature).unwrap();
-    harness.app_install(WindowManagerFeature).unwrap();
 
-    harness
+    FeatureHarness::new(temp_path.clone())
+        .app_feature(domain::features::settings::SettingsFeature::with_path(
+            temp_path,
+        ))
+        .unwrap()
+        .app_feature(TestDiscoveryFeature)
+        .unwrap()
+        .app_feature(PageStatusFeature)
+        .unwrap()
+        .app_feature(NavigationRegistryFeature)
+        .unwrap()
+        .app_feature(WindowManagerFeature)
+        .unwrap()
 }
 
 #[rstest]
 #[serial]
-fn test_services_updates_only_when_active(mut h: FeatureHarness) {
+fn test_navigation_correctly_switches_feature_capabilities(mut h: FeatureHarness) {
     let rt = tokio::runtime::Runtime::new().unwrap();
     let _guard = rt.enter();
 
+    let registry = h
+        .shared()
+        .get::<RouteRegistry>()
+        .expect("RouteRegistry must be installed");
+
+    registry.replace_routes(vec![
+        Route {
+            uri: ContextlessAppUri::new(Cow::from("mock_route_a"), vec![Cow::Borrowed("cap_a")]),
+        },
+        Route {
+            uri: ContextlessAppUri::new(Cow::from("mock_route_b"), vec![Cow::Borrowed("cap_b")]),
+        },
+    ]);
+
     let nav_stub = NavigationUiStub::new();
-    let svc_stub = ServicesUiStub::new();
-
-    let n_port = nav_stub.clone();
-    let s_port = svc_stub.clone();
-
-    h.install(NavigationFeature::new(move |_: &DomainTestWindow| {
-        n_port.clone()
-    }))
-    .unwrap();
-    h.install(ServicesFeature::new(move |_: &DomainTestWindow| {
-        s_port.clone()
-    }))
-    .unwrap();
-
-    let service_addr = h
-        .shared
-        .get::<ActorRegistry>()
-        .unwrap()
-        .get::<ServiceSnapshotActor<ServicesUiStub>>()
-        .unwrap();
-
-    nav_stub
-        .emit_on_request_page_switch(tab_ids::MAIN, page_ids::SERVICES)
-        .stabilize(&mut h);
-
-    service_addr.send_test(ScanTick).stabilize(&mut h);
-
-    assert_eq!(
-        svc_stub
-            .set_total_services_count_call_count()
-            .stabilize(&mut h),
-        1,
-        "UI должен был обновиться на активной странице"
-    );
-
-    nav_stub
-        .emit_on_request_page_switch(tab_ids::MAIN, page_ids::DISK)
-        .stabilize(&mut h);
-
-    service_addr.send_test(ScanTick).stabilize(&mut h);
-
-    assert_eq!(
-        svc_stub
-            .set_total_services_count_call_count()
-            .stabilize(&mut h),
-        1,
-        "UI НЕ должен обновляться, когда страница SERVICES не активна"
-    );
-
-    nav_stub
-        .emit_on_request_page_switch(tab_ids::MAIN, page_ids::SERVICES)
-        .stabilize(&mut h);
-
-    service_addr.send_test(ScanTick).stabilize(&mut h);
-
-    assert_eq!(
-        svc_stub
-            .set_total_services_count_call_count()
-            .stabilize(&mut h),
-        2,
-        "UI должен снова обновляться после возврата"
-    );
-}
-
-#[rstest]
-#[serial]
-fn generated_navigation_stub_receives_initial_navigation_state(mut h: FeatureHarness) {
-    let stub = NavigationUiStub::new();
-    let port = stub.clone();
-
-    h.install(NavigationFeature::new(move |_: &DomainTestWindow| {
-        port.clone()
-    }))
-    .unwrap();
-
-    assert_eq!(stub.set_navigation_tree_call_count().stabilize(&mut h), 1);
-    assert_eq!(
-        stub.set_available_contexts_call_count().stabilize(&mut h),
-        1
-    );
-    assert!(h.shared.get::<PageStatusRegistry>().is_some());
-}
-
-#[rstest]
-#[serial]
-fn generated_navigation_stub_handles_page_switch_without_sidebar_contract(mut h: FeatureHarness) {
-    let stub = NavigationUiStub::new();
-    let port = stub.clone();
-
-    h.install(NavigationFeature::new(move |_: &DomainTestWindow| {
-        port.clone()
-    }))
-    .unwrap();
-
-    let initial_page_calls = stub.set_active_page_call_count().stabilize(&mut h);
-    let initial_tab_calls = stub.set_active_tab_call_count().stabilize(&mut h);
-
-    stub.emit_on_request_page_switch(tab_ids::MAIN, page_ids::SERVICES)
-        .stabilize(&mut h);
-
-    assert!(stub.set_active_page_call_count().stabilize(&mut h) > initial_page_calls);
-    assert!(stub.set_active_tab_call_count().stabilize(&mut h) >= initial_tab_calls);
-}
-
-#[rstest]
-#[serial]
-fn navigation_and_sidebar_features_integrate_via_transition_bus(mut h: FeatureHarness) {
-    let nav_stub = NavigationUiStub::new();
-    let sidebar_stub = SidebarUiStub::new();
     let nav_port = nav_stub.clone();
-    let sidebar_port = sidebar_stub.clone();
 
-    h.install(NavigationFeature::new(move |_: &DomainTestWindow| {
-        nav_port.clone()
-    }))
-    .unwrap();
-    h.install(SidebarFeature::new(move |_: &DomainTestWindow| {
-        sidebar_port.clone()
-    }))
-    .unwrap();
+    let state_a = TestFeatureState::default();
+    let state_b = TestFeatureState::default();
 
-    assert_eq!(
-        sidebar_stub
-            .set_side_bar_width_call_count()
-            .stabilize(&mut h),
-        1
+    let state_a_c = state_a.clone();
+    let state_b_c = state_b.clone();
+
+    h = h
+        .window_feature(move || {
+            let port = nav_port.clone();
+            NavigationFeature::new(move |_: &DomainTestWindow| port.clone())
+        })
+        .window_feature(move || MockWindowFeature::new("cap_a", state_a_c.clone()))
+        .window_feature(move || MockWindowFeature::new("cap_b", state_b_c.clone()));
+
+    let ui_handle = h.0.as_ref().unwrap().ui().clone_strong();
+    h.0.as_mut()
+        .unwrap()
+        .spawn_window(ui_handle)
+        .expect("Failed to spawn window");
+    nav_stub
+        .emit_on_push("mock_route_a".into())
+        .stabilize(&mut h);
+
+    assert!(
+        state_a.is_active.load(Ordering::SeqCst),
+        "Feature A MUST be active on mock_route_a"
+    );
+    assert!(
+        !state_b.is_active.load(Ordering::SeqCst),
+        "Feature B MUST be inactive on mock_route_a"
     );
 
     nav_stub
-        .emit_on_request_page_switch(tab_ids::MAIN, page_ids::SERVICES)
+        .emit_on_push("mock_route_b".into())
         .stabilize(&mut h);
 
     assert!(
-        sidebar_stub
-            .set_switch_transition_call_count()
-            .stabilize(&mut h)
-            >= 1
+        !state_a.is_active.load(Ordering::SeqCst),
+        "Feature A MUST deactivate when navigating to mock_route_b"
     );
     assert!(
-        sidebar_stub
-            .set_content_visible_call_count()
-            .stabilize(&mut h)
-            >= 1
+        state_b.is_active.load(Ordering::SeqCst),
+        "Feature B MUST be active on mock_route_b"
     );
-    assert!(
-        sidebar_stub
-            .set_switch_progress_call_count()
-            .stabilize(&mut h)
-            >= 1
-    );
-}
-
-#[rstest]
-#[serial]
-fn generated_navigation_stub_can_drive_domain_via_bindings(mut h: FeatureHarness) {
-    let stub = NavigationUiStub::new();
-    let port = stub.clone();
-
-    h.install(NavigationFeature::new(move |_: &DomainTestWindow| {
-        port.clone()
-    }))
-    .unwrap();
-
-    let initial_active_page_calls = stub.set_active_page_call_count().stabilize(&mut h);
-    stub.emit_on_request_tab_add("host/windows".to_string())
-        .stabilize(&mut h);
-    stub.emit_on_request_tab_switch(context::page_status::TabId(0))
-        .stabilize(&mut h);
-
-    assert!(stub.set_active_page_call_count().stabilize(&mut h) >= initial_active_page_calls);
 }

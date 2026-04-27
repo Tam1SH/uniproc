@@ -1,0 +1,125 @@
+import { Theme } from "theme.slint";
+import { Tabs } from "globals.slint";
+import { BrowserTabItem } from "components/tab-item.slint";
+import { Icons } from "icons.slint";
+import { Divider } from "divider.slint";
+import { ContextMenu } from "context-menu.slint";
+
+component AvailableContextItem inherits Rectangle {
+    in property <string> title;
+    in property <string> context-key;
+    in property <image> icon;
+    callback selected(string);
+
+    height: 32px;
+    border-radius: 6px;
+    background: area.has-hover ? Theme.colorNeutralBackgroundAlpha3 : transparent;
+
+    area := TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            root.selected(root.context-key);
+        }
+    }
+
+    HorizontalLayout {
+        padding-left: 10px;
+        padding-right: 10px;
+        spacing: 8px;
+
+        Image {
+            source: root.icon;
+            width: 16px;
+            height: 16px;
+            image-fit: contain;
+            vertical-alignment: center;
+        }
+
+        Text {
+            text: root.title;
+            vertical-alignment: center;
+            color: white;
+        }
+    }
+}
+
+export component TabBar inherits Rectangle {
+    y: 0.5px;
+    HorizontalLayout {
+        alignment: start;
+        for tab[i] in Tabs.tabs: VerticalLayout {
+            alignment: end;
+            BrowserTabItem {
+                title: tab.title;
+                icon: tab.icon;
+                active: Tabs.active_tab_index == i;
+                is-first: i == 0;
+                is-closable: tab.is_closable;
+                status: tab.status;
+                clicked => {
+                    Tabs.request_tab_switch(tab.context_key);
+                }
+                close_clicked => {
+                    Tabs.request_tab_close(tab.context_key);
+                }
+            }
+        }
+
+        VerticalLayout {
+            alignment: center;
+            padding-top: 4px;
+
+            HorizontalLayout {
+                padding-left: Theme.spacingHorizontalL;
+                spacing: Theme.spacingHorizontalS;
+
+                relative-this := Image {
+                    source: Icons.arrow-up-regular;
+                    colorize: Tabs.available-contexts.length > 0 ? white : Theme.colorNeutralForegroundDisabled;
+                    width: 12px;
+                    height: 12px;
+                    y: 3px;
+
+                    vertical-alignment: center;
+                    transform-rotation: -90deg;
+                    transform-origin: { x: 2.5px, y: 5px };
+                    add-touch := TouchArea {
+                        mouse-cursor: pointer;
+                        clicked => {
+                            popup.show();
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    property <bool> menu-entering;
+    menu-enter-timer := Timer {
+        interval: 1ms;
+        running: false;
+        triggered => {
+            menu-enter-timer.running = false;
+            root.menu-entering = true;
+        }
+    }
+
+    popup := ContextMenu {
+        items: [{
+            id: 0,
+            title: "lol",
+        }];
+        x: relative-this.x + self.width / 4 - relative-this.width;
+        y: 40px;
+        is-entering: true;
+
+        changed visible => {
+            if (!self.visible) {
+                root.menu-entering = false;
+            }
+        }
+
+        action(id) => {
+        }
+    }
+}

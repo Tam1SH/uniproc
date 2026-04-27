@@ -1,5 +1,5 @@
 use i_slint_compiler::diagnostics::BuildDiagnostics;
-use i_slint_compiler::parser::{SyntaxKind, identifier_text, parse_file, syntax_nodes};
+use i_slint_compiler::parser::{identifier_text, parse_file, syntax_nodes, SyntaxKind};
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
@@ -127,23 +127,23 @@ pub fn generate_globals_export(ui_dir: &Path) {
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 struct SlintPageRouteSpec {
-    page_key: String,
-    route_segment: String,
-    layout: String,
+    segment: String,
+    layout: Option<String>,
+    features: Vec<String>,
 }
 
 pub fn generate_navigation_routes(pages_dir: &Path, out_file: &Path) {
     println!("cargo:rerun-if-changed={}", pages_dir.display());
 
     let mut specs = collect_page_route_specs(pages_dir);
-    specs.sort_by(|a, b| a.route_segment.cmp(&b.route_segment));
+    specs.sort_by(|a, b| a.segment.cmp(&b.segment));
 
     let entries = specs
         .iter()
         .map(|spec| {
             format!(
-                "    PageRouteDescriptor {{ page_key: {:?}, route_segment: {:?}, layout: {:?} }},",
-                spec.page_key, spec.route_segment, spec.layout
+                "    PageRouteDescriptor {{ segment: {:?}, layout: {:?}, features: &{:?} }},",
+                spec.segment, spec.layout, spec.features
             )
         })
         .collect::<Vec<_>>()
@@ -190,11 +190,11 @@ fn collect_page_route_specs(pages_dir: &Path) -> Vec<SlintPageRouteSpec> {
             continue;
         };
 
-        if let Some(layout) = extract_page_spec_layout(&doc) {
+        if let Some(spec) = extract_page_spec(&doc) {
             specs.push(SlintPageRouteSpec {
-                route_segment: page_key.clone(),
-                page_key,
-                layout,
+                segment: page_key.clone(),
+                layout: spec.layout,
+                features: spec.features,
             });
         }
     }
@@ -202,8 +202,14 @@ fn collect_page_route_specs(pages_dir: &Path) -> Vec<SlintPageRouteSpec> {
     specs
 }
 
-fn extract_page_spec_layout(doc: &syntax_nodes::Document) -> Option<String> {
-    doc.ExportsList()
+pub struct PageSpec {
+    pub layout: Option<String>,
+    pub features: Vec<String>,
+}
+
+fn extract_page_spec(doc: &syntax_nodes::Document) -> Option<PageSpec> {
+    let component = doc
+        .ExportsList()
         .filter_map(|exports| exports.Component())
         .find(|component| {
             component
@@ -211,14 +217,36 @@ fn extract_page_spec_layout(doc: &syntax_nodes::Document) -> Option<String> {
                 .is_some_and(|text| text == "global")
                 && identifier_text(&component.DeclaredIdentifier())
                     .is_some_and(|name| name.ends_with("PageSpec"))
-        })
-        .and_then(|component| {
-            component.Element().PropertyDeclaration().find(|property| {
-                identifier_text(&property.DeclaredIdentifier()).is_some_and(|name| name == "layout")
-            })
+        })?;
+
+    let layout = component
+        .Element()
+        .PropertyDeclaration()
+        .find(|property| {
+            identifier_text(&property.DeclaredIdentifier()).is_some_and(|name| name == "layout")
         })
         .and_then(|property| property.BindingExpression())
         .and_then(|binding| binding.Expression())
         .and_then(|expression| expression.child_text(SyntaxKind::StringLiteral))
-        .map(|literal| literal.trim_matches('"').to_string())
+        .map(|literal| literal.trim_matches('"').to_string());
+
+    let features = component
+        .Element()
+        .PropertyDeclaration()
+        .find(|property| {
+            identifier_text(&property.DeclaredIdentifier()).is_some_and(|name| name == "features")
+        })
+        .and_then(|property| property.BindingExpression())
+        .and_then(|binding| binding.Expression())
+        .and_then(|expr| expr.Array())
+        .map(|array| {
+            array
+                .Expression()
+                .filter_map(|item_expr| item_expr.child_text(SyntaxKind::StringLiteral))
+                .map(|literal| literal.trim_matches('"').to_string())
+                .collect::<Vec<String>>()
+        })
+        .unwrap_or_default();
+
+    Some(PageSpec { layout, features })
 }

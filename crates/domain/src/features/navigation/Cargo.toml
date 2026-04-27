@@ -1,0 +1,19 @@
+[package]
+name = "domain-navigation"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+path = "lib.rs"
+
+[dependencies]
+anyhow.workspace = true
+app-contracts.workspace = true
+app-core.workspace = true
+context.workspace = true
+macros.workspace = true
+tracing.workspace = true
+framework.workspace = true
+
+[features]
+test-utils = ["app-core/test-utils"]

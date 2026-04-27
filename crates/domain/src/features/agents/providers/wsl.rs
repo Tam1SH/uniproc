@@ -6,16 +6,16 @@ use app_contracts::features::environments::{
     AgentConnectionState, WslAgentRuntimeEvent, WslClient,
 };
 use app_core::actor::event_bus::EventBus;
-use app_core::feature::{AppFeature, AppFeatureInitContext};
-use app_core::lifecycle_tracker::FeatureLifecycle;
 use app_core::{actor::addr::Addr, ratelimit};
+use framework::feature::{AppFeature, AppFeatureInitContext};
+use framework::lifecycle_tracker::FeatureLifecycle;
 use ogurpchik::discovery::register_vm_default;
 use ogurpchik::high::node::Node;
 use ogurpchik::transport::stream::adapters::vsock::{VsockAddr, VsockTransport};
 use std::ops::Deref;
 use std::time::Instant;
 use tracing::{error, instrument, warn};
-use uniproc_protocol::{LinuxCodec, LinuxRequest, LinuxResponse, services};
+use uniproc_protocol::{services, LinuxCodec, LinuxRequest, LinuxResponse};
 
 pub struct WslBackend;
 

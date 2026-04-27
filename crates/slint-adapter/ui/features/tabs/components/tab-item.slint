@@ -1,0 +1,49 @@
+import { Theme } from "theme.slint";
+import { PageStatus } from "../../../content/globals.slint";
+
+export enum TabVisualState {
+    default,
+    hovered,
+}
+
+export component BrowserTabItem inherits Rectangle {
+    in property <string> title;
+    in property <image> icon;
+    in property <bool> active;
+    in property <bool> is-first;
+    in property <bool> is-closable;
+    in property <PageStatus> status;
+    callback clicked();
+    callback close_clicked();
+
+    height: 34px;
+    min-width: 150px;
+    background: transparent;
+
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            root.clicked();
+        }
+    }
+
+    HorizontalLayout {
+        padding-left: 14px;
+        padding-right: 8px;
+        spacing: 8px;
+
+        Image {
+            source: root.icon;
+            width: 16px;
+            height: 16px;
+            image-fit: contain;
+            vertical-alignment: center;
+        }
+
+        Text {
+            text: root.title;
+            color: white;
+            vertical-alignment: center;
+        }
+    }
+}

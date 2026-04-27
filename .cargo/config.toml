@@ -1,6 +1,10 @@
 [build]
 rustc-wrapper = "sccache"
 
+[unstable]
+#build-std = ["std", "panic_abort"]
+#build-std-features = ["optimize_for_size"]
+
 [alias]
 # Usage:
 #   cargo cdev          (dev check with Cranelift + sccache)

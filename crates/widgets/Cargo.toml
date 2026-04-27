@@ -6,7 +6,7 @@ edition.workspace = true
 [dependencies]
 anyhow.workspace = true
 app-core.workspace = true
-context.workspace = true
+framework.workspace = true
 dashmap.workspace = true
 slint.workspace = true
 tracing.workspace = true

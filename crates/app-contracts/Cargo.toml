@@ -14,6 +14,7 @@ serde.workspace = true
 slint.workspace = true
 uniproc-protocol.workspace = true
 uuid.workspace = true
+framework.workspace = true
 
 [build-dependencies]
 build-utils.workspace = true

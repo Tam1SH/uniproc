@@ -1,7 +1,7 @@
 use crate::actor::addr::Addr;
 use crate::actor::short_type_name;
 use crate::actor::traits::{Handler, Message};
-use crate::trace::{DispatchMeta, is_scope_enabled};
+use crate::trace::{is_scope_enabled, DispatchMeta};
 
 use std::any::Any;
 use std::marker::PhantomData;
@@ -45,6 +45,23 @@ where
             );
         }
     }
+    fn id(&self) -> SubscriptionId {
+        self.id
+    }
+}
+
+pub struct FnSubscriber<M: Event> {
+    pub(super) id: SubscriptionId,
+    pub(super) callback: std::sync::Arc<dyn Fn(M) + 'static>,
+}
+
+impl<M: Event> UntypedSubscriber for FnSubscriber<M> {
+    fn deliver(&self, msg: Box<dyn Any>, _: DispatchMeta) {
+        if let Ok(concrete_msg) = msg.downcast::<M>() {
+            (self.callback)((*concrete_msg).clone());
+        }
+    }
+
     fn id(&self) -> SubscriptionId {
         self.id
     }

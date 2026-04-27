@@ -1,9 +1,21 @@
 use app_contracts::features::windows_manager::OpenedWindow;
 use app_core::actor::event_bus::EventBus;
-use app_core::actor::traits::Context;
-use context::native_windows::slint_factory::{OpenWindow, WindowClosed, WindowRegistry};
-use macros::handler;
+use app_core::actor::{Context, ManagedActor};
+use framework::native_windows::slint_factory::{OpenWindow, WindowClosed, WindowRegistry};
+use macros::{actor_manifest, handler};
 use std::sync::Arc;
+
+#[actor_manifest]
+impl<R: WindowRegistry + 'static> ManagedActor for WindowManagerActor<R> {
+    type Bus = bus!(
+        @OpenWindow,
+        @WindowClosed
+    );
+    type Handlers = handlers!(
+        @OpenWindow,
+        @WindowClosed
+    );
+}
 
 pub struct WindowManagerActor<R> {
     registry: Arc<R>,

@@ -1,23 +1,26 @@
 use crate::features::environments::wsl::domain::{
     check_wsl_availability_async, fetch_distros_data, inject_agent_async,
 };
-use crate::messages;
 use app_contracts::features::environments::{
     UiEnvironmentsPort, WslAgentRuntimeEvent, WslConnectionState, WslDistroDto,
 };
-use app_core::actor::traits::Context;
+use app_core::actor::{Context, ManagedActor};
 
-use macros::handler;
+use macros::{actor_manifest, handler};
 use std::fmt::Debug;
 use tracing::{error, info};
 
-messages! {
-    Init,
-    InstallAgent(String),
-    CheckStatus,
-    SetStatus(bool),
-    RefreshDistros,
-    UpdateDistros(Vec<WslDistroDto>),
+#[actor_manifest]
+impl<P: UiEnvironmentsPort> ManagedActor for WslEnvActor<P> {
+    type Bus = bus!(WslAgentRuntimeEvent);
+    type Handlers = handlers!(
+        Init,
+        InstallAgent(String),
+        CheckStatus,
+        SetStatus(bool),
+        RefreshDistros,
+        UpdateDistros(Vec<WslDistroDto>)
+    );
 }
 
 pub struct WslEnvActor<P: UiEnvironmentsPort> {

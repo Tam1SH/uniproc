@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{Item, ItemImpl, ItemStruct, parse_macro_input};
+use syn::{parse_macro_input, Item, ItemImpl, ItemStruct};
 
 pub fn window_feature_impl(_args: TokenStream, input: TokenStream) -> TokenStream {
     let item = parse_macro_input!(input as Item);
@@ -25,14 +25,14 @@ fn process_struct(item_struct: ItemStruct) -> TokenStream {
         #[derive(Clone)]
         #vis struct #ident<F: Clone> {
             make_port: F,
-            tracker: app_core::lifecycle_tracker::FeatureLifecycle,
+            tracker: framework::lifecycle_tracker::FeatureLifecycle,
         }
 
         impl<F: Clone> #ident<F> {
             pub fn new(make_port: F) -> Self {
                 Self {
                     make_port,
-                    tracker: app_core::lifecycle_tracker::FeatureLifecycle::new(),
+                    tracker: framework::lifecycle_tracker::FeatureLifecycle::new(),
                 }
             }
         }

@@ -156,7 +156,7 @@ fn generate_root(
         if e.is_nested {
             quote! { #fname: std::sync::Arc<#ty>, }
         } else {
-            quote! { #fname: context::settings::ReactiveSetting<#ty>, }
+            quote! { #fname: framework::settings::ReactiveSetting<#ty>, }
         }
     });
 
@@ -171,7 +171,7 @@ fn generate_root(
         } else {
             let def = e.default_tokens();
             quote! {
-                #fname: context::settings::setting_or::<Self, #ty>(&store, #key, #def)?,
+                #fname: framework::settings::setting_or::<Self, #ty>(&store, #key, #def)?,
             }
         }
     });
@@ -185,7 +185,7 @@ fn generate_root(
             }
         } else {
             quote! {
-                pub fn #fname(&self) -> context::settings::ReactiveSetting<#ty> { self.#fname.clone() }
+                pub fn #fname(&self) -> framework::settings::ReactiveSetting<#ty> { self.#fname.clone() }
             }
         }
     });
@@ -198,7 +198,7 @@ fn generate_root(
         } else {
             let def = e.default_tokens();
             quote! {
-                <Self as context::settings::FeatureSettings>::ensure_default(settings, #key, #def)?;
+                <Self as framework::settings::FeatureSettings>::ensure_default(settings, #key, #def)?;
             }
         }
     });
@@ -207,16 +207,16 @@ fn generate_root(
         #[derive(Debug, Clone)]
         #(#attrs)*
         #vis struct #name {
-            store: std::sync::Arc<context::settings::store::SettingsStore>,
+            store: std::sync::Arc<framework::settings::store::SettingsStore>,
             #(#struct_fields)*
         }
 
-        impl context::settings::SettingsScope for #name {
+        impl framework::settings::SettingsScope for #name {
             const PREFIX: &'static str = #prefix;
         }
 
-        impl context::settings::FeatureSettings for #name {
-            fn ensure_defaults(settings: &context::settings::store::SettingsStore) -> anyhow::Result<()> {
+        impl framework::settings::FeatureSettings for #name {
+            fn ensure_defaults(settings: &framework::settings::store::SettingsStore) -> anyhow::Result<()> {
                 #(#ensure_calls)*
                 Ok(())
             }
@@ -224,8 +224,8 @@ fn generate_root(
 
         impl #name {
             pub fn new(shared: &app_core::shared_state::SharedState) -> anyhow::Result<Self> {
-                let store = context::settings::settings_from(shared);
-                <Self as context::settings::FeatureSettings>::ensure_defaults(&store)?;
+                let store = framework::settings::settings_from(shared);
+                <Self as framework::settings::FeatureSettings>::ensure_defaults(&store)?;
                 Ok(Self {
                     #(#init_fields)*
                     store,
@@ -235,7 +235,7 @@ fn generate_root(
             #(#getters)*
             #(#patch_methods)*
 
-            pub fn store(&self) -> &std::sync::Arc<context::settings::store::SettingsStore> {
+            pub fn store(&self) -> &std::sync::Arc<framework::settings::store::SettingsStore> {
                 &self.store
             }
         }
@@ -255,7 +255,7 @@ fn generate_nested(
         if e.is_nested {
             quote! { #fname: std::sync::Arc<#ty>, }
         } else {
-            quote! { #fname: std::sync::Arc<context::settings::ReactiveSetting<#ty>>, }
+            quote! { #fname: std::sync::Arc<framework::settings::ReactiveSetting<#ty>>, }
         }
     });
 
@@ -273,7 +273,7 @@ fn generate_nested(
             let def = e.default_tokens();
             quote! {
                 #fname: std::sync::Arc::new(
-                    context::settings::setting_or::<TScope, #ty>(
+                    framework::settings::setting_or::<TScope, #ty>(
                         store,
                         &format!("{}.{}", namespace, #key),
                         #def,
@@ -292,7 +292,7 @@ fn generate_nested(
             }
         } else {
             quote! {
-                pub fn #fname(&self) -> std::sync::Arc<context::settings::ReactiveSetting<#ty>> {
+                pub fn #fname(&self) -> std::sync::Arc<framework::settings::ReactiveSetting<#ty>> {
                     self.#fname.clone()
                 }
             }
@@ -322,15 +322,15 @@ fn generate_nested(
         }
 
         impl #name {
-            pub fn new<TScope: context::settings::FeatureSettings>(
-                store: &std::sync::Arc<context::settings::store::SettingsStore>,
+            pub fn new<TScope: framework::settings::FeatureSettings>(
+                store: &std::sync::Arc<framework::settings::store::SettingsStore>,
                 namespace: &str,
             ) -> anyhow::Result<Self> {
                 Ok(Self { #(#init_fields)* })
             }
 
-            pub fn ensure_defaults<TScope: context::settings::FeatureSettings>(
-                settings: &context::settings::store::SettingsStore,
+            pub fn ensure_defaults<TScope: framework::settings::FeatureSettings>(
+                settings: &framework::settings::store::SettingsStore,
                 namespace: &str,
             ) -> anyhow::Result<()> {
                 #(#ensure_calls)*

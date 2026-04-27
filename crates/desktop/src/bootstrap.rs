@@ -1,20 +1,20 @@
-use app_core::app::App;
-use context::settings::SettingsStore;
 use domain::features::cosmetics::CosmeticsFeature;
 use domain::features::l10n::L10nFeature;
-use domain::features::navigation::NavigationFeature;
 use domain::features::page_status::PageStatusFeature;
 use domain::features::services::ServicesFeature;
 use domain::features::settings::SettingsFeature;
 use domain::features::sidebar::SidebarFeature;
+use domain::features::tabs::TabsFeature;
 use domain::features::trace_settings::TraceSettingsFeature;
 use domain::features::window_actions::WindowActionsFeature;
 use domain::features::windows_manager::WindowManagerFeature;
 use domain_agents::features::agents::AgentsFeature;
 use domain_environments::features::environments::EnvironmentsFeature;
+use domain_navigation::features::navigation::{NavigationFeature, NavigationRegistryFeature};
 use domain_processes::processes_impl::ProcessFeature;
+use framework::app::App;
+use framework::settings::SettingsStore;
 use slint::ComponentHandle;
-use slint_adapter::AppWindow;
 use slint_adapter::features::cosmetics::UiCosmeticsAdapter;
 use slint_adapter::features::environments::UiEnvironmentsAdapter;
 use slint_adapter::features::l10n::SlintL10nPort;
@@ -22,7 +22,9 @@ use slint_adapter::features::navigation::UiNavigationAdapter;
 use slint_adapter::features::processes::UiProcessesAdapter;
 use slint_adapter::features::services::UiServicesAdapter;
 use slint_adapter::features::sidebar::UiSidebarAdapter;
+use slint_adapter::features::tabs::UiTabsAdapter;
 use slint_adapter::features::window_actions::UiWindowActionsAdapter;
+use slint_adapter::AppWindow;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::fmt::writer::{BoxMakeWriter, MakeWriterExt};
 
@@ -44,15 +46,17 @@ pub fn run() -> anyhow::Result<()> {
         .app_feature(TraceSettingsFeature)?
         .app_feature(AgentsFeature)?
         .app_feature(PageStatusFeature)?
+        .app_feature(NavigationRegistryFeature)?
         .app_feature(WindowManagerFeature)?
-        .feature(with_adapter!(CosmeticsFeature => UiCosmeticsAdapter))
-        .feature(with_adapter!(WindowActionsFeature => UiWindowActionsAdapter))
-        .feature(with_adapter!(EnvironmentsFeature => UiEnvironmentsAdapter))
-        .feature(with_adapter!(NavigationFeature => UiNavigationAdapter))
-        .feature(with_adapter!(SidebarFeature => UiSidebarAdapter))
-        .feature(with_adapter!(L10nFeature => SlintL10nPort))
-        .feature(with_adapter!(ServicesFeature => UiServicesAdapter))
-        .feature(with_adapter!(ProcessFeature => UiProcessesAdapter));
+        .window_feature(with_adapter!(CosmeticsFeature => UiCosmeticsAdapter))
+        .window_feature(with_adapter!(WindowActionsFeature => UiWindowActionsAdapter))
+        .window_feature(with_adapter!(EnvironmentsFeature => UiEnvironmentsAdapter))
+        .window_feature(with_adapter!(TabsFeature => UiTabsAdapter))
+        .window_feature(with_adapter!(NavigationFeature => UiNavigationAdapter))
+        .window_feature(with_adapter!(SidebarFeature => UiSidebarAdapter))
+        .window_feature(with_adapter!(L10nFeature => SlintL10nPort))
+        .window_feature(with_adapter!(ServicesFeature => UiServicesAdapter))
+        .window_feature(with_adapter!(ProcessFeature => UiProcessesAdapter));
     app.run()
 }
 
