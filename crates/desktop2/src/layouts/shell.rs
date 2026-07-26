@@ -18,8 +18,11 @@ fn nav_items() -> Vec<(&'static str, &'static str, Icon)> {
     vec![
         ("processes", "Processes", icon_for(icons::keys::APPS_LIST)),
         ("services", "Services", icon_for(icons::keys::PUZZLE)),
-        ("settings", "Settings", icon_for(icons::keys::SETTINGS)),
     ]
+}
+
+fn footer_nav_items() -> Vec<(&'static str, &'static str, Icon)> {
+    vec![("settings", "Settings", icon_for(icons::keys::SETTINGS))]
 }
 
 pub struct ShellLayout;
@@ -40,14 +43,13 @@ impl Layout for ShellLayout {
         };
 
         let content = cx.outlet();
-        let resize_dispatch = dispatch.clone();
 
         ui2::shell_view(
             state.open,
             selected_tag,
-            state.width as f64,
             icon_for(icons::keys::UNIPROC_LOGO),
             nav_items(),
+            footer_nav_items(),
             content,
             move || dispatch.emit_on_toggle(),
             move |tag: String| match tag.as_str() {
@@ -55,7 +57,6 @@ impl Layout for ShellLayout {
                 "services" => nav.to(Route::Services {}),
                 _ => {}
             },
-            move |width: f64| resize_dispatch.emit_on_set_width(width.round() as u64),
         )
     }
 }
