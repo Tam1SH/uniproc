@@ -40,10 +40,12 @@ impl Layout for ShellLayout {
         };
 
         let content = cx.outlet();
+        let resize_dispatch = dispatch.clone();
 
         ui2::shell_view(
             state.open,
             selected_tag,
+            state.width as f64,
             icon_for(icons::keys::UNIPROC_LOGO),
             nav_items(),
             content,
@@ -53,6 +55,7 @@ impl Layout for ShellLayout {
                 "services" => nav.to(Route::Services {}),
                 _ => {}
             },
+            move |width: f64| resize_dispatch.emit_on_set_width(width.round() as u64),
         )
     }
 }
