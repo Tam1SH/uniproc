@@ -1,5 +1,5 @@
 use windows_reactor::{
-    border, grid, Element, ElementExt, GridLength, HorizontalAlignment, Icon, NavViewItem,
+    border, grid, Color, Element, ElementExt, GridLength, HorizontalAlignment, Icon, NavViewItem,
     NavigationView, NavigationViewPaneDisplayMode, PointerEventInfo, Thickness, TitleBar,
 };
 
@@ -37,14 +37,12 @@ pub fn shell_view(
         .settings_visible(false)
         .open_pane_length(width);
 
-    // Overlaid on top of the NavigationView (same grid cell) rather than a
-    // sibling column: NavigationView owns its pane/content split internally,
-    // there's nowhere else to attach a splitter (WinUI has none built in -
-    // microsoft-ui-xaml#190). Tracks the pane edge via a left margin equal to
-    // the current width; `on_pointer_moved`'s `x` is relative to the handle's
-    // own (unmoved-this-frame) bounds, so it doubles as the drag delta.
+    // A `Border` with no `Background` brush isn't hit-test visible in WinUI -
+    // pointer events never reach it, even though it still occupies layout
+    // space. A real (if faint) brush is required, not just an unset one.
     let resize_handle = border(Element::Empty)
         .width(RESIZE_HANDLE_WIDTH)
+        .background(Color { a: 40, r: 128, g: 128, b: 128 })
         .horizontal_alignment(HorizontalAlignment::Left)
         .margin(Thickness {
             left: width - RESIZE_HANDLE_WIDTH / 2.0,
