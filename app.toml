@@ -1,0 +1,9 @@
+[app]
+name = "uniproc"
+identifier = "dev.uniproc.app"
+version = "0.1.0"
+publisher = "uniproc"
+
+[window]
+title = "uniproc"
+icon = "assets/icon.ico"

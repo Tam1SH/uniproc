@@ -1,0 +1,21 @@
+[package]
+name = "domain2"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+app-contracts2 = { workspace = true }
+guinea = { workspace = true }
+guinea-core = { workspace = true }
+guinea-macros = { workspace = true }
+amethystate = { workspace = true }
+anyhow = { workspace = true }
+cfg-if = { workspace = true }
+rkyv = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+ogurpchik = { workspace = true }
+uniproc-protocol = { workspace = true }
+
+[lints]
+workspace = true

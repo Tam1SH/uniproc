@@ -1,0 +1,10 @@
+[package]
+name = "ui2"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+windows-reactor = { workspace = true }
+
+[lints]
+workspace = true

@@ -5,47 +5,53 @@ edition = "2024"
 
 [workspace]
 resolver = "2"
-default-members = ["crates/desktop"]
+default-members = ["crates/desktop2"]
 members = [
-    "crates/context",
-    "crates/domain",
-    "crates/domain-test-kit",
-    "crates/domain/src/features/agents",
-    "crates/domain/src/features/environments",
-    "crates/domain/src/features/navigation",
-    "crates/domain/src/features/processes",
-    "crates/app-contracts",
-    "crates/slint-adapter",
-    "crates/widgets",
-    "crates/macros",
-    "crates/desktop",
+    "crates/app-contracts2",
+    "crates/desktop2",
+    "crates/domain2",
+    "crates/ui2",
 ]
 
-[workspace.dependencies]
-# --- Internal Crates ---
-app-contracts = { path = "crates/app-contracts" }
-context = { path = "crates/context" }
-domain = { path = "crates/domain" }
-domain-test-kit = { path = "crates/domain-test-kit" }
-domain-agents = { path = "crates/domain/src/features/agents" }
-domain-environments = { path = "crates/domain/src/features/environments" }
-domain-navigation = { path = "crates/domain/src/features/navigation" }
-domain-processes = { path = "crates/domain/src/features/processes" }
-guicons = { version = "0.1.0", features = ["slint"] }
-guicons-build = "0.1.3"
-guicons-core = "0.1.0"
-macros = { path = "crates/macros" }
-slint-adapter = { path = "crates/slint-adapter" }
-widgets = { path = "crates/widgets" }
+# The crates below (context, domain, domain-test-kit, domain/src/features/*,
+# app-contracts, slint-adapter, widgets, macros, desktop) are the old
+# Slint + forsl stack. They're deliberately NOT workspace members right now:
+# their path deps pointed at a `../forsl` checkout that no longer exists
+# (forsl was renamed/moved to the `guinea` repo, with a materially different
+# API - Reducer/Scope/Router redesign), so fixing their manifests just to
+# keep them compiling isn't worth it. New features are being rebuilt fresh
+# against `guinea` in crates/*2 alongside them; the old crates stay on disk,
+# inert, until each feature's new version is done, then get deleted outright.
 
-# --- forsl (split into its own repo, path dep to a sibling checkout) ---
-forsl-trace = { path = "../forsl/crates/forsl-trace" }
-forsl-codegen = { path = "../forsl/crates/forsl-codegen" }
-forsl-core = { path = "../forsl/crates/forsl-core" }
-forsl-macros = { path = "../forsl/crates/forsl-macros" }
-forsl = { path = "../forsl/crates/forsl" }
-forsl-test-kit = { path = "../forsl/crates/forsl-test-kit" }
+[workspace.dependencies]
+# --- guinea (split into its own repo, path dep to a sibling checkout) ---
+guinea-core = { path = "../guinea/crates/guinea-core" }
+guinea-macros = { path = "../guinea/crates/guinea-macros" }
+guinea-codegen = { path = "../guinea/crates/guinea-codegen" }
+guinea-trace = { path = "../guinea/crates/guinea-trace" }
+guinea = { path = "../guinea/crates/guinea" }
 inventory = "0.3"
+
+# --- guinea-meta (split into its own repo, path dep to a sibling checkout) ---
+guinea-meta = { path = "../guinea-meta/crates/guinea-meta" }
+guinea-meta-build = { path = "../guinea-meta/crates/guinea-meta-build" }
+
+# --- guicons (path dep to a sibling checkout: the windows-reactor backend
+# isn't published to crates.io yet - see ../guicons's own uncommitted work) ---
+guicons = { path = "../guicons/crates/guicons" }
+guicons-build = { path = "../guicons/crates/guicons-build" }
+
+# --- Internal ---
+app-contracts2 = { path = "crates/app-contracts2" }
+domain2 = { path = "crates/domain2" }
+ui2 = { path = "crates/ui2" }
+
+# Pinned to the exact rev guinea's own workspace pins, for the same reason
+# guinea pins it: two separate lockfiles resolving an unpinned `git = "..."`
+# dep independently can silently drift onto different commits.
+windows-reactor = { git = "https://github.com/Tam1SH/windows-rs", rev = "86bd760230c836d9c5a393e2bd33690da4769f9a" }
+windows-reactor-setup = { git = "https://github.com/Tam1SH/windows-rs", rev = "86bd760230c836d9c5a393e2bd33690da4769f9a" }
+windows-canvas = { git = "https://github.com/Tam1SH/windows-rs", rev = "86bd760230c836d9c5a393e2bd33690da4769f9a" }
 
 # --- Custom & Git Dependencies ---
 ogurpchik = { git = "https://github.com/Tam1SH/oguRPChik", branch = "master", features = ["rkyv-codec", "vsock", "uds"] }
@@ -112,7 +118,8 @@ cfg-if = "1"
 dashmap = { version = "6.1.0", features = ["serde"] }
 fxhash = "0.2.1"
 fluent-templates = "0.14.0"
-unic-langid = "0.9.6"
+fluent-bundle = "0.16.0"
+unic-langid = { version = "0.9.6", features = ["macros"] }
 lazy_static = "1.5.0"
 smallvec = "1.15.1"
 static_assertions = "1.1.0"
@@ -139,13 +146,3 @@ codegen-units = 256
 
 [profile.dev.package."*"]
 debug = 0
-
-# app-contracts' #[port]/#[bindings] macros emit `inventory::submit!`
-# registrations scattered across many small files; with the default 256
-# codegen units the linker can drop object files nobody else references
-# (e.g. slint-adapter/domain-test-kit's build scripts only ever call
-# forsl_core::contracts::*, never app_contracts directly) - single-CGU
-# ensures the one anchor reference those build scripts make pulls in the
-# whole compiled crate, ctors included.
-[profile.dev.package.app-contracts]
-codegen-units = 1
