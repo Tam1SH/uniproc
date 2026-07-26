@@ -5,6 +5,8 @@ edition.workspace = true
 
 [dependencies]
 windows-reactor = { workspace = true }
+app-contracts2 = { workspace = true }
+guicons = { workspace = true, features = ["windows-reactor"] }
 
 [lints]
 workspace = true
