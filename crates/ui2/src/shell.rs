@@ -1,5 +1,5 @@
-use app_contracts2::icons;
 use guinea::widgets::resize::{resize_handle, RESIZE_HANDLE_WIDTH};
+use guicons::icon;
 use windows_reactor::{
     grid, Element, ElementExt, GridLength, Icon, NavViewItem,
     NavigationView, NavigationViewPaneDisplayMode, RenderCx, SetState, Thickness, TitleBar,
@@ -9,20 +9,15 @@ const NAV_ICON_SIZE: f64 = 20.0;
 const MIN_SIDEBAR_WIDTH: f64 = 200.0;
 const MAX_SIDEBAR_WIDTH: f64 = 500.0;
 
-fn icon_for(key: icons::IconKey) -> Icon {
-    let path = icons::path_for(key).expect("icon key must resolve to a path");
-    guicons::windows_reactor::icon_from_path(path, NAV_ICON_SIZE, NAV_ICON_SIZE)
-}
-
 fn nav_items() -> Vec<(&'static str, &'static str, Icon)> {
     vec![
-        ("processes", "Processes", icon_for(icons::keys::APPS_LIST)),
-        ("services", "Services", icon_for(icons::keys::PUZZLE)),
+        ("processes", "Processes", icon!(apps_list).size(NAV_ICON_SIZE).build()),
+        ("services", "Services", icon!(puzzle).size(NAV_ICON_SIZE).build()),
     ]
 }
 
 fn footer_nav_items() -> Vec<(&'static str, &'static str, Icon)> {
-    vec![("settings", "Settings", icon_for(icons::keys::SETTINGS))]
+    vec![("settings", "Settings", icon!(settings).size(NAV_ICON_SIZE).build())]
 }
 
 pub fn shell_view(
@@ -35,7 +30,7 @@ pub fn shell_view(
     set_width: SetState<f64>,
 ) -> Element {
     let title_bar = TitleBar::new("uniproc")
-        .icon(icon_for(icons::keys::UNIPROC_LOGO))
+        .icon(icon!(uniproc_logo).size(NAV_ICON_SIZE).build())
         .pane_toggle_button_visible(false);
 
     let to_nav_item =

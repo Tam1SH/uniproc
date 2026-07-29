@@ -10,10 +10,12 @@ guinea = { workspace = true }
 guinea-core = { workspace = true }
 guinea-macros = { workspace = true }
 ui2 = { workspace = true }
+guicons = { workspace = true, features = ["windows-reactor"] }
 guinea-meta = { workspace = true }
 guinea-trace = { workspace = true }
 amethystate = { workspace = true }
 anyhow = { workspace = true }
+uuid = { workspace = true }
 unic-langid = { workspace = true }
 tokio = { workspace = true }
 tracing-subscriber = { workspace = true }

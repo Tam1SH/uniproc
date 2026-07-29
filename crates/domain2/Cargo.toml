@@ -10,12 +10,14 @@ guinea-core = { workspace = true }
 guinea-macros = { workspace = true }
 amethystate = { workspace = true }
 anyhow = { workspace = true }
+serde = { workspace = true }
 cfg-if = { workspace = true }
 rkyv = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 ogurpchik = { workspace = true }
 uniproc-protocol = { workspace = true }
+uuid = { workspace = true }
 
 [lints]
 workspace = true
