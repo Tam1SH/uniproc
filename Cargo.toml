@@ -131,6 +131,13 @@ smol_str = "0.3.6"
 [workspace.lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage)'] }
 
+# Local iteration on the fork - no git push/rev-bump round trip per change.
+# Remove once done and go back to the pinned `rev` above.
+[patch."https://github.com/Tam1SH/windows-rs"]
+windows-reactor = { path = "../windows-rs/crates/libs/reactor" }
+windows-reactor-setup = { path = "../windows-rs/crates/libs/reactor-setup" }
+windows-canvas = { path = "../windows-rs/crates/libs/canvas" }
+
 # --- Profiles ---
 [profile.release]
 opt-level = "s"

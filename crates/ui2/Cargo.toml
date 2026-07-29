@@ -6,6 +6,7 @@ edition.workspace = true
 [dependencies]
 windows-reactor = { workspace = true }
 app-contracts2 = { workspace = true }
+guinea = { workspace = true, features = ["widgets"] }
 guicons = { workspace = true, features = ["windows-reactor"] }
 
 [lints]
