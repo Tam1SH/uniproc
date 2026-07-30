@@ -1,4 +1,4 @@
-use windows_reactor::{border, text_block, Color, Element, ElementExt};
+use windows_reactor::{text_block, Color, Element, ElementExt};
 
 #[derive(Clone, Copy, Debug)]
 pub struct TableStyles {
@@ -11,7 +11,7 @@ pub struct TableStyles {
 impl TableStyles {
     pub const fn new() -> Self {
         Self {
-            row_height: 24.0,
+            row_height: 20.0,
             font_size: 12.0,
             separator_color: Color {
                 a: 48,
@@ -24,8 +24,10 @@ impl TableStyles {
     }
 
     pub fn text_cell(&self, content: impl Into<String>) -> Element {
-        border(text_block(content).font_size(self.font_size))
+        text_block(content)
+            .font_size(self.font_size)
             .height(self.row_height)
+            .max_height(self.row_height)
             .into()
     }
 }
