@@ -16,6 +16,15 @@ iconify = "fluent:arrow-up-24-filled"
 [arrow-up-regular]
 file = "arrow-up-regular.svg"
 
+[chevron-up-regular]
+iconify = "fluent:chevron-up-24-regular"
+
+[chevron-down-regular]
+iconify = "fluent:chevron-down-24-regular"
+
+[chevron-right-regular]
+iconify = "fluent:chevron-right-24-regular"
+
 [coin]
 iconify = "fluent-color:coin-multiple-24"
 

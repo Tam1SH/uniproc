@@ -9,7 +9,8 @@ impl Page for Processes {
     const CACHE_STATE_IN_MEMORY: bool = true;
 
     fn install(ctx: &FeatureInitContext, _uri: &AppUri) -> anyhow::Result<()> {
-        domain2::features::processes::install(ctx)
+        domain2::features::processes::install(ctx)?;
+        domain2::features::metrics::install(ctx)
     }
 
     fn view(cx: &mut PageCx) -> Element {

@@ -1,7 +1,9 @@
 use std::cmp::Ordering;
 
 use app_contracts2::features::agents::{WindowsActionRequest, WindowsReportMessage};
-use app_contracts2::features::processes::{MachineSummary, ProcessRow, ProcessesMsg, ProcessesPort};
+use app_contracts2::features::processes::{
+    MachineSummary, ProcessRow, ProcessesMsg, ProcessesPort,
+};
 use guinea_core::actor::event_bus::GlobalEventBus;
 use guinea_core::actor::ManagedActor;
 use guinea_macros::{actor_manifest, handler};
@@ -71,13 +73,18 @@ fn sort_rows_pinned(
     rows.sort_by(|a, b| {
         let ord = match column {
             "name" => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
-            "cpu" => a.cpu_percent.partial_cmp(&b.cpu_percent).unwrap_or(Ordering::Equal),
+            "cpu" => a
+                .cpu_percent
+                .partial_cmp(&b.cpu_percent)
+                .unwrap_or(Ordering::Equal),
             "memory" => a.memory_bytes.cmp(&b.memory_bytes),
             "disk" => a.disk_bytes.cmp(&b.disk_bytes),
             "net" => a.net_bytes.cmp(&b.net_bytes),
             _ => Ordering::Equal,
         };
-        let ord = ord.then_with(|| a.name.cmp(&b.name)).then_with(|| a.pid.cmp(&b.pid));
+        let ord = ord
+            .then_with(|| a.name.cmp(&b.name))
+            .then_with(|| a.pid.cmp(&b.pid));
         if descending { ord.reverse() } else { ord }
     });
 
@@ -130,6 +137,8 @@ fn on_windows_report<P: ProcessesPort>(this: &mut ProcessesActor<P>, msg: Window
             memory_bytes: p.working_set_kb * 1024,
             disk_bytes: p.disk_read_bytes + p.disk_write_bytes,
             net_bytes: p.net_rx_bytes + p.net_tx_bytes,
+            exe_path: p.cmdline.first().cloned().unwrap_or_default(),
+            package_full_name: p.package_full_name.clone(),
         })
         .collect();
     sort_rows_pinned(
@@ -195,6 +204,8 @@ mod tests {
             memory_bytes: 0,
             disk_bytes: 0,
             net_bytes: 0,
+            exe_path: String::new(),
+            package_full_name: String::new(),
         }
     }
 

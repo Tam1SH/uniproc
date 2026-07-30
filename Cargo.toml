@@ -8,6 +8,7 @@ resolver = "2"
 default-members = ["crates/desktop2"]
 members = [
     "crates/app-contracts2",
+    "crates/context2",
     "crates/desktop2",
     "crates/domain2",
     "crates/ui2",
@@ -44,6 +45,7 @@ guicons-build = { path = "../guicons/crates/guicons-build" }
 
 # --- Internal ---
 app-contracts2 = { path = "crates/app-contracts2" }
+context2 = { path = "crates/context2" }
 domain2 = { path = "crates/domain2" }
 ui2 = { path = "crates/ui2" }
 

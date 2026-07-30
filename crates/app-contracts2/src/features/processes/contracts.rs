@@ -27,6 +27,8 @@ pub struct ProcessRow {
     pub memory_bytes: u64,
     pub disk_bytes: u64,
     pub net_bytes: u64,
+    pub exe_path: String,
+    pub package_full_name: String,
 }
 
 #[derive(Clone, PartialEq, Debug, Default)]
@@ -40,9 +42,15 @@ pub struct MachineSummary {
 
 #[derive(Clone)]
 pub enum ProcessesMsg {
-    SetRows { rows: Vec<ProcessRow>, machine: MachineSummary },
+    SetRows {
+        rows: Vec<ProcessRow>,
+        machine: MachineSummary,
+    },
     SetSelected(Option<u32>),
-    SetSort { column: String, descending: bool },
+    SetSort {
+        column: String,
+        descending: bool,
+    },
 }
 
 #[port]
