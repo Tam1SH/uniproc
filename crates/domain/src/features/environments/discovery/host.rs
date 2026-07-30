@@ -17,7 +17,7 @@ impl ManagedActor for HostProviderActor {
 pub struct HostProviderActor;
 
 #[handler]
-fn init(_: &mut HostProviderActor, _: Init, ctx: &Context<HostProviderActor>) {
+fn init(_: &HostProviderActor, _: Init, ctx: &Context<HostProviderActor>) {
     let os_name = System::name().unwrap_or_else(|| {
         if cfg!(windows) {
             "Windows".into()

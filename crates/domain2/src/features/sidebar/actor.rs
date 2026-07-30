@@ -53,6 +53,6 @@ fn set_width<P: SidebarPort>(this: &mut SidebarActor<P>, msg: SetWidth) {
 }
 
 #[handler]
-fn refresh<P: SidebarPort>(this: &mut SidebarActor<P>, _: Refresh) {
+fn refresh<P: SidebarPort>(this: &SidebarActor<P>, _: Refresh) {
     this.publish();
 }

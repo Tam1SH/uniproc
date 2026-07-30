@@ -46,7 +46,7 @@ impl AgentBackend for WindowsBackend {
         })?;
 
         if let WindowsResponse::Report(r) = response {
-            GlobalEventBus::instance().publish(WindowsReportMessage(r));
+            GlobalEventBus::publish(WindowsReportMessage(r));
             ratelimit!(3600, info!("Report published to event bus"));
         } else {
             warn!("Unexpected response type: {:?}", response);
@@ -69,7 +69,7 @@ pub fn windows_agent_feature(ctx: &mut AppFeatureInitContext) -> anyhow::Result<
 
     ctx.spawn_heartbeat(&addr, settings.ping_interval_ms(), || Ping);
 
-    GlobalEventBus::instance().subscribe::<GenericAgentActor<WindowsBackend>, ScanTick>(addr.clone());
+    GlobalEventBus::subscribe::<GenericAgentActor<WindowsBackend>, ScanTick>(addr.clone());
     addr.send(Init);
 
     Ok(())

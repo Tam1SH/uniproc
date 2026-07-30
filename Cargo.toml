@@ -11,6 +11,7 @@ members = [
     "crates/desktop2",
     "crates/domain2",
     "crates/ui2",
+    "crates/xtask",
 ]
 
 # The crates below (context, domain, domain-test-kit, domain/src/features/*,

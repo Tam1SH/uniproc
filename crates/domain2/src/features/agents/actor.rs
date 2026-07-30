@@ -51,7 +51,7 @@ impl<B: AgentBackend> GenericAgentActor<B> {
 
     fn publish_state(&self, latency_ms: Option<i32>) {
         let event = B::create_runtime_event(self.connection.state(), latency_ms);
-        GlobalEventBus::instance().publish(event);
+        GlobalEventBus::publish(event);
     }
 
     fn spawn_connect(&self, ctx: &Context<Self>) {
@@ -84,7 +84,7 @@ impl<B: AgentBackend> guinea_core::actor::ManagedActor for GenericAgentActor<B> 
 }
 
 #[handler]
-fn init<B: AgentBackend>(this: &mut GenericAgentActor<B>, _: Init, ctx: &Context<GenericAgentActor<B>>) {
+fn init<B: AgentBackend>(this: &GenericAgentActor<B>, _: Init, ctx: &Context<GenericAgentActor<B>>) {
     info!("[{}] Actor init", B::NAME);
     this.publish_state(None);
     ctx.addr().send(StartConnect);
@@ -130,7 +130,7 @@ fn on_connect_result<B: AgentBackend>(
 
 #[handler]
 fn ping<B: AgentBackend>(this: &mut GenericAgentActor<B>, _: Ping, ctx: &Context<GenericAgentActor<B>>) {
-    let has_subs = GlobalEventBus::instance().has_subscribers::<B::RuntimeEvent>();
+    let has_subs = GlobalEventBus::has_subscribers::<B::RuntimeEvent>();
     if !has_subs {
         return;
     }
@@ -166,7 +166,7 @@ fn on_ping_result<B: AgentBackend>(this: &mut GenericAgentActor<B>, msg: PingRes
 }
 
 #[handler]
-fn perform_scan_tick<B: AgentBackend>(this: &mut GenericAgentActor<B>, _: ScanTick, ctx: &Context<GenericAgentActor<B>>) {
+fn perform_scan_tick<B: AgentBackend>(this: &GenericAgentActor<B>, _: ScanTick, ctx: &Context<GenericAgentActor<B>>) {
     if !matches!(this.connection.state(), AgentConnectionState::Connected) {
         return;
     }
@@ -192,7 +192,7 @@ async fn schedule_retry<B: AgentBackend>(ctx: AsyncContext<GenericAgentActor<B>>
 }
 
 #[handler]
-fn on_retry_elapsed<B: AgentBackend>(_: &mut GenericAgentActor<B>, _: RetryTimerElapsed, ctx: &Context<GenericAgentActor<B>>) {
+fn on_retry_elapsed<B: AgentBackend>(_: &GenericAgentActor<B>, _: RetryTimerElapsed, ctx: &Context<GenericAgentActor<B>>) {
     ctx.addr().send(StartConnect);
 }
 
@@ -218,7 +218,7 @@ mod windows {
     use uniproc_protocol::WindowsResponse;
 
     #[handler]
-    fn handle_windows_action(this: &mut GenericAgentActor<WindowsBackend>, msg: WindowsActionRequest) {
+    fn handle_windows_action(this: &GenericAgentActor<WindowsBackend>, msg: WindowsActionRequest) {
         let Some(client) = this.client.clone() else {
             error!("Client not initialized");
             return;
@@ -237,7 +237,7 @@ mod windows {
             match client.call(request).await {
                 Ok(resp_data) => {
                     if let Ok(response) = rkyv::deserialize::<WindowsResponse, rkyv::rancor::Error>(*resp_data.deref()) {
-                        GlobalEventBus::instance().publish(WindowsActionResponse::new(correlation_id, &response));
+                        GlobalEventBus::publish(WindowsActionResponse::new(correlation_id, &response));
                     }
                 }
                 Err(e) => {

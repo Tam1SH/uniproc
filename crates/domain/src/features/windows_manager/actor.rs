@@ -44,4 +44,4 @@ fn open_window<R: WindowRegistry + 'static>(
 }
 
 #[handler]
-fn on_window_closed<R: WindowRegistry + 'static>(_: &mut WindowManagerActor<R>, _: WindowClosed) {}
+fn on_window_closed<R: WindowRegistry + 'static>(_: &WindowManagerActor<R>, _: WindowClosed) {}

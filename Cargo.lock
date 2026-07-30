@@ -106,6 +106,7 @@ checksum = "33954243bd79057c2de7338850b85983a44588021f8a5fee574a8888c6de4344"
 name = "app-contracts2"
 version = "0.1.0"
 dependencies = [
+ "amethystate",
  "anyhow",
  "cfg-if",
  "fluent-bundle",
@@ -119,6 +120,7 @@ dependencies = [
  "inventory",
  "ogurpchik",
  "rkyv",
+ "serde",
  "unic-langid",
  "uniproc-protocol",
  "uuid",
@@ -691,6 +693,7 @@ dependencies = [
  "guinea-meta-build",
  "guinea-trace",
  "tokio",
+ "tracing",
  "tracing-subscriber",
  "ui2",
  "unic-langid",
@@ -2787,9 +2790,12 @@ checksum = "b6f5e870be6c3b371b77fe0ee0bafb859fa4964b4404c27de1d380043c4dda20"
 name = "ui2"
 version = "0.1.0"
 dependencies = [
+ "amethystate",
  "app-contracts2",
  "guicons",
  "guinea",
+ "guinea-core",
+ "uuid",
  "windows-reactor",
 ]
 
@@ -3638,6 +3644,13 @@ name = "writeable"
 version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1ffae5123b2d3fc086436f8834ae3ab053a283cfac8fe0a0b8eaae044768a4c4"
+
+[[package]]
+name = "xtask"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+]
 
 [[package]]
 name = "yoke"

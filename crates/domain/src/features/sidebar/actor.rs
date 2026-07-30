@@ -73,7 +73,7 @@ impl<P: UiSidebarPort + Clone> SidebarActor<P> {
 }
 
 #[handler]
-fn handle_transition<P: UiSidebarPort + Clone>(this: &mut SidebarActor<P>, msg: RequestTransition) {
+fn handle_transition<P: UiSidebarPort + Clone>(this: &SidebarActor<P>, msg: RequestTransition) {
     let ui = this.ui_port.clone();
 
     ui.send(UiSidebarPortMsg::SetSwitchTransition {

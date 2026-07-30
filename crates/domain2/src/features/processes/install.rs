@@ -16,14 +16,14 @@ pub fn install(ctx: &FeatureInitContext) -> anyhow::Result<()> {
 
     let interval = Signal::new(settings.scan_interval_ms().get().max(MIN_SCAN_INTERVAL_MS));
     let heartbeat = Reactor::new().add_heartbeat(interval, || {
-        GlobalEventBus::instance().publish(ScanTick);
+        GlobalEventBus::publish(ScanTick);
     });
 
     ctx.scope.own(heartbeat);
 
     let addr = ctx.spawn_actor(ProcessesActor::new(ctx.port::<ProcessesReducer>()));
 
-    GlobalEventBus::instance().subscribe::<_, WindowsReportMessage>(addr.clone());
+    ctx.subscribe_on_global_bus::<ProcessesActor<_>, WindowsReportMessage>(addr.clone());
 
     ProcessesBinder::new(&addr, &ctx.actions::<ProcessesReducer>())
         .on_sort::<Sort>()
@@ -33,7 +33,7 @@ pub fn install(ctx: &FeatureInitContext) -> anyhow::Result<()> {
 
     // First scan immediately; the heartbeat re-arms from here on. The loop
     // stops when the page scope drops the actor (and the LoopHandle with it).
-    GlobalEventBus::instance().publish(ScanTick);
+    GlobalEventBus::publish(ScanTick);
 
     Ok(())
 }

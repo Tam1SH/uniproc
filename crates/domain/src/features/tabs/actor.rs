@@ -188,7 +188,7 @@ fn sync_active_route<P: UiTabsPort + Clone>(
 }
 
 #[handler]
-fn sync_route_status<P: UiTabsPort + Clone>(this: &mut TabsActor<P>, msg: RouteStatusChanged) {
+fn sync_route_status<P: UiTabsPort + Clone>(this: &TabsActor<P>, msg: RouteStatusChanged) {
     let context_key = TabContextKey(std::borrow::Cow::Owned(msg.context_key.clone()));
     this.ui_port.send(UiTabsPortMsg::SetRouteStatus {
         context_key: context_key.clone(),
@@ -206,7 +206,7 @@ fn sync_route_status<P: UiTabsPort + Clone>(this: &mut TabsActor<P>, msg: RouteS
 
 #[handler]
 fn sync_navigation_projection<P: UiTabsPort + Clone>(
-    _: &mut TabsActor<P>,
+    _: &TabsActor<P>,
     _: NavigationProjectionChanged,
 ) {
 }

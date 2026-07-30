@@ -222,7 +222,7 @@ fn select_service<P: UiServicesPort>(this: &mut ServiceActor<P>, msg: SelectServ
 
 #[handler]
 fn open_properties<P: UiServicesPort>(
-    _: &mut ServiceActor<P>,
+    _: &ServiceActor<P>,
     msg: OpenPropertiesWindow,
     ctx: &Context<ServiceActor<P>>,
 ) {

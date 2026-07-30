@@ -49,7 +49,7 @@ impl AgentBackend for WslBackend {
         })?;
 
         if let LinuxResponse::Report(r) = report {
-            GlobalEventBus::instance().publish(RemoteScanResult {
+            GlobalEventBus::publish(RemoteScanResult {
                 schema_id: "wsl",
                 processes: r.processes,
                 machine: r.machine,
@@ -79,7 +79,7 @@ pub fn wsl_agent_feature(ctx: &mut AppFeatureInitContext) -> anyhow::Result<()> 
 
     ctx.spawn_heartbeat(&addr, settings.ping_interval_ms(), || Ping);
 
-    GlobalEventBus::instance().subscribe::<GenericAgentActor<WslBackend>, ScanTick>(addr.clone());
+    GlobalEventBus::subscribe::<GenericAgentActor<WslBackend>, ScanTick>(addr.clone());
     addr.send(Init);
 
     Ok(())

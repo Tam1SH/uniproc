@@ -18,6 +18,8 @@ uuid = { workspace = true }
 ogurpchik = { workspace = true }
 uniproc-protocol = { workspace = true }
 guicons = { workspace = true }
+amethystate = { workspace = true }
+serde = { workspace = true }
 
 [build-dependencies]
 guinea-codegen = { workspace = true }

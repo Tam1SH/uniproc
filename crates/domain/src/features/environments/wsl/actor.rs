@@ -84,13 +84,13 @@ fn handle_agent_runtime_event<P: UiEnvironmentsPort>(
 }
 
 #[handler]
-fn init<P: UiEnvironmentsPort>(_: &mut WslEnvActor<P>, _: Init, ctx: &Context<WslEnvActor<P>>) {
+fn init<P: UiEnvironmentsPort>(_: &WslEnvActor<P>, _: Init, ctx: &Context<WslEnvActor<P>>) {
     ctx.addr().send(CheckStatus);
 }
 
 #[handler]
 fn check_status<P: UiEnvironmentsPort>(
-    this: &mut WslEnvActor<P>,
+    this: &WslEnvActor<P>,
     _: CheckStatus,
     ctx: &Context<WslEnvActor<P>>,
 ) {
@@ -100,7 +100,7 @@ fn check_status<P: UiEnvironmentsPort>(
 
 #[handler]
 fn set_status<P: UiEnvironmentsPort>(
-    this: &mut WslEnvActor<P>,
+    this: &WslEnvActor<P>,
     msg: SetStatus,
     ctx: &Context<WslEnvActor<P>>,
 ) {
@@ -113,7 +113,7 @@ fn set_status<P: UiEnvironmentsPort>(
 
 #[handler]
 fn refresh_distros<P: UiEnvironmentsPort>(
-    this: &mut WslEnvActor<P>,
+    this: &WslEnvActor<P>,
     _: RefreshDistros,
     ctx: &Context<WslEnvActor<P>>,
 ) {
@@ -143,7 +143,7 @@ fn update_distros<P: UiEnvironmentsPort>(this: &mut WslEnvActor<P>, msg: UpdateD
 
 #[handler]
 fn install_agent<P: UiEnvironmentsPort>(
-    _: &mut WslEnvActor<P>,
+    _: &WslEnvActor<P>,
     msg: InstallAgent,
     ctx: &Context<WslEnvActor<P>>,
 ) {

@@ -75,7 +75,7 @@ impl<B: AgentBackend> GenericAgentActor<B> {
 
 #[handler]
 fn init<B: AgentBackend>(
-    this: &mut GenericAgentActor<B>,
+    this: &GenericAgentActor<B>,
     _: Init,
     ctx: &Context<GenericAgentActor<B>>,
 ) {
@@ -173,7 +173,7 @@ fn on_ping_result<B: AgentBackend>(
 
 #[handler]
 fn perform_scan_tick<B: AgentBackend>(
-    this: &mut GenericAgentActor<B>,
+    this: &GenericAgentActor<B>,
     _: ScanTick,
     ctx: &Context<GenericAgentActor<B>>,
 ) {
@@ -206,7 +206,7 @@ async fn schedule_retry<B: AgentBackend>(
 
 #[handler]
 fn on_retry_elapsed<B: AgentBackend>(
-    _: &mut GenericAgentActor<B>,
+    _: &GenericAgentActor<B>,
     _: RetryTimerElapsed,
     ctx: &Context<GenericAgentActor<B>>,
 ) {
@@ -240,7 +240,7 @@ mod windows {
 
     #[handler]
     fn handle_windows_action(
-        this: &mut GenericAgentActor<WindowsBackend>,
+        this: &GenericAgentActor<WindowsBackend>,
         msg: WindowsActionRequest,
     ) {
         let Some(client) = this.client.clone() else {

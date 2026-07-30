@@ -27,33 +27,33 @@ pub struct WindowActor<P> {
 }
 
 #[handler]
-fn drag_window<P: UiWindowActionsPort>(this: &mut WindowActor<P>, _: Drag) {
+fn drag_window<P: UiWindowActionsPort>(this: &WindowActor<P>, _: Drag) {
     this.port.send(UiWindowActionsPortMsg::Drag);
 }
 
 #[handler]
-fn close_window<P: UiWindowActionsPort>(this: &mut WindowActor<P>, _: Close) {
+fn close_window<P: UiWindowActionsPort>(this: &WindowActor<P>, _: Close) {
     this.port.send(UiWindowActionsPortMsg::Close);
 }
 
 #[handler]
-fn minimize_window<P: UiWindowActionsPort>(this: &mut WindowActor<P>, _: Minimize) {
+fn minimize_window<P: UiWindowActionsPort>(this: &WindowActor<P>, _: Minimize) {
     this.port.send(UiWindowActionsPortMsg::Minimize);
 }
 
 #[handler]
-fn maximize_window<P: UiWindowActionsPort>(this: &mut WindowActor<P>, _: Maximize) {
+fn maximize_window<P: UiWindowActionsPort>(this: &WindowActor<P>, _: Maximize) {
     this.port.send(UiWindowActionsPortMsg::ToggleMaximize);
 }
 
 #[handler]
-fn resize_window<P: UiWindowActionsPort>(this: &mut WindowActor<P>, msg: StartResize) {
+fn resize_window<P: UiWindowActionsPort>(this: &WindowActor<P>, msg: StartResize) {
     this.port.send(UiWindowActionsPortMsg::Resize(msg.0));
 }
 
 #[handler]
 fn on_breakpoint_changed<P: UiWindowActionsPort>(
-    _: &mut WindowActor<P>,
+    _: &WindowActor<P>,
     msg: ConfigChanged,
     ctx: &Context<WindowActor<P>>,
 ) {

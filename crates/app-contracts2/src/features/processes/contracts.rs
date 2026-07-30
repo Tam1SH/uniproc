@@ -1,5 +1,23 @@
 use guinea_core::Load;
 use guinea_macros::{actions, port, reducer};
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, amethystate::AmeType)]
+pub struct ColumnConfig {
+    pub width: u64,
+    pub min_width: u64,
+    pub visible: bool,
+}
+
+impl Default for ColumnConfig {
+    fn default() -> Self {
+        Self {
+            width: 110,
+            min_width: 80,
+            visible: true,
+        }
+    }
+}
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct ProcessRow {
@@ -11,9 +29,18 @@ pub struct ProcessRow {
     pub net_bytes: u64,
 }
 
+#[derive(Clone, PartialEq, Debug, Default)]
+pub struct MachineSummary {
+    pub cpu_percent: f32,
+    pub cpu_current_mhz: u64,
+    pub cpu_max_mhz: u64,
+    pub memory_used_bytes: u64,
+    pub memory_total_bytes: u64,
+}
+
 #[derive(Clone)]
 pub enum ProcessesMsg {
-    SetRows(Vec<ProcessRow>),
+    SetRows { rows: Vec<ProcessRow>, machine: MachineSummary },
     SetSelected(Option<u32>),
     SetSort { column: String, descending: bool },
 }
@@ -45,6 +72,9 @@ pub struct ProcessesState {
     /// search filter may legitimately produce one) - it must never be read as
     /// "still loading".
     pub rows: Load<Vec<ProcessRow>>,
+    /// Machine-level summary (CPU and memory totals) delivered together with
+    /// each process snapshot.
+    pub machine_summary: Load<MachineSummary>,
     pub selected: Option<u32>,
     pub sort_column: String,
     pub descending: bool,
@@ -54,6 +84,7 @@ impl Default for ProcessesState {
     fn default() -> Self {
         Self {
             rows: Load::Loading,
+            machine_summary: Load::Loading,
             selected: None,
             sort_column: "cpu".to_string(),
             descending: true,
@@ -69,14 +100,19 @@ impl ProcessesState {
     pub fn total(&self) -> usize {
         self.rows.ready().map(Vec::len).unwrap_or(0)
     }
+
+    pub fn machine_summary(&self) -> Option<&MachineSummary> {
+        self.machine_summary.ready()
+    }
 }
 
 #[reducer]
 #[dispatch(ProcessesActions)]
 pub fn processes_reducer(state: &mut ProcessesState, msg: ProcessesMsg) {
     match msg {
-        ProcessesMsg::SetRows(rows) => {
+        ProcessesMsg::SetRows { rows, machine } => {
             state.rows = Load::Ready(rows);
+            state.machine_summary = Load::Ready(machine);
         }
         ProcessesMsg::SetSelected(pid) => {
             state.selected = pid;

@@ -56,7 +56,7 @@ fn active_status<P: UiServicesPort>(this: &mut ServiceSnapshotActor<P>, msg: Act
 
 #[handler]
 fn on_snapshot_result<P: UiServicesPort>(
-    this: &mut ServiceSnapshotActor<P>,
+    this: &ServiceSnapshotActor<P>,
     result: ServiceSnapshotResult,
 ) {
     if let ServiceSnapshotResult::Snapshot(services) = result {

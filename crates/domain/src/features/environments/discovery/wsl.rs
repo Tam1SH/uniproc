@@ -16,7 +16,7 @@ impl ManagedActor for WslDiscoveryActor {
 pub struct WslDiscoveryActor;
 
 #[handler]
-fn init(_: &mut WslDiscoveryActor, _: Init, ctx: &Context<WslDiscoveryActor>) {
+fn init(_: &WslDiscoveryActor, _: Init, ctx: &Context<WslDiscoveryActor>) {
     ctx.addr().send(Refresh);
 }
 

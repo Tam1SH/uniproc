@@ -161,7 +161,7 @@ fn process_snapshot_ready<P: UiProcessesPort>(
 
 #[handler]
 fn sync_wsl_agent_status<P: UiProcessesPort>(
-    this: &mut ProcessActor<P>,
+    this: &ProcessActor<P>,
     msg: WslAgentRuntimeEvent,
 ) {
     if this.has_snapshot_data {
@@ -187,7 +187,7 @@ fn sync_wsl_agent_status<P: UiProcessesPort>(
 #[cfg(target_os = "windows")]
 #[handler]
 fn sync_windows_agent_status<P: UiProcessesPort>(
-    this: &mut ProcessActor<P>,
+    this: &ProcessActor<P>,
     msg: WindowsAgentRuntimeEvent,
 ) {
     if this.has_snapshot_data {
