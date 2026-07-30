@@ -1,5 +1,7 @@
 use amethystate::MapChange;
-use app_contracts2::features::processes::{ColumnConfig, MachineSummary, ProcessRow, ProcessesReducer};
+use app_contracts2::features::processes::{
+    ColumnConfig, MachineSummary, ProcessRow, ProcessesReducer,
+};
 use guicons::icon;
 use guinea::router::PageCx;
 use guinea::widgets::table::{table, ColumnSpec, SortState};
@@ -7,8 +9,8 @@ use guinea_core::signal::{Signal, SignalSubscription};
 use guinea_core::Load;
 use uuid::Uuid;
 use windows_reactor::{
-    button, grid, hstack, text_block, title, vstack, Element, ElementExt, GridLength, ProgressBar,
-    SetState, Shape, ThemeRef,
+    body_large, border, button, grid, hstack, text_block, vstack, Element, ElementExt,
+    GridLength, ProgressBar, SetState, Shape, ThemeRef,
 };
 
 use crate::table_styles;
@@ -17,84 +19,86 @@ pub fn processes_view<S: amethystate::Store>(
     cx: &mut PageCx,
     map: &amethystate::ReactiveMap<String, ColumnConfig, S, amethystate::WritableMode>,
 ) -> Element {
-        let (state, dispatch) = cx.use_reducer::<ProcessesReducer>();
+    let (state, dispatch) = cx.use_reducer::<ProcessesReducer>();
 
-        let selected_name = state
-            .selected
-            .and_then(|pid| state.rows().iter().find(|r| r.pid == pid))
-            .map(|r| r.name.clone());
+    let selected_name = state
+        .selected
+        .and_then(|pid| state.rows().iter().find(|r| r.pid == pid))
+        .map(|r| r.name.clone());
 
-        let terminate_dispatch = dispatch.clone();
-        let header = hstack((
-            title("Processes"),
-            text_block(selected_name.unwrap_or_default()),
-            button("End task")
-                .icon(icon!(prohibited).size(table_styles::TABLE_STYLES.terminate_icon_size))
-                .enabled(state.selected.is_some())
-                .on_click(move || terminate_dispatch.emit_on_terminate()),
-        ))
-        .spacing(12.0);
+    let terminate_dispatch = dispatch.clone();
+    let header = hstack((
+        body_large("Processes").padding(12.0),
+        text_block(selected_name.unwrap_or_default()),
+        button("End task")
+            .icon(icon!(prohibited).size(table_styles::TABLE_STYLES.terminate_icon_size))
+            .enabled(state.selected.is_some())
+            .on_click(move || terminate_dispatch.emit_on_terminate()),
+    ))
+    .spacing(12.0);
 
-        let body: Element = match &state.rows {
-            Load::Ready(rows) => {
-                let sort = SortState {
-                    field_id: Some(state.sort_column.clone()),
-                    descending: state.descending,
-                };
-                let sort_dispatch = dispatch.clone();
-                let on_sort = SetState::new(move |col: String| sort_dispatch.emit_on_sort(col));
+    let body: Element = match &state.rows {
+        Load::Ready(rows) => {
+            let sort = SortState {
+                field_id: Some(state.sort_column.clone()),
+                descending: state.descending,
+            };
+            let sort_dispatch = dispatch.clone();
+            let on_sort = SetState::new(move |col: String| sort_dispatch.emit_on_sort(col));
 
-                let machine = state.machine_summary().cloned();
-                let layout = cx.use_ref(ColumnLayout::new(map));
-                let layout = layout.borrow();
-                let columns = build_columns(&layout, machine);
+            let machine = state.machine_summary().cloned();
+            let layout = cx.use_ref(ColumnLayout::new(map));
+            let layout = layout.borrow();
+            let columns = build_columns(&layout, machine);
 
-                let selected_index = state
-                    .selected
-                    .and_then(|pid| rows.iter().position(|r| r.pid == pid))
-                    .map(|i| i as i32)
-                    .unwrap_or(-1);
-                let rows_for_select = rows.clone();
-                let select_dispatch = dispatch.clone();
-                let on_selection_changed = SetState::new(move |idx: i32| {
-                    if idx >= 0
-                        && let Some(row) = rows_for_select.get(idx as usize)
-                    {
-                        select_dispatch.emit_on_select(row.pid);
-                    }
-                });
+            let selected_index = state
+                .selected
+                .and_then(|pid| rows.iter().position(|r| r.pid == pid))
+                .map(|i| i as i32)
+                .unwrap_or(-1);
+            let rows_for_select = rows.clone();
+            let select_dispatch = dispatch.clone();
+            let on_selection_changed = SetState::new(move |idx: i32| {
+                if idx >= 0
+                    && let Some(row) = rows_for_select.get(idx as usize)
+                {
+                    select_dispatch.emit_on_select(row.pid);
+                }
+            });
 
-                table(
-                    cx,
-                    rows.clone(),
-                    columns,
-                    |r: &ProcessRow| r.pid.to_string(),
-                    Some((sort, on_sort)),
-                    Some((selected_index, on_selection_changed)),
-                )
-            }
-            Load::Failed(err) => text_block(format!("Failed to load processes: {err}")).into(),
-            _ => text_block("Waiting for process data...").into(),
-        };
+            table(
+                cx,
+                rows.clone(),
+                columns,
+                |r: &ProcessRow| r.pid.to_string(),
+                Some((sort, on_sort)),
+                Some((selected_index, on_selection_changed)),
+            )
+        }
+        Load::Failed(err) => text_block(format!("Failed to load processes: {err}")).into(),
+        _ => text_block("Waiting for process data...").into(),
+    };
 
-        let body_separator = separator();
-        let status_bar = text_block(format!("Processes: {}", state.total()))
-            .padding(windows_reactor::Thickness::xy(0.0, 8.0));
+    let body_separator = separator();
+    let status_bar = text_block(format!("Processes: {}", state.total())).padding(8.0);
 
-        grid((
-            header.grid_row(0),
-            body.grid_row(1),
-            body_separator.grid_row(2),
-            status_bar.grid_row(3),
-        ))
-        .rows([
-            GridLength::Auto,
-            GridLength::Star(1.0),
-            GridLength::Auto,
-            GridLength::Auto,
-        ])
-        .row_spacing(16.0)
-        .into()
+    let body = border(body).on_tapped(|| {});
+    let deselect_dispatch = dispatch.clone();
+
+    grid((
+        header.grid_row(0),
+        body.grid_row(1),
+        body_separator.grid_row(2),
+        status_bar.grid_row(3),
+    ))
+    .rows([
+        GridLength::Auto,
+        GridLength::Star(1.0),
+        GridLength::Auto,
+        GridLength::Auto,
+    ])
+    .on_tapped(move || deselect_dispatch.emit_on_deselect())
+    .into()
 }
 
 fn separator() -> Element {
@@ -206,7 +210,7 @@ fn format_bytes(v: u64) -> String {
     }
 }
 
-const COLUMN_IDS: &[&'static str] = &["name", "cpu", "memory", "net", "disk"];
+const COLUMN_IDS: &[&str] = &["name", "cpu", "memory", "net", "disk"];
 const COLUMN_DEFAULT: ColumnConfig = ColumnConfig {
     width: 110,
     min_width: 80,
@@ -342,8 +346,12 @@ fn build_column(
         "name" => column("name", "Name", width, min_width, |r| r.name.clone()),
         "cpu" => cpu_column(width, min_width, machine),
         "memory" => memory_column(width, min_width, machine),
-        "net" => column("net", "Net", width, min_width, |r| format_bytes(r.net_bytes)),
-        "disk" => column("disk", "Disk", width, min_width, |r| format_bytes(r.disk_bytes)),
+        "net" => column("net", "Net", width, min_width, |r| {
+            format_bytes(r.net_bytes)
+        }),
+        "disk" => column("disk", "Disk", width, min_width, |r| {
+            format_bytes(r.disk_bytes)
+        }),
         _ => unreachable!("unknown column id"),
     }
 }

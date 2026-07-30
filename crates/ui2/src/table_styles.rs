@@ -9,9 +9,11 @@ pub struct TableStyles {
 }
 
 impl TableStyles {
+    //const Default?, lol.
+    #[allow(clippy::new_without_default)]
     pub const fn new() -> Self {
         Self {
-            row_height: 20.0,
+            row_height: 16.0,
             font_size: 12.0,
             separator_color: Color {
                 a: 48,

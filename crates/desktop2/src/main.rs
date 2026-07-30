@@ -13,7 +13,7 @@ use guinea::router::RouterRx;
 use guinea_core::actor::UiThreadToken;
 use guinea_core::{set_ui_dispatcher, UiDispatcher, UiTask};
 use routes::Route;
-use windows_reactor::{App, Backdrop, Element, RenderCx, UiMarshaller, WinUIDispatcher};
+use windows_reactor::{App, Backdrop, Element, Interface, RenderCx, UiMarshaller, WinUIDispatcher};
 
 struct ReactorDispatcher(UiMarshaller);
 
@@ -49,6 +49,23 @@ fn ensure_app_features() {
 
 fn root(cx: &mut RenderCx) -> Element {
     ensure_app_features();
+    static ONCE: std::sync::Once = std::sync::Once::new();
+    ONCE.call_once(|| {
+        if let Ok(app) = windows_reactor::Application::Current()
+            && let Ok(resources) = app.Resources()
+            && let Ok(imap) =
+                resources.cast::<windows_collections::IMap<
+                    windows_core::IInspectable,
+                    windows_core::IInspectable,
+                >>()
+        {
+            let key = windows_reference::IReference::from(windows_core::HSTRING::from(
+                "ListViewItemMinHeight",
+            ));
+            let val = windows_reference::IReference::<f64>::from(30.0);
+            let _ = imap.Insert(&key, &val);
+        }
+    });
     RouterRx::render(cx, Route::Processes {}, amethystate::global_store())
 }
 

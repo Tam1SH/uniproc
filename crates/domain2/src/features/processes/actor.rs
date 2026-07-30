@@ -51,13 +51,23 @@ impl<P: ProcessesPort> ProcessesActor<P> {
         let pinned_pos = self
             .selected
             .and_then(|pid| self.rows.iter().position(|r| r.pid == pid));
-        sort_rows_pinned(&mut self.rows, &self.sort_column, self.descending, pinned_pos);
+        sort_rows_pinned(
+            &mut self.rows,
+            &self.sort_column,
+            self.descending,
+            pinned_pos,
+            self.selected,
+        );
     }
 }
 
-fn sort_rows_pinned(rows: &mut Vec<ProcessRow>, column: &str, descending: bool, pinned_pos: Option<usize>) {
-    let pinned_row = pinned_pos.map(|pos| rows.remove(pos));
-
+fn sort_rows_pinned(
+    rows: &mut Vec<ProcessRow>,
+    column: &str,
+    descending: bool,
+    pinned_pos: Option<usize>,
+    pinned_pid: Option<u32>,
+) {
     rows.sort_by(|a, b| {
         let ord = match column {
             "name" => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
@@ -71,7 +81,10 @@ fn sort_rows_pinned(rows: &mut Vec<ProcessRow>, column: &str, descending: bool, 
         if descending { ord.reverse() } else { ord }
     });
 
-    if let (Some(pos), Some(row)) = (pinned_pos, pinned_row) {
+    if let (Some(pos), Some(pid)) = (pinned_pos, pinned_pid)
+        && let Some(current) = rows.iter().position(|r| r.pid == pid)
+    {
+        let row = rows.remove(current);
         let insert_at = pos.min(rows.len());
         rows.insert(insert_at, row);
     }
@@ -83,6 +96,7 @@ impl<P: ProcessesPort> ManagedActor for ProcessesActor<P> {
         bind {
             Sort(String),
             Select(u32),
+            Deselect,
             Terminate
         },
         @WindowsReportMessage
@@ -103,6 +117,7 @@ fn on_windows_report<P: ProcessesPort>(this: &mut ProcessesActor<P>, msg: Window
     let pinned_pos = this
         .selected
         .and_then(|pid| this.rows.iter().position(|r| r.pid == pid));
+    let pinned_pid = this.selected;
 
     this.rows = msg
         .0
@@ -117,7 +132,13 @@ fn on_windows_report<P: ProcessesPort>(this: &mut ProcessesActor<P>, msg: Window
             net_bytes: p.net_rx_bytes + p.net_tx_bytes,
         })
         .collect();
-    sort_rows_pinned(&mut this.rows, &this.sort_column, this.descending, pinned_pos);
+    sort_rows_pinned(
+        &mut this.rows,
+        &this.sort_column,
+        this.descending,
+        pinned_pos,
+        pinned_pid,
+    );
     this.publish_rows();
 }
 
@@ -141,6 +162,12 @@ fn sort<P: ProcessesPort>(this: &mut ProcessesActor<P>, msg: Sort) {
 fn select<P: ProcessesPort>(this: &mut ProcessesActor<P>, msg: Select) {
     this.selected = Some(msg.0);
     this.ui_port.send(ProcessesMsg::SetSelected(this.selected));
+}
+
+#[handler]
+fn deselect<P: ProcessesPort>(this: &mut ProcessesActor<P>, _: Deselect) {
+    this.selected = None;
+    this.ui_port.send(ProcessesMsg::SetSelected(None));
 }
 
 #[handler]
@@ -179,12 +206,29 @@ mod tests {
             row(3, "gamma", 1.0),
         ];
 
-        // Sort by cpu descending with index 1 pinned.
-        sort_rows_pinned(&mut rows, "cpu", true, Some(1));
+        // Sort by cpu descending with pid 2 pinned at index 1.
+        sort_rows_pinned(&mut rows, "cpu", true, Some(1), Some(2));
 
         assert_eq!(rows[1].pid, 2, "pinned row must stay at index 1");
         assert_eq!(rows[0].pid, 1, "highest cpu must be first");
         assert_eq!(rows[2].pid, 3, "lowest cpu must be last");
+    }
+
+    #[test]
+    fn pinned_row_keeps_position_when_report_reorders() {
+        // New report arrives in a different raw order: pinned pid 2 is at index 2,
+        // but it was pinned at index 1 in the previous snapshot.
+        let mut rows = vec![
+            row(3, "gamma", 1.0),
+            row(1, "alpha", 5.0),
+            row(2, "beta", 3.0),
+        ];
+
+        sort_rows_pinned(&mut rows, "cpu", true, Some(1), Some(2));
+
+        assert_eq!(rows[1].pid, 2, "pinned row must return to its pinned index");
+        assert_eq!(rows[0].pid, 1);
+        assert_eq!(rows[2].pid, 3);
     }
 
     #[test]
@@ -195,7 +239,7 @@ mod tests {
             row(3, "gamma", 1.0),
         ];
 
-        sort_rows_pinned(&mut rows, "cpu", true, Some(1));
+        sort_rows_pinned(&mut rows, "cpu", true, Some(1), Some(2));
         assert_eq!(rows[1].pid, 2);
 
         // Simulate metric drift: beta now has the lowest cpu.
@@ -208,7 +252,7 @@ mod tests {
             }
         }
 
-        sort_rows_pinned(&mut rows, "cpu", true, Some(1));
+        sort_rows_pinned(&mut rows, "cpu", true, Some(1), Some(2));
         assert_eq!(rows[1].pid, 2, "pinned row must not drift across re-sorts");
         assert_eq!(rows[0].pid, 1);
         assert_eq!(rows[2].pid, 3);
@@ -222,7 +266,7 @@ mod tests {
             row(2, "beta", 3.0),
         ];
 
-        sort_rows_pinned(&mut rows, "cpu", true, None);
+        sort_rows_pinned(&mut rows, "cpu", true, None, None);
 
         assert_eq!(rows[0].pid, 1);
         assert_eq!(rows[1].pid, 2);

@@ -60,6 +60,10 @@ pub trait ProcessesActions {
     where
         F: Fn(u32) + 'static;
 
+    fn on_deselect<F>(&self, handler: F)
+    where
+        F: Fn() + 'static;
+
     fn on_terminate<F>(&self, handler: F)
     where
         F: Fn() + 'static;

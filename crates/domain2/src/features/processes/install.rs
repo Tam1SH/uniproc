@@ -5,7 +5,7 @@ use guinea::reactor::Reactor;
 use guinea_core::actor::event_bus::GlobalEventBus;
 use guinea_core::signal::Signal;
 
-use super::actor::{ProcessesActor, Select, Sort, Terminate};
+use super::actor::{Deselect, ProcessesActor, Select, Sort, Terminate};
 use super::settings::ProcessesSettings;
 
 /// Floor for the user-facing scan interval - anything faster is pointless UI churn.
@@ -28,6 +28,7 @@ pub fn install(ctx: &FeatureInitContext) -> anyhow::Result<()> {
     ProcessesBinder::new(&addr, &ctx.actions::<ProcessesReducer>())
         .on_sort::<Sort>()
         .on_select::<Select>()
+        .on_deselect::<Deselect>()
         .on_terminate::<Terminate>()
         .build();
 

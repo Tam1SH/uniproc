@@ -53,6 +53,9 @@ ui2 = { path = "crates/ui2" }
 windows-reactor = { git = "https://github.com/Tam1SH/windows-rs", rev = "ab3d2a793560287c572ff9964856c43fd0ce9af7" }
 windows-reactor-setup = { git = "https://github.com/Tam1SH/windows-rs", rev = "ab3d2a793560287c572ff9964856c43fd0ce9af7" }
 windows-canvas = { git = "https://github.com/Tam1SH/windows-rs", rev = "ab3d2a793560287c572ff9964856c43fd0ce9af7" }
+windows-collections = { git = "https://github.com/Tam1SH/windows-rs", rev = "ab3d2a793560287c572ff9964856c43fd0ce9af7" }
+windows-core = { git = "https://github.com/Tam1SH/windows-rs", rev = "ab3d2a793560287c572ff9964856c43fd0ce9af7" }
+windows-reference = { git = "https://github.com/Tam1SH/windows-rs", rev = "ab3d2a793560287c572ff9964856c43fd0ce9af7" }
 
 # --- Custom & Git Dependencies ---
 ogurpchik = { git = "https://github.com/Tam1SH/oguRPChik", branch = "master", features = ["rkyv-codec", "vsock", "uds"] }
@@ -138,6 +141,9 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage)'] }
 windows-reactor = { path = "../windows-rs/crates/libs/reactor" }
 windows-reactor-setup = { path = "../windows-rs/crates/libs/reactor-setup" }
 windows-canvas = { path = "../windows-rs/crates/libs/canvas" }
+windows-collections = { path = "../windows-rs/crates/libs/collections" }
+windows-core = { path = "../windows-rs/crates/libs/core" }
+windows-reference = { path = "../windows-rs/crates/libs/reference" }
 
 # --- Profiles ---
 [profile.release]

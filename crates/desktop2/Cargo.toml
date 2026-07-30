@@ -20,6 +20,9 @@ unic-langid = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
+windows-collections = { workspace = true }
+windows-core = { workspace = true }
+windows-reference = { workspace = true }
 windows-reactor = { workspace = true }
 
 [build-dependencies]
