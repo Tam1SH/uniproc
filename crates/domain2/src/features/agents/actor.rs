@@ -3,7 +3,7 @@ use super::connection::*;
 use amethystate::{DefaultStore, Field, WritableMode};
 use app_contracts2::features::agents::{AgentConnectionState, ScanTick};
 use guinea_core::actor::event_bus::GlobalEventBus;
-use guinea_core::actor::{AsyncContext, Context, Message, NoOp};
+use guinea_core::actor::{AsyncContext, Context, Message};
 use guinea_core::messages;
 use guinea_macros::{actor_manifest, handler};
 use std::fmt::Debug;
@@ -176,11 +176,10 @@ fn perform_scan_tick<B: AgentBackend>(this: &GenericAgentActor<B>, _: ScanTick, 
         return;
     };
 
-    ctx.spawn_bg(async move {
+    ctx.spawn_bg_detached(async move {
         if let Err(err) = B::perform_scan(&client).await {
             warn!("[{}] Scan failed: {err}", B::NAME);
         }
-        NoOp
     });
 }
 

@@ -19,6 +19,10 @@ pub trait SidebarActions {
     fn on_set_width<F>(&self, handler: F)
     where
         F: Fn(u64) + 'static;
+
+    fn on_set_open<F>(&self, handler: F)
+    where
+        F: Fn(bool) + 'static;
 }
 
 #[derive(Clone, PartialEq, Debug)]

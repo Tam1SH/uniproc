@@ -2846,6 +2846,7 @@ dependencies = [
  "guicons",
  "guinea",
  "guinea-core",
+ "tracing",
  "uuid",
  "windows",
  "windows-canvas",

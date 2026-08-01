@@ -9,8 +9,9 @@ impl Page for Processes {
     const CACHE_STATE_IN_MEMORY: bool = true;
 
     fn install(ctx: &FeatureInitContext, _uri: &AppUri) -> anyhow::Result<()> {
-        domain2::features::processes::install(ctx)?;
-        domain2::features::metrics::install(ctx)
+        // metrics::install lives on ShellLayout now - the sidebar's tiles
+        // need it at an ancestor scope of every page, not just this one.
+        domain2::features::processes::install(ctx)
     }
 
     fn view(cx: &mut PageCx) -> Element {

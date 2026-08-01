@@ -10,7 +10,15 @@ pub struct ShellLayout;
 
 impl Layout for ShellLayout {
     fn install(ctx: &FeatureInitContext, _uri: &AppUri) -> anyhow::Result<()> {
-        domain2::features::sidebar::install(ctx)
+        domain2::features::sidebar::install(ctx)?;
+        // Installed here (layout scope), not from the Processes page: the
+        // sidebar's metric tiles render as part of the shell, an ancestor
+        // scope of every page, so a page-scoped install left the shell's
+        // `use_reducer::<MetricsReducer>()` resolving to a disconnected
+        // local instance with no actor behind it - and once that ancestor
+        // instance existed, the Processes page's own lookup found it first
+        // too, orphaning the page-scoped actor and flatlining its chart.
+        domain2::features::metrics::install(ctx)
     }
 
     fn view(cx: &mut LayoutCx) -> Element {
@@ -28,6 +36,10 @@ impl Layout for ShellLayout {
         let set_width = SetState::new(move |w: f64| {
             resize_dispatch.emit_on_set_width(w.round() as u64);
         });
+        let open_dispatch = dispatch.clone();
+        let set_open = SetState::new(move |open: bool| {
+            open_dispatch.emit_on_set_open(open);
+        });
 
         ui2::shell_view(
             cx,
@@ -41,6 +53,7 @@ impl Layout for ShellLayout {
                 _ => {}
             },
             set_width,
+            set_open,
         )
     }
 }

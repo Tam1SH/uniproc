@@ -1,5 +1,6 @@
 use app_contracts2::features::agents::WindowsReportMessage;
 use app_contracts2::features::metrics::{MetricsMsg, MetricsPort};
+use app_contracts2::features::processes::MachineSummary;
 use guinea::widgets::chart::RingSeries;
 use guinea_core::actor::ManagedActor;
 use guinea_macros::{actor_manifest, handler};
@@ -8,6 +9,7 @@ pub struct MetricsActor<P: MetricsPort> {
     ui_port: P,
     cpu_history: RingSeries,
     memory_history: RingSeries,
+    machine: MachineSummary,
 }
 
 impl<P: MetricsPort> std::fmt::Debug for MetricsActor<P> {
@@ -25,6 +27,7 @@ impl<P: MetricsPort> MetricsActor<P> {
             ui_port,
             cpu_history: RingSeries::new(120),
             memory_history: RingSeries::new(120),
+            machine: MachineSummary::default(),
         }
     }
 
@@ -32,6 +35,7 @@ impl<P: MetricsPort> MetricsActor<P> {
         self.ui_port.send(MetricsMsg::SetHistory {
             cpu: self.cpu_history.as_points(),
             memory: self.memory_history.as_points(),
+            machine: self.machine.clone(),
         });
     }
 }
@@ -55,5 +59,12 @@ fn on_windows_report<P: MetricsPort>(this: &mut MetricsActor<P>, msg: WindowsRep
     };
     this.cpu_history.push((timestamp, machine.cpu_percent));
     this.memory_history.push((timestamp, memory_percent));
+    this.machine = MachineSummary {
+        cpu_percent: machine.cpu_percent,
+        cpu_current_mhz: machine.cpu_current_mhz,
+        cpu_max_mhz: machine.cpu_max_mhz,
+        memory_used_bytes: machine.used_physical_kb * 1024,
+        memory_total_bytes: machine.total_physical_kb * 1024,
+    };
     this.publish();
 }
