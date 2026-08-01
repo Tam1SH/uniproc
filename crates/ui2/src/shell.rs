@@ -135,8 +135,6 @@ pub fn shell_view(
     set_width: SetState<f64>,
     set_open: SetState<bool>,
 ) -> Element {
-    tracing::debug!(open, width, "shell_view render");
-
     let title_bar = TitleBar::new("uniproc")
         .icon(icon!(uniproc_logo).size(NAV_ICON_SIZE).build())
         .pane_toggle_button_visible(false);

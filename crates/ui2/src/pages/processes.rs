@@ -12,9 +12,9 @@ use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use uuid::Uuid;
 use windows_reactor::{
-    body_large, border, button, grid, hstack, text_block, Color, Element, ElementExt, GridLength,
-    HookRef, HorizontalAlignment, Icon, Image, ProgressRing, SetState, Shape, ThemeRef,
-    VerticalAlignment,
+    body_large, border, button, grid, hstack, text_block, Color, Element,
+    ElementExt, GridLength, HookRef, HorizontalAlignment, Icon, Image, ProgressRing, SetState, Shape,
+    ThemeRef, VerticalAlignment,
 };
 
 use crate::table_styles;

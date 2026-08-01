@@ -52,12 +52,12 @@ ui2 = { path = "crates/ui2" }
 # Pinned to the exact rev guinea's own workspace pins, for the same reason
 # guinea pins it: two separate lockfiles resolving an unpinned `git = "..."`
 # dep independently can silently drift onto different commits.
-windows-reactor = { git = "https://github.com/Tam1SH/windows-rs", rev = "ab3d2a793560287c572ff9964856c43fd0ce9af7" }
-windows-reactor-setup = { git = "https://github.com/Tam1SH/windows-rs", rev = "ab3d2a793560287c572ff9964856c43fd0ce9af7" }
-windows-canvas = { git = "https://github.com/Tam1SH/windows-rs", rev = "ab3d2a793560287c572ff9964856c43fd0ce9af7" }
-windows-collections = { git = "https://github.com/Tam1SH/windows-rs", rev = "ab3d2a793560287c572ff9964856c43fd0ce9af7" }
-windows-core = { git = "https://github.com/Tam1SH/windows-rs", rev = "ab3d2a793560287c572ff9964856c43fd0ce9af7" }
-windows-reference = { git = "https://github.com/Tam1SH/windows-rs", rev = "ab3d2a793560287c572ff9964856c43fd0ce9af7" }
+windows-reactor = { git = "https://github.com/Tam1SH/windows-rs", rev = "a27687681" }
+windows-reactor-setup = { git = "https://github.com/Tam1SH/windows-rs", rev = "a27687681" }
+windows-canvas = { git = "https://github.com/Tam1SH/windows-rs", rev = "a27687681" }
+windows-collections = { git = "https://github.com/Tam1SH/windows-rs", rev = "a27687681" }
+windows-core = { git = "https://github.com/Tam1SH/windows-rs", rev = "a27687681" }
+windows-reference = { git = "https://github.com/Tam1SH/windows-rs", rev = "a27687681" }
 
 # --- Custom & Git Dependencies ---
 ogurpchik = { git = "https://github.com/Tam1SH/oguRPChik", branch = "master", features = ["rkyv-codec", "vsock", "uds"] }
@@ -136,16 +136,6 @@ smol_str = "0.3.6"
 
 [workspace.lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage)'] }
-
-# Local iteration on the fork - no git push/rev-bump round trip per change.
-# Remove once done and go back to the pinned `rev` above.
-[patch."https://github.com/Tam1SH/windows-rs"]
-windows-reactor = { path = "../windows-rs/crates/libs/reactor" }
-windows-reactor-setup = { path = "../windows-rs/crates/libs/reactor-setup" }
-windows-canvas = { path = "../windows-rs/crates/libs/canvas" }
-windows-collections = { path = "../windows-rs/crates/libs/collections" }
-windows-core = { path = "../windows-rs/crates/libs/core" }
-windows-reference = { path = "../windows-rs/crates/libs/reference" }
 
 # --- Profiles ---
 [profile.release]
