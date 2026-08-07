@@ -230,6 +230,12 @@ mod wsl {
         let latency = WslBackend::ping(&handle).await.context("ping failed")?;
         println!("ping via AgentBackend: {latency} ms");
 
+        // The agent derives cpu_percent from the delta between two consecutive
+        // collects, so the very first report always has cpu=0.0% for every
+        // process. Take a throwaway sample first, then measure.
+        let _ = handle.call(WslRequest::GetReport).await?;
+        tokio::time::sleep(std::time::Duration::from_millis(1000)).await;
+
         match handle.call(WslRequest::GetReport).await? {
             WslReply::Report(report) => {
                 let m = &report.machine;
@@ -248,7 +254,28 @@ mod wsl {
                 assert!(m.total_kb > 0, "total memory decoded as 0");
                 assert!(!report.processes.is_empty(), "no processes in the report");
 
-                for p in report.processes.iter().take(5) {
+                // Sorted by rss so the sample is comparable against
+                // `ps -eo pid,rss,comm --sort=-rss`; unsorted map order is
+                // dominated by idle processes and tells you nothing.
+                let mut top: Vec<_> = report.processes.iter().collect();
+                top.sort_by_key(|p| std::cmp::Reverse(p.rss_kb));
+                let with_rss = report.processes.iter().filter(|p| p.rss_kb > 0).count();
+                println!(
+                    "  processes with rss>0: {} / {}",
+                    with_rss,
+                    report.processes.len()
+                );
+                for p in top.iter().take(10) {
+                    println!(
+                        "    pid={:<6} {:<24} cpu={:.1}% rss={} kb",
+                        p.global_pid, p.name, p.cpu_percent, p.rss_kb
+                    );
+                }
+
+                let mut busiest: Vec<_> = report.processes.iter().collect();
+                busiest.sort_by(|a, b| b.cpu_percent.total_cmp(&a.cpu_percent));
+                println!("  busiest by cpu:");
+                for p in busiest.iter().take(3) {
                     println!(
                         "    pid={:<6} {:<24} cpu={:.1}% rss={} kb",
                         p.global_pid, p.name, p.cpu_percent, p.rss_kb
