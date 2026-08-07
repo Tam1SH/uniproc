@@ -13,7 +13,7 @@ use guinea::router::RouterRx;
 use guinea_core::actor::UiThreadToken;
 use guinea_core::{set_ui_dispatcher, UiDispatcher, UiTask};
 use routes::Route;
-use windows_reactor::{App, Backdrop, Element, Interface, RenderCx, UiMarshaller, WinUIDispatcher};
+use windows_reactor::{border, App, Backdrop, Element, ElementExt, Interface, RenderCx, UiMarshaller, WinUIDispatcher};
 
 struct ReactorDispatcher(UiMarshaller);
 
@@ -49,24 +49,24 @@ fn ensure_app_features() {
 
 fn root(cx: &mut RenderCx) -> Element {
     ensure_app_features();
-    static ONCE: std::sync::Once = std::sync::Once::new();
-    ONCE.call_once(|| {
-        if let Ok(app) = windows_reactor::Application::Current()
-            && let Ok(resources) = app.Resources()
-            && let Ok(imap) =
-                resources.cast::<windows_collections::IMap<
-                    windows_core::IInspectable,
-                    windows_core::IInspectable,
-                >>()
-        {
-            let key = windows_reference::IReference::from(windows_core::HSTRING::from(
-                "ListViewItemMinHeight",
-            ));
-            let val = windows_reference::IReference::<f64>::from(30.0);
-            let _ = imap.Insert(&key, &val);
-        }
-    });
-    RouterRx::render(cx, Route::Processes {}, amethystate::global_store())
+    // Tables render through a native ListView, whose row height comes from the
+    // `ListViewItemMinHeight` theme resource; the default leaves rows far
+    // taller than a dense process/service list wants.
+    //
+    // Declared on the tree rather than poked into
+    // `Application::Current().Resources()`: WinUI resolves a resource by
+    // walking up, so a subtree entry reaches every ListView under it just the
+    // same, without needing the reactor to expose `Application` at all and
+    // without mutating global state behind the framework's back.
+    //
+    // The `border` is load-bearing, not decoration: `Element::Component` has no
+    // modifier slot at all (`modifiers_mut` returns `None` for it), and every
+    // `ElementExt` setter silently returns the element untouched in that case.
+    // Hanging this straight off `RouterRx::render` compiled fine and did
+    // exactly nothing.
+    border(RouterRx::render(cx, Route::Processes {}, amethystate::global_store()))
+        .resources([("ListViewItemMinHeight", 30.0)])
+        .into()
 }
 
 fn main() -> anyhow::Result<()> {

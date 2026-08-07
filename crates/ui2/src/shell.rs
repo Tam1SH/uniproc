@@ -3,8 +3,9 @@ use guicons::icon;
 use guinea::router::LayoutCx;
 use guinea::widgets::resize::{resize_handle, RESIZE_HANDLE_WIDTH};
 use windows_reactor::{
-    grid, vstack, Element, ElementExt, GridLength, HorizontalAlignment, Icon,
-    NavViewItem, NavigationView, NavigationViewPaneDisplayMode, SetState, Shape, Thickness, TitleBar,
+    grid, hstack, text_block, vstack, Element, ElementExt, GridLength, HorizontalAlignment, Icon,
+    NavViewItem, NavigationView, NavigationViewPaneDisplayMode, SetState, Shape, Thickness,
+    TitleBar, VerticalAlignment,
 };
 
 use crate::table_styles;
@@ -135,8 +136,13 @@ pub fn shell_view(
     set_width: SetState<f64>,
     set_open: SetState<bool>,
 ) -> Element {
+    let title_bar_icon = icon!(uniproc_logo).size(NAV_ICON_SIZE).build_element();
     let title_bar = TitleBar::new("uniproc")
-        .icon(icon!(uniproc_logo).size(NAV_ICON_SIZE).build())
+        .content(
+            hstack((title_bar_icon, text_block("uniproc")))
+                .spacing(8.0)
+                .vertical_alignment(VerticalAlignment::Center),
+        )
         .pane_toggle_button_visible(false);
 
     let to_nav_item =
@@ -146,11 +152,12 @@ pub fn shell_view(
 
     // `IsPaneOpen` is a one-way (app -> native) prop, so the native
     // pane-toggle button flipping it never round-trips back into app state
-    // on its own. `PaneClosed`/`PaneOpened` fire once the native pane
-    // finishes closing/opening for any reason - including our own
-    // `.pane_open(open)` call above echoing back synchronously within the
-    // very same render pass that set it. Forwarding that echo into
-    // `set_open` re-enters the reconciler mid-pass and trips its
+    // on its own. `NavigationPaneOpenChanged` (WinUI's own
+    // `PaneOpenChanged` wired through upstream's explicit-capture rework)
+    // reports the pane's actual open state whenever it changes, including
+    // our own `.pane_open(open)` call above echoing back synchronously
+    // within the very same render pass that set it. Forwarding that echo
+    // into `set_open` re-enters the reconciler mid-pass and trips its
     // state-dirty invariant (`a state-dirty component was not re-rendered
     // by the pass`). `last_known_open` is resynced to the authoritative
     // `open` prop every render, so only a transition genuinely different
@@ -158,10 +165,8 @@ pub fn shell_view(
     // gets forwarded.
     let last_known_open = cx.use_ref(open);
     *last_known_open.borrow_mut() = open;
-    let last_known_open_on_close = last_known_open.clone();
-    let last_known_open_on_open = last_known_open.clone();
-    let set_open_on_close = set_open.clone();
-    let set_open_on_open = set_open.clone();
+    let last_known_open_on_change = last_known_open.clone();
+    let set_open_on_change = set_open.clone();
 
     let nav_view = NavigationView::new(nav_items, content)
         .footer_menu_items(footer_nav_items)
@@ -171,16 +176,10 @@ pub fn shell_view(
         .pane_open(open)
         .pane_display_mode(NavigationViewPaneDisplayMode::Left)
         .pane_toggle_button_visible(true)
-        .on_pane_closed(move || {
-            if *last_known_open_on_close.borrow() {
-                *last_known_open_on_close.borrow_mut() = false;
-                set_open_on_close.call(false);
-            }
-        })
-        .on_pane_opened(move || {
-            if !*last_known_open_on_open.borrow() {
-                *last_known_open_on_open.borrow_mut() = true;
-                set_open_on_open.call(true);
+        .on_pane_open_changed(move |is_open: bool| {
+            if *last_known_open_on_change.borrow() != is_open {
+                *last_known_open_on_change.borrow_mut() = is_open;
+                set_open_on_change.call(is_open);
             }
         })
         .back_button_visible(false)

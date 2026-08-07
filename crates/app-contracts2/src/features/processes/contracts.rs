@@ -1,6 +1,7 @@
 use guinea_core::Load;
 use guinea_macros::{actions, port, reducer};
 use serde::{Deserialize, Serialize};
+use std::rc::Rc;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, amethystate::AmeType)]
 pub struct ColumnConfig {
@@ -43,7 +44,7 @@ pub struct MachineSummary {
 #[derive(Clone)]
 pub enum ProcessesMsg {
     SetRows {
-        rows: Vec<ProcessRow>,
+        rows: Rc<[ProcessRow]>,
         machine: MachineSummary,
     },
     SetSelected(Option<u32>),
@@ -83,7 +84,7 @@ pub struct ProcessesState {
     /// snapshot arrives. An empty vec inside `Ready` is a valid answer (and a
     /// search filter may legitimately produce one) - it must never be read as
     /// "still loading".
-    pub rows: Load<Vec<ProcessRow>>,
+    pub rows: Load<Rc<[ProcessRow]>>,
     /// Machine-level summary (CPU and memory totals) delivered together with
     /// each process snapshot.
     pub machine_summary: Load<MachineSummary>,
@@ -106,11 +107,11 @@ impl Default for ProcessesState {
 
 impl ProcessesState {
     pub fn rows(&self) -> &[ProcessRow] {
-        self.rows.ready().map(Vec::as_slice).unwrap_or(&[])
+        self.rows.ready().map(|r| r.as_ref()).unwrap_or(&[])
     }
 
     pub fn total(&self) -> usize {
-        self.rows.ready().map(Vec::len).unwrap_or(0)
+        self.rows().len()
     }
 
     pub fn machine_summary(&self) -> Option<&MachineSummary> {

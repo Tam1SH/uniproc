@@ -1,5 +1,5 @@
 use windows::UI::ViewManagement::{UIColorType, UISettings};
-use windows_reactor::{border, text_block, Color, Element, ElementExt, Thickness};
+use windows_reactor::{border, text_block, Color, Element, ElementExt, TextTrimming, Thickness};
 
 #[derive(Clone, Copy, Debug)]
 pub struct TableStyles {
@@ -31,6 +31,7 @@ impl TableStyles {
             .font_size(self.font_size)
             .height(self.row_height)
             .max_height(self.row_height)
+            .text_trimming(TextTrimming::CharacterEllipsis)
             .into()
     }
 
@@ -75,10 +76,20 @@ impl TableStyles {
 /// render pass and capture it by value, not call it from inside a per-row
 /// closure - `UISettings` round-trips through the OS on every read.
 pub fn accent_color() -> Color {
-    const FALLBACK: Color = Color { a: 255, r: 0, g: 120, b: 212 };
+    const FALLBACK: Color = Color {
+        a: 255,
+        r: 0,
+        g: 120,
+        b: 212,
+    };
     UISettings::new()
         .and_then(|s| s.GetColorValue(UIColorType::Accent))
-        .map(|c| Color { a: c.A, r: c.R, g: c.G, b: c.B })
+        .map(|c| Color {
+            a: c.A,
+            r: c.R,
+            g: c.G,
+            b: c.B,
+        })
         .unwrap_or(FALLBACK)
 }
 

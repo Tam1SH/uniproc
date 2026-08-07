@@ -10,15 +10,17 @@ pub struct ShellLayout;
 
 impl Layout for ShellLayout {
     fn install(ctx: &FeatureInitContext, _uri: &AppUri) -> anyhow::Result<()> {
-        domain2::features::sidebar::install(ctx)?;
+        ctx.install(domain2::features::sidebar::install)?;
         // Installed here (layout scope), not from the Processes page: the
         // sidebar's metric tiles render as part of the shell, an ancestor
-        // scope of every page, so a page-scoped install left the shell's
-        // `use_reducer::<MetricsReducer>()` resolving to a disconnected
-        // local instance with no actor behind it - and once that ancestor
-        // instance existed, the Processes page's own lookup found it first
-        // too, orphaning the page-scoped actor and flatlining its chart.
-        domain2::features::metrics::install(ctx)
+        // scope of every page. `ctx.install` (not a bare call) marks this
+        // scope as metrics' owner so any descendant page that only wants
+        // to *read* it must say so explicitly via `ctx.inherit(...)` -
+        // previously a page-scoped install here left a descendant's
+        // `use_reducer::<MetricsReducer>()` silently resolving to a
+        // disconnected local instance with no actor behind it, orphaning
+        // the real one and flatlining its chart.
+        ctx.install(domain2::features::metrics::install)
     }
 
     fn view(cx: &mut LayoutCx) -> Element {
