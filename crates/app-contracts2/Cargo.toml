@@ -13,10 +13,7 @@ fluent-templates = { workspace = true }
 fluent-bundle = { workspace = true }
 unic-langid = { workspace = true }
 cfg-if = { workspace = true }
-rkyv = { workspace = true }
 uuid = { workspace = true }
-ogurpchik = { workspace = true }
-uniproc-protocol = { workspace = true }
 guicons = { workspace = true }
 amethystate = { workspace = true }
 serde = { workspace = true }

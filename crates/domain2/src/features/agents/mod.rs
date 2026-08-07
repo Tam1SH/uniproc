@@ -1,7 +1,9 @@
 pub mod actor;
 pub mod backend;
 pub mod connection;
+pub mod decode;
 pub mod providers;
+pub mod rpc;
 pub mod settings;
 
 use guinea::feature::{AppFeature, AppFeatureInitContext};

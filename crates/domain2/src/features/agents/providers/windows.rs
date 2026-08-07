@@ -1,58 +1,177 @@
 use crate::features::agents::actor::{GenericAgentActor, Init, Ping};
 use crate::features::agents::backend::AgentBackend;
+use crate::features::agents::decode;
+use crate::features::agents::rpc::{RpcHandle, RpcService};
 use crate::features::agents::settings::AgentSettings;
-use app_contracts2::features::agents::{AgentClient, AgentConnectionState, ScanTick, WindowsAgentRuntimeEvent, WindowsReportMessage};
+use anyhow::{anyhow, bail};
+use app_contracts2::features::agents::{
+    AgentConnectionState, ScanTick, WindowsAction, WindowsActionRequest, WindowsAgentRuntimeEvent, WindowsReport,
+    WindowsReportMessage,
+};
 use guinea::feature::{AppFeature, AppFeatureInitContext, ContextActorExt, ContextReactorExt, ContextStoreExt};
 use guinea_core::actor::event_bus::GlobalEventBus;
 use guinea_core::ratelimit;
 use guinea_macros::app_feature;
-use ogurpchik::discovery::Scope;
-use ogurpchik::transport::stream::adapters::uds::UdsTransport;
-use std::ops::Deref;
-use std::time::Instant;
-use tracing::{error, instrument, warn};
-use uniproc_protocol::{WindowsCodec, WindowsRequest, WindowsResponse, services};
+use ogurpchik::auth::handshake::{HandshakeMode, authenticate_client};
+use ogurpchik::endpoint::Endpoint;
+use ogurpchik::rpc::{RpcSession, Side, spawn_session};
+use std::rc::Rc;
+use std::time::{Duration, Instant};
+use tracing::instrument;
+use uniproc_protocol::windows_capnp::windows_agent;
+
+/// Service identity by convention: `\\.\pipe\<APP_NAME>.<AGENT_SERVICE_NAME>`,
+/// matching what the agent binds (`uniproc-windows-agent`'s `rpc::vars`).
+const APP_NAME: &str = "uniproc";
+const AGENT_SERVICE_NAME: &str = "windows-agent";
+
+/// The bootstrap capability we hand *the agent*. capnp-rpc is symmetric and
+/// wants one from each side; we expose no methods, so every default returns
+/// `unimplemented`.
+struct HostStub;
+impl windows_agent::Server for HostStub {}
+
+pub enum WindowsRequest {
+    Ping,
+    GetReport,
+    Action(WindowsAction),
+}
+
+pub enum WindowsReply {
+    Pong,
+    Report(WindowsReport),
+    /// Win32 error code; `0` is success.
+    Code(u32),
+}
+
+pub struct WindowsRpc;
+
+impl RpcService for WindowsRpc {
+    // The whole session, not just the client: dropping `RpcSession` drops the
+    // driver task with it, which would tear the connection down under us.
+    type Session = Rc<RpcSession<windows_agent::Client>>;
+    type Request = WindowsRequest;
+    type Reply = WindowsReply;
+
+    const NAME: &'static str = "Windows";
+
+    async fn connect(timeout_secs: u64) -> anyhow::Result<Self::Session> {
+        let endpoint =
+            Endpoint::for_service(APP_NAME, AGENT_SERVICE_NAME).map_err(|e| anyhow!("{e:?}"))?;
+
+        // `connect_ready` rather than a plain `connect`: the agent is a Windows
+        // service that may still be starting, and retrying inside the timeout
+        // is cheaper than bouncing all the way back through the FSM's backoff.
+        let mut conn = endpoint
+            .connect_ready(Duration::from_secs(timeout_secs))
+            .await
+            .map_err(|e| anyhow!("{e:?}"))?;
+
+        authenticate_client(&mut conn, &HandshakeMode::version_only())
+            .await
+            .map_err(|e| anyhow!("{e:?}"))?;
+
+        Ok(Rc::new(spawn_session::<windows_agent::Client, _>(
+            conn,
+            Side::Client,
+            HostStub,
+        )))
+    }
+
+    async fn dispatch(session: Self::Session, request: Self::Request) -> anyhow::Result<Self::Reply> {
+        let client = session.remote();
+
+        match request {
+            WindowsRequest::Ping => {
+                client.ping_request().send().promise.await?;
+                Ok(WindowsReply::Pong)
+            }
+            WindowsRequest::GetReport => {
+                let reply = client.get_report_request().send().promise.await?;
+                let report = decode::windows_report(reply.get()?.get_report()?)?;
+                Ok(WindowsReply::Report(report))
+            }
+            WindowsRequest::Action(action) => {
+                let code = perform_action(client, action).await?;
+                Ok(WindowsReply::Code(code))
+            }
+        }
+    }
+}
+
+/// One arm per mutating method on the `WindowsAgent` interface. They all answer
+/// with a bare Win32 code, so the reply shape is shared.
+async fn perform_action(client: &windows_agent::Client, action: WindowsAction) -> anyhow::Result<u32> {
+    macro_rules! by_pid {
+        ($request:ident, $pid:expr) => {{
+            let mut req = client.$request();
+            req.get().set_pid($pid);
+            req.send().promise.await?.get()?.get_code()
+        }};
+    }
+    macro_rules! by_name {
+        ($request:ident, $name:expr) => {{
+            let mut req = client.$request();
+            req.get().set_name(&$name);
+            req.send().promise.await?.get()?.get_code()
+        }};
+    }
+
+    let code = match action {
+        WindowsAction::Kill { pid } => by_pid!(kill_request, pid),
+        WindowsAction::Suspend { pid } => by_pid!(suspend_request, pid),
+        WindowsAction::Resume { pid } => by_pid!(resume_request, pid),
+        WindowsAction::SetPriority { pid, priority } => {
+            let mut req = client.set_priority_request();
+            req.get().set_pid(pid);
+            req.get().set_priority(decode::priority(priority));
+            req.send().promise.await?.get()?.get_code()
+        }
+        WindowsAction::SetAffinity { pid, mask } => {
+            let mut req = client.set_affinity_request();
+            req.get().set_pid(pid);
+            req.get().set_mask(mask);
+            req.send().promise.await?.get()?.get_code()
+        }
+        WindowsAction::ServiceStart { name } => by_name!(service_start_request, name),
+        WindowsAction::ServiceStop { name } => by_name!(service_stop_request, name),
+        WindowsAction::ServicePause { name } => by_name!(service_pause_request, name),
+        WindowsAction::ServiceResume { name } => by_name!(service_resume_request, name),
+        WindowsAction::ServiceRestart { name } => by_name!(service_restart_request, name),
+    };
+
+    Ok(code)
+}
 
 pub struct WindowsBackend;
 
 impl AgentBackend for WindowsBackend {
-    type Client = AgentClient;
+    type Client = RpcHandle<WindowsRpc>;
     type RuntimeEvent = WindowsAgentRuntimeEvent;
     const NAME: &'static str = "Windows";
 
     async fn connect(timeout: u64) -> anyhow::Result<Self::Client> {
-        ogurpchik::high::node::Node::new()?
-            .scope(Scope::Internal)?
-            .connect::<WindowsCodec, _>(UdsTransport::temp("uniproc-windows"))
-            .wait_for(services::WINDOWS_AGENT)
-            .timeout(timeout)
-            .start()
-            .await
+        RpcHandle::connect(timeout).await
     }
 
     async fn ping(client: &Self::Client) -> anyhow::Result<i32> {
         let start = Instant::now();
-        client.call(WindowsRequest::Ping).await?;
-        Ok(start.elapsed().as_millis() as i32)
+        match client.call(WindowsRequest::Ping).await? {
+            WindowsReply::Pong => Ok(start.elapsed().as_millis() as i32),
+            _ => bail!("agent answered a ping with something else"),
+        }
     }
 
     #[instrument(skip(client), level = "debug", err)]
     async fn perform_scan(client: &Self::Client) -> anyhow::Result<()> {
-        let resp = client.call(WindowsRequest::GetReport).await?;
-
-        let response = rkyv::deserialize::<WindowsResponse, rkyv::rancor::Error>(*resp.deref()).map_err(|e| {
-            error!(error = %e, "Deserialization failed");
-            anyhow::anyhow!("Failed to deserialize WindowsResponse: {}", e)
-        })?;
-
-        if let WindowsResponse::Report(r) = response {
-            GlobalEventBus::publish(WindowsReportMessage(r));
-            ratelimit!(3600, info!("Report published to event bus"));
-        } else {
-            warn!("Unexpected response type: {:?}", response);
+        match client.call(WindowsRequest::GetReport).await? {
+            WindowsReply::Report(report) => {
+                GlobalEventBus::publish(WindowsReportMessage(report));
+                ratelimit!(3600, info!("Report published to event bus"));
+                Ok(())
+            }
+            _ => bail!("agent answered getReport with something else"),
         }
-
-        Ok(())
     }
 
     fn create_runtime_event(state: AgentConnectionState, latency: Option<i32>) -> Self::RuntimeEvent {
@@ -70,6 +189,10 @@ pub fn windows_agent_feature(ctx: &mut AppFeatureInitContext) -> anyhow::Result<
     ctx.spawn_heartbeat(&addr, settings.ping_interval_ms(), || Ping);
 
     GlobalEventBus::subscribe::<GenericAgentActor<WindowsBackend>, ScanTick>(addr.clone());
+    // Without this the process/service commands published by other features
+    // reach nobody - the actor implements the handler, but a `Handler` impl
+    // alone routes nothing.
+    GlobalEventBus::subscribe::<GenericAgentActor<WindowsBackend>, WindowsActionRequest>(addr.clone());
     addr.send(Init);
 
     Ok(())

@@ -38,10 +38,8 @@ inventory = "0.3"
 guinea-meta = { path = "../guinea-meta/crates/guinea-meta" }
 guinea-meta-build = { path = "../guinea-meta/crates/guinea-meta-build" }
 
-# --- guicons (path dep to a sibling checkout: the windows-reactor backend
-# isn't published to crates.io yet - see ../guicons's own uncommitted work) ---
-guicons = { path = "../guicons/crates/guicons" }
-guicons-build = { path = "../guicons/crates/guicons-build" }
+guicons = "0.3.2"
+guicons-build = "0.3.2"
 
 # --- Internal ---
 app-contracts2 = { path = "crates/app-contracts2" }
@@ -52,16 +50,18 @@ ui2 = { path = "crates/ui2" }
 # Pinned to the exact rev guinea's own workspace pins, for the same reason
 # guinea pins it: two separate lockfiles resolving an unpinned `git = "..."`
 # dep independently can silently drift onto different commits.
-windows-reactor = { git = "https://github.com/Tam1SH/windows-rs", rev = "a27687681" }
-windows-reactor-setup = { git = "https://github.com/Tam1SH/windows-rs", rev = "a27687681" }
-windows-canvas = { git = "https://github.com/Tam1SH/windows-rs", rev = "a27687681" }
-windows-collections = { git = "https://github.com/Tam1SH/windows-rs", rev = "a27687681" }
-windows-core = { git = "https://github.com/Tam1SH/windows-rs", rev = "a27687681" }
-windows-reference = { git = "https://github.com/Tam1SH/windows-rs", rev = "a27687681" }
+windows-reactor = { git = "https://github.com/Tam1SH/windows-rs", rev = "d0fd3ce88" }
+windows-reactor-setup = { git = "https://github.com/Tam1SH/windows-rs", rev = "d0fd3ce88" }
+windows-canvas = { git = "https://github.com/Tam1SH/windows-rs", rev = "d0fd3ce88" }
+windows-collections = { git = "https://github.com/Tam1SH/windows-rs", rev = "d0fd3ce88" }
+windows-core = { git = "https://github.com/Tam1SH/windows-rs", rev = "d0fd3ce88" }
+windows-reference = { git = "https://github.com/Tam1SH/windows-rs", rev = "d0fd3ce88" }
 
 # --- Custom & Git Dependencies ---
-ogurpchik = { git = "https://github.com/Tam1SH/oguRPChik", branch = "master", features = ["rkyv-codec", "vsock", "uds"] }
+ogurpchik = { git = "https://github.com/uniproc-dev/oguRPChik", branch = "master" }
 uniproc-protocol = { git = "https://github.com/Tam1SH/uniproc-protocol", branch = "master" }
+capnp = "0.27"
+capnp-rpc = "0.27"
 
 
 # --- UI Stack (Slint & Windowing) ---
@@ -90,7 +90,7 @@ serde_json = "1.0.149"
 toml = "0.9.8"
 rkyv = { version = "0.8.14", features = ["bytecheck", "std"] }
 uuid = { version = "1.23.0", features = ["v4"] }
-amethystate = "0.9.3"
+amethystate = "0.9.4"
 
 # --- Logging & Diagnostics ---
 tracing = { version = "0.1.44", features = ["release_max_level_warn"] }
@@ -136,6 +136,16 @@ smol_str = "0.3.6"
 
 [workspace.lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage)'] }
+
+# guicons (pulled from crates.io) declares its own optional
+# `windows-reactor` dependency as a plain crates.io version (crates.io
+# strips the git/rev spec on publish, requiring *some* version) - since
+# windows-reactor was never actually published there, that edge needs
+# its own patch redirecting it to the same git rev pinned above (Cargo
+# doesn't chain one [patch] block's target through another, so this has
+# to name the same rev by hand, not just point at the git source).
+[patch.crates-io]
+windows-reactor = { git = "https://github.com/Tam1SH/windows-rs", rev = "d0fd3ce88" }
 
 # --- Profiles ---
 [profile.release]

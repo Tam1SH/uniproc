@@ -1,18 +1,18 @@
 use std::cmp::Ordering;
+use std::rc::Rc;
 
-use app_contracts2::features::agents::{WindowsActionRequest, WindowsReportMessage};
+use app_contracts2::features::agents::{WindowsAction, WindowsActionRequest, WindowsReportMessage};
 use app_contracts2::features::processes::{
     MachineSummary, ProcessRow, ProcessesMsg, ProcessesPort,
 };
 use guinea_core::actor::event_bus::GlobalEventBus;
 use guinea_core::actor::ManagedActor;
 use guinea_macros::{actor_manifest, handler};
-use uniproc_protocol::{ProcessCommand, WindowsRequest};
 use uuid::Uuid;
 
 pub struct ProcessesActor<P: ProcessesPort> {
     ui_port: P,
-    rows: Vec<ProcessRow>,
+    rows: Rc<[ProcessRow]>,
     machine_summary: MachineSummary,
     sort_column: String,
     descending: bool,
@@ -34,7 +34,7 @@ impl<P: ProcessesPort> ProcessesActor<P> {
     pub fn new(ui_port: P) -> Self {
         Self {
             ui_port,
-            rows: Vec::new(),
+            rows: Rc::from(Vec::new()),
             machine_summary: MachineSummary::default(),
             sort_column: "cpu".to_string(),
             descending: true,
@@ -53,13 +53,20 @@ impl<P: ProcessesPort> ProcessesActor<P> {
         let pinned_pos = self
             .selected
             .and_then(|pid| self.rows.iter().position(|r| r.pid == pid));
+        // `self.rows` is shared with whatever `SetRows` message the UI last
+        // received (that's the whole point of the `Rc` - the common case,
+        // publishing, is a refcount bump instead of a deep clone), so it
+        // can't be sorted in place here; `to_vec()` is the one clone this
+        // path pays, and only on a user-triggered sort click, not per tick.
+        let mut rows = self.rows.to_vec();
         sort_rows_pinned(
-            &mut self.rows,
+            &mut rows,
             &self.sort_column,
             self.descending,
             pinned_pos,
             self.selected,
         );
+        self.rows = Rc::from(rows);
     }
 }
 
@@ -72,7 +79,11 @@ fn sort_rows_pinned(
 ) {
     rows.sort_by(|a, b| {
         let ord = match column {
-            "name" => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
+            "name" => a
+                .name
+                .chars()
+                .flat_map(char::to_lowercase)
+                .cmp(b.name.chars().flat_map(char::to_lowercase)),
             "cpu" => a
                 .cpu_percent
                 .partial_cmp(&b.cpu_percent)
@@ -126,28 +137,33 @@ fn on_windows_report<P: ProcessesPort>(this: &mut ProcessesActor<P>, msg: Window
         .and_then(|pid| this.rows.iter().position(|r| r.pid == pid));
     let pinned_pid = this.selected;
 
-    this.rows = msg
+    let mut rows: Vec<ProcessRow> = msg
         .0
         .processes
-        .iter()
-        .map(|p| ProcessRow {
+        .into_iter()
+        .map(|mut p| ProcessRow {
             pid: p.pid,
-            name: p.name.clone(),
             cpu_percent: p.cpu_percent,
             memory_bytes: p.working_set_kb * 1024,
             disk_bytes: p.disk_read_bytes + p.disk_write_bytes,
             net_bytes: p.net_rx_bytes + p.net_tx_bytes,
-            exe_path: p.cmdline.first().cloned().unwrap_or_default(),
-            package_full_name: p.package_full_name.clone(),
+            exe_path: if p.cmdline.is_empty() {
+                String::new()
+            } else {
+                p.cmdline.swap_remove(0)
+            },
+            name: p.name,
+            package_full_name: p.package_full_name,
         })
         .collect();
     sort_rows_pinned(
-        &mut this.rows,
+        &mut rows,
         &this.sort_column,
         this.descending,
         pinned_pos,
         pinned_pid,
     );
+    this.rows = Rc::from(rows);
     this.publish_rows();
 }
 
@@ -186,7 +202,7 @@ fn terminate<P: ProcessesPort>(this: &mut ProcessesActor<P>, _: Terminate) {
     };
     GlobalEventBus::publish(WindowsActionRequest::new(
         Uuid::new_v4(),
-        WindowsRequest::ProcessCommand(ProcessCommand::Kill { pid }),
+        WindowsAction::Kill { pid },
     ));
     this.selected = None;
     this.ui_port.send(ProcessesMsg::SetSelected(None));

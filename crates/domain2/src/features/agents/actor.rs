@@ -210,38 +210,32 @@ fn on_connection_lost<B: AgentBackend>(this: &mut GenericAgentActor<B>, _: Conne
 #[cfg(windows)]
 mod windows {
     use super::*;
-    use crate::features::agents::providers::windows::WindowsBackend;
+    use crate::features::agents::providers::windows::{WindowsBackend, WindowsReply, WindowsRequest};
     use app_contracts2::features::agents::{WindowsActionRequest, WindowsActionResponse};
-    use std::ops::Deref;
     use tracing::error;
-    use uniproc_protocol::WindowsResponse;
 
     #[handler]
-    fn handle_windows_action(this: &GenericAgentActor<WindowsBackend>, msg: WindowsActionRequest) {
+    fn handle_windows_action(
+        this: &GenericAgentActor<WindowsBackend>,
+        msg: WindowsActionRequest,
+        ctx: &Context<GenericAgentActor<WindowsBackend>>,
+    ) {
         let Some(client) = this.client.clone() else {
-            error!("Client not initialized");
+            error!("Dropping {:?}: not connected to the agent", msg.action);
             return;
         };
 
         let correlation_id = msg.correlation_id;
-        let request = match msg.decode_request() {
-            Ok(request) => request,
-            Err(err) => {
-                error!("Failed to decode backend request: {:?}", err);
-                return;
-            }
-        };
-
-        tokio::spawn(async move {
-            match client.call(request).await {
-                Ok(resp_data) => {
-                    if let Ok(response) = rkyv::deserialize::<WindowsResponse, rkyv::rancor::Error>(*resp_data.deref()) {
-                        GlobalEventBus::publish(WindowsActionResponse::new(correlation_id, &response));
-                    }
+        ctx.spawn_bg_detached(async move {
+            match client.call(WindowsRequest::Action(msg.action)).await {
+                // The agent answers every action with a bare Win32 code, so a
+                // non-zero one is a real failure the requester has to see -
+                // publish it rather than logging and dropping it here.
+                Ok(WindowsReply::Code(code)) => {
+                    GlobalEventBus::publish(WindowsActionResponse::new(correlation_id, code));
                 }
-                Err(e) => {
-                    error!("Backend call failed: {:?}", e);
-                }
+                Ok(_) => error!("Agent answered an action with something else"),
+                Err(err) => error!("Action call failed: {err}"),
             }
         });
     }
