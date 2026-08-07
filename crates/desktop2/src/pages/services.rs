@@ -1,10 +1,18 @@
+use guinea::feature::FeatureInitContext;
 use guinea::router::{Page, PageCx};
-use windows_reactor::{Element, text_block};
+use guinea::uri::AppUri;
+use windows_reactor::Element;
 
 pub struct Services;
 
 impl Page for Services {
-    fn view(_cx: &mut PageCx) -> Element {
-        text_block("services - not ported yet").into()
+    const CACHE_STATE_IN_MEMORY: bool = true;
+
+    fn install(ctx: &FeatureInitContext, _uri: &AppUri) -> anyhow::Result<()> {
+        domain2::features::services::install(ctx)
+    }
+
+    fn view(cx: &mut PageCx) -> Element {
+        ui2::pages::services::services_view(cx)
     }
 }
