@@ -30,5 +30,5 @@ winresource = "0.1.30"
 before-packaging-command = "cargo bdev"
 product-name = "Slint example"
 identifier = "com.slint.example"
-resources = ["Cargo.toml", "slint-adapter/ui/assets", "icon.ico"]
+resources = ["Cargo.toml", "../../assets/ui", "icon.ico"]
 icons = ["icon.ico"]

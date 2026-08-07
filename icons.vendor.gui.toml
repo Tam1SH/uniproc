@@ -1,5 +1,5 @@
 [defaults]
-root = "crates/slint-adapter/ui/assets"
+root = "assets/ui"
 
 [docker]
 iconify = "mdi:docker"

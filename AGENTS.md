@@ -24,7 +24,7 @@ Architecture guide for AI agents. Read this before touching any code.
 
 - `crates/app-contracts/src/capabilities.rs` — generated from `#[capability]`
 - `slint-adapter/ui/shared/capabilities.slint` — Slint properties for capability matching
-- `crates/context/src/icons.rs` — codegen'd icon registry from `slint-adapter/ui/assets`
+- `crates/context/src/icons.rs` — codegen'd icon registry from `assets/ui`
 - `crates/domain-test-kit/src/generated.rs` — UI stubs for testing
 - `crates/domain/src/features/l10n/apply.rs` — codegen'd by `crates/domain/build.rs` from
   `crates/domain/locales/en.toml`
@@ -137,7 +137,7 @@ Add a field to `settings.rs` with `#[setting(default = ...)]`. Use the generated
 Reference: `domain/src/features/processes/settings.rs`.
 
 **Adding an icon**
-Add a line to `slint-adapter/ui/assets/download.txt` in the format `name:url`, rebuild. Access via
+Add a line to `assets/ui/download.txt` in the format `name:url`, rebuild. Access via
 `context::icons::Icons::get("name")` in Rust or the codegen'd Slint binding.
 
 **Adding a locale string**
@@ -248,7 +248,7 @@ Contains:
   `slint-adapter/ui/shared/localization.slint`. Add/edit strings only in the `.toml` files.
 - **Trace catalog + policy** — owns named tracing scopes, default enable/disable policy, subscriber bootstrap and
   buffered dump-on-warn/error behavior
-- **Icons registry** — codegen'd Rust icon access backed by `slint-adapter/ui/assets`
+- **Icons registry** — codegen'd Rust icon access backed by `assets/ui`
 
 ### Tracing
 
@@ -524,7 +524,7 @@ Tracing rules:
 ### Icons
 
 ```
-# slint-adapter/ui/assets/download.txt
+# assets/ui/download.txt
 apps-list:https://api.iconify.design/fluent-color:apps-list-24.svg
 dismiss:https://api.iconify.design/fluent:dismiss-20-regular.svg
 ```

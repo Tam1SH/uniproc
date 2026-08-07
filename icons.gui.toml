@@ -1,5 +1,5 @@
 [defaults]
-root = "crates/slint-adapter/ui/assets"
+root = "assets/ui"
 
 [link]
 includes = ["icons.vendor.gui.toml"]
