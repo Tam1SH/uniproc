@@ -58,8 +58,8 @@ windows-core = { git = "https://github.com/Tam1SH/windows-rs", rev = "d0fd3ce88"
 windows-reference = { git = "https://github.com/Tam1SH/windows-rs", rev = "d0fd3ce88" }
 
 # --- Custom & Git Dependencies ---
-ogurpchik = { git = "https://github.com/uniproc-dev/oguRPChik", branch = "master" }
-uniproc-protocol = { git = "https://github.com/Tam1SH/uniproc-protocol", branch = "master" }
+ogurpchik = { git = "https://github.com/uniproc-dev/oguRPChik", tag = "v0.4.0" }
+uniproc-protocol = { git = "https://github.com/uniproc-dev/uniproc-protocol", tag = "v0.2.0" }
 capnp = "0.27"
 capnp-rpc = "0.27"
 

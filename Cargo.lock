@@ -701,8 +701,8 @@ dependencies = [
  "guinea",
  "guinea-core",
  "guinea-macros",
- "guinea-meta",
- "guinea-meta-build",
+ "guinea-meta 0.1.0",
+ "guinea-meta-build 0.1.0",
  "guinea-trace",
  "tokio",
  "tracing",
@@ -1243,7 +1243,7 @@ dependencies = [
  "derive_more",
  "guinea-codegen",
  "guinea-core",
- "guinea-meta",
+ "guinea-meta 0.1.0 (git+https://github.com/uniproc-dev/guinea-meta?tag=v0.1.0)",
  "raw-window-handle",
  "serde",
  "serde_json",
@@ -1260,7 +1260,7 @@ version = "0.1.0"
 dependencies = [
  "fluent-syntax",
  "guinea-core",
- "guinea-meta-build",
+ "guinea-meta-build 0.1.0 (git+https://github.com/uniproc-dev/guinea-meta?tag=v0.1.0)",
  "heck",
  "proc-macro2",
  "quote",
@@ -1306,8 +1306,23 @@ name = "guinea-meta"
 version = "0.1.0"
 
 [[package]]
+name = "guinea-meta"
+version = "0.1.0"
+source = "git+https://github.com/uniproc-dev/guinea-meta?tag=v0.1.0#c2ed5a9cc5ae531ad624a77acf9d3428e6ee4f39"
+
+[[package]]
 name = "guinea-meta-build"
 version = "0.1.0"
+dependencies = [
+ "serde",
+ "toml 0.8.23",
+ "winresource",
+]
+
+[[package]]
+name = "guinea-meta-build"
+version = "0.1.0"
+source = "git+https://github.com/uniproc-dev/guinea-meta?tag=v0.1.0#c2ed5a9cc5ae531ad624a77acf9d3428e6ee4f39"
 dependencies = [
  "serde",
  "toml 0.8.23",
@@ -1741,7 +1756,7 @@ dependencies = [
 [[package]]
 name = "ogurpchik"
 version = "0.4.0"
-source = "git+https://github.com/uniproc-dev/oguRPChik?branch=master#4b144e5378219ebdd7f3ba181c13500a92f741e7"
+source = "git+https://github.com/uniproc-dev/oguRPChik?tag=v0.4.0#b77b2efa4d6a3e355d8fee11299f6567bd09f69a"
 dependencies = [
  "base64",
  "binrw",
@@ -2793,7 +2808,7 @@ checksum = "ebc1c04c71510c7f702b52b7c350734c9ff1295c464a03335b00bb84fc54f853"
 [[package]]
 name = "uniproc-protocol"
 version = "0.2.0"
-source = "git+https://github.com/Tam1SH/uniproc-protocol?branch=master#497f410b58e604ca6e06719ea2f1debd8ae1b6e1"
+source = "git+https://github.com/uniproc-dev/uniproc-protocol?tag=v0.2.0#345d373e4648071c4e23065a229efa60b1787a34"
 dependencies = [
  "capnp",
  "capnp-rpc",
