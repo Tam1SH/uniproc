@@ -2,8 +2,9 @@ mod column_layout;
 mod columns;
 mod grouping;
 
+use app_contracts2::features::agents::AgentConnectionState;
 use app_contracts2::features::metrics::MetricsReducer;
-use app_contracts2::features::processes::{ColumnConfig, ProcessesReducer};
+use app_contracts2::features::processes::{ColumnConfig, ProcessCategory, ProcessesReducer};
 use guicons::icon;
 use guinea::router::PageCx;
 use guinea::widgets::table::{table_with_sort_indicator, SortState};
@@ -11,14 +12,50 @@ use guinea_core::Load;
 use std::collections::HashSet;
 use std::rc::Rc;
 use windows_reactor::{
-    body_large, border, button, grid, hstack, text_block, Element, ElementExt, GridLength,
-    HorizontalAlignment, ProgressRing, SetState, Shape, VerticalAlignment,
+    body_large, border, button, grid, hstack, text_block, Color, Element, ElementExt, GridLength,
+    HorizontalAlignment, ProgressRing, SetState, Shape, Thickness, VerticalAlignment,
 };
 
 use crate::table_styles;
 use column_layout::ColumnLayout;
 use columns::{build_columns, sort_indicator_icon};
 use grouping::{flatten_for_display, pin_display_row, GroupsCache};
+
+/// A small card over the table while there is no live data: a spinner and
+/// one word.
+///
+/// Says nothing about an agent. That the data comes from a separate process
+/// over a pipe is an implementation detail, and naming it asks the reader to
+/// care about something they cannot act on. Nor does it distinguish
+/// connecting from retrying - both mean "working on it", which is the whole
+/// message.
+///
+/// No scrim and no explanation. The rows underneath stay readable and
+/// scrollable - they are the last state that was actually true - and
+/// darkening them to announce a blip costs more than it tells. The card is
+/// there to answer "is it hung or is it working on it", which a spinner
+/// answers on its own.
+fn disconnected_overlay() -> Element {
+
+    border(
+        hstack((
+            ProgressRing::indeterminate().width(20.0).height(20.0),
+            text_block("Connecting..."),
+        ))
+        .spacing(10.0),
+    )
+    .background(CARD_BACKGROUND)
+    .corner_radius(8.0)
+    .padding(Thickness::xy(16.0, 12.0))
+    .horizontal_alignment(HorizontalAlignment::Center)
+    .vertical_alignment(VerticalAlignment::Top)
+    .margin(Thickness::xy(0.0, 12.0))
+    .into()
+}
+
+/// Near-opaque neutral so the card stays readable over whatever rows happen
+/// to be behind it.
+const CARD_BACKGROUND: Color = Color { a: 240, r: 32, g: 32, b: 32 };
 
 pub fn processes_view<S: amethystate::Store>(
     cx: &mut PageCx,
@@ -36,6 +73,10 @@ pub fn processes_view<S: amethystate::Store>(
     let layout = cx.use_ref(ColumnLayout::new(map));
     let icons = cx.use_ref(context2::IconCache::new());
     let (expanded, set_expanded) = cx.use_state(HashSet::<String>::new());
+    // Sections start expanded, so what's stored is the exception: which of
+    // them the user has collapsed.
+    let (collapsed_sections, set_collapsed_sections) =
+        cx.use_state(HashSet::<ProcessCategory>::new());
     let groups_cache = cx.use_ref(GroupsCache::empty());
     let pinned_display_pos = cx.use_ref(Option::<usize>::None);
 
@@ -91,9 +132,28 @@ pub fn processes_view<S: amethystate::Store>(
             };
 
             let mut groups_cache = groups_cache.borrow_mut();
-            let groups = groups_cache.get(rows, state.selected);
-            let mut display_rows = flatten_for_display(groups, &expanded);
-            let columns = build_columns(&layout, machine, rows, icons.clone(), toggle_expanded);
+            let sections = groups_cache.get(rows, state.selected);
+            let toggle_section = {
+                let collapsed = collapsed_sections.clone();
+                SetState::new(move |category: ProcessCategory| {
+                    let mut next = collapsed.clone();
+                    if !next.remove(&category) {
+                        next.insert(category);
+                    }
+                    set_collapsed_sections.call(next);
+                })
+            };
+
+            let mut display_rows =
+                flatten_for_display(sections, &expanded, &collapsed_sections);
+            let columns = build_columns(
+                &layout,
+                machine,
+                rows,
+                icons.clone(),
+                toggle_expanded,
+                toggle_section,
+            );
 
             let prev_pos = *pinned_display_pos.borrow();
             let new_pos = pin_display_row(&mut display_rows, state.selected, prev_pos);
@@ -133,6 +193,15 @@ pub fn processes_view<S: amethystate::Store>(
     let body_separator = separator();
     let status_bar = text_block(format!("Processes: {}", state.total())).padding(8.0);
 
+    // Stacked in one grid cell: the overlay sits over the table rather than
+    // taking its place.
+    let body = if matches!(state.agent_state, AgentConnectionState::Connected) {
+        body
+    } else {
+        grid((body.grid_row(0), disconnected_overlay().grid_row(0)))
+            .rows([GridLength::Star(1.0)])
+            .into()
+    };
     let body = border(body).on_tapped(|| {});
     let deselect_dispatch = dispatch.clone();
 

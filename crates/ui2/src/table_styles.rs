@@ -1,9 +1,26 @@
 use windows::UI::ViewManagement::{UIColorType, UISettings};
 use windows_reactor::{border, text_block, Color, Element, ElementExt, TextTrimming, Thickness};
 
+/// Grey for rows that exist but are not things the user acts on. Fixed
+/// rather than theme-derived: it has to stay legible on both the light and
+/// dark row backgrounds, and mid-grey is the one value that does.
+const MUTED_TEXT_COLOR: Color = Color {
+    a: 255,
+    r: 140,
+    g: 140,
+    b: 140,
+};
+
+/// WinUI numeric font weights: 400 is normal, 600 semibold, 700 bold.
+const SEMIBOLD: u16 = 600;
+
 #[derive(Clone, Copy, Debug)]
 pub struct TableStyles {
     pub row_height: f64,
+    /// Headings get more room than a process row: the larger font needs it,
+    /// and the extra air is what separates one section from the last row of
+    /// the previous one.
+    pub section_row_height: f64,
     pub font_size: f64,
     pub separator_color: Color,
     pub terminate_icon_size: f64,
@@ -15,6 +32,7 @@ impl TableStyles {
     pub const fn new() -> Self {
         Self {
             row_height: 16.0,
+            section_row_height: 24.0,
             font_size: 12.0,
             separator_color: Color {
                 a: 48,
@@ -31,6 +49,22 @@ impl TableStyles {
             .font_size(self.font_size)
             .height(self.row_height)
             .max_height(self.row_height)
+            .text_trimming(TextTrimming::CharacterEllipsis)
+            .into()
+    }
+
+    /// A group heading's label. Two points larger than a process row so the
+    /// headings read as structure rather than as another row that happens to
+    /// have a bold-ish name; everything else about the cell is unchanged, so
+    /// heading and process rows still share a baseline and a row height.
+    pub fn section_cell(&self, content: impl Into<String>) -> Element {
+        text_block(content)
+            .font_size(self.font_size + 2.0)
+            // Semibold, not bold: the heading has to separate itself from the
+            // rows without turning into the loudest thing on the page.
+            .font_weight(SEMIBOLD)
+            .height(self.section_row_height)
+            .max_height(self.section_row_height)
             .text_trimming(TextTrimming::CharacterEllipsis)
             .into()
     }
