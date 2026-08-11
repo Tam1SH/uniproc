@@ -148,6 +148,7 @@ pub struct WindowsBackend;
 impl AgentBackend for WindowsBackend {
     type Client = RpcHandle<WindowsRpc>;
     type RuntimeEvent = WindowsAgentRuntimeEvent;
+    type ScanMessage = WindowsReportMessage;
     const NAME: &'static str = "Windows";
 
     async fn connect(timeout: u64) -> anyhow::Result<Self::Client> {
@@ -166,7 +167,7 @@ impl AgentBackend for WindowsBackend {
     async fn perform_scan(client: &Self::Client) -> anyhow::Result<()> {
         match client.call(WindowsRequest::GetReport).await? {
             WindowsReply::Report(report) => {
-                GlobalEventBus::publish(WindowsReportMessage(report));
+                GlobalEventBus::publish(WindowsReportMessage::Report(report));
                 ratelimit!(3600, info!("Report published to event bus"));
                 Ok(())
             }
@@ -176,6 +177,10 @@ impl AgentBackend for WindowsBackend {
 
     fn create_runtime_event(state: AgentConnectionState, latency: Option<i32>) -> Self::RuntimeEvent {
         WindowsAgentRuntimeEvent { state, latency_ms: latency }
+    }
+
+    fn scan_unavailable(state: AgentConnectionState) -> Self::ScanMessage {
+        WindowsReportMessage::Unavailable(state)
     }
 }
 

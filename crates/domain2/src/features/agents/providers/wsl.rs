@@ -5,7 +5,7 @@ use crate::features::agents::rpc::{RpcHandle, RpcService};
 use crate::features::agents::settings::AgentSettings;
 use anyhow::{anyhow, bail};
 use app_contracts2::features::agents::{
-    AgentConnectionState, LinuxReport, RemoteScanResult, ScanTick, WslAgentRuntimeEvent,
+    AgentConnectionState, LinuxReport, RemoteScan, RemoteScanResult, ScanTick, WslAgentRuntimeEvent,
 };
 use guinea::feature::{AppFeature, AppFeatureInitContext, ContextActorExt, ContextReactorExt, ContextStoreExt};
 use guinea_core::actor::event_bus::GlobalEventBus;
@@ -202,6 +202,7 @@ pub struct WslBackend;
 impl AgentBackend for WslBackend {
     type Client = RpcHandle<WslRpc>;
     type RuntimeEvent = WslAgentRuntimeEvent;
+    type ScanMessage = RemoteScanResult;
     const NAME: &'static str = "WSL";
 
     async fn connect(timeout: u64) -> anyhow::Result<Self::Client> {
@@ -220,13 +221,13 @@ impl AgentBackend for WslBackend {
     async fn perform_scan(client: &Self::Client) -> anyhow::Result<()> {
         match client.call(WslRequest::GetReport).await? {
             WslReply::Report(report) => {
-                GlobalEventBus::publish(RemoteScanResult {
+                GlobalEventBus::publish(RemoteScanResult::Scan(RemoteScan {
                     schema_id: SCHEMA_ID,
                     processes: report.processes,
                     machine: report.machine,
                     environments: report.environments,
                     docker_containers: report.docker_containers,
-                });
+                }));
                 ratelimit!(3600, info!("Report published to event bus"));
                 Ok(())
             }
@@ -236,6 +237,10 @@ impl AgentBackend for WslBackend {
 
     fn create_runtime_event(state: AgentConnectionState, latency: Option<i32>) -> Self::RuntimeEvent {
         WslAgentRuntimeEvent { state, latency_ms: latency }
+    }
+
+    fn scan_unavailable(state: AgentConnectionState) -> Self::ScanMessage {
+        RemoteScanResult::Unavailable(state)
     }
 }
 

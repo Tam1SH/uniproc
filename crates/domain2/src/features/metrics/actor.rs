@@ -47,7 +47,10 @@ impl<P: MetricsPort> ManagedActor for MetricsActor<P> {
 
 #[handler]
 fn on_windows_report<P: MetricsPort>(this: &mut MetricsActor<P>, msg: WindowsReportMessage) {
-    let machine = &msg.0.machine;
+    let WindowsReportMessage::Report(report) = msg else {
+        return;
+    };
+    let machine = &report.machine;
     let timestamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_secs())
