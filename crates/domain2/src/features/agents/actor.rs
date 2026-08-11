@@ -16,7 +16,8 @@ messages! {
     TryConnectWithDelay(u64),
     RetryTimerElapsed,
     ConnectionLost,
-    PingResult(Option<i32>)
+    PingResult(Option<i32>),
+    ScanResult(bool)
 }
 
 struct ConnectResult<C>(Option<C>);
@@ -26,6 +27,7 @@ pub struct GenericAgentActor<B: AgentBackend> {
     client: Option<B::Client>,
     connection: ConnectionMachine,
     ping_in_flight: bool,
+    failed_scans: u32,
     connect_timeout_secs: Field<u64, DefaultStore, WritableMode>,
 }
 
@@ -35,6 +37,7 @@ impl<B: AgentBackend> GenericAgentActor<B> {
             client: None,
             connection: ConnectionMachine::new(),
             ping_in_flight: false,
+            failed_scans: 0,
             connect_timeout_secs,
         }
     }
@@ -50,8 +53,12 @@ impl<B: AgentBackend> GenericAgentActor<B> {
     }
 
     fn publish_state(&self, latency_ms: Option<i32>) {
-        let event = B::create_runtime_event(self.connection.state(), latency_ms);
-        GlobalEventBus::publish(event);
+        let state = self.connection.state();
+        GlobalEventBus::publish(B::create_runtime_event(state, latency_ms));
+
+        if !matches!(state, AgentConnectionState::Connected) {
+            GlobalEventBus::publish(B::scan_unavailable(state));
+        }
     }
 
     fn spawn_connect(&self, ctx: &Context<Self>) {
@@ -77,6 +84,7 @@ impl<B: AgentBackend> guinea_core::actor::ManagedActor for GenericAgentActor<B> 
         @Ping,
         @PingResult,
         @ScanTick,
+        @ScanResult,
         @TryConnectWithDelay,
         @RetryTimerElapsed,
         @ConnectionLost
@@ -130,11 +138,6 @@ fn on_connect_result<B: AgentBackend>(
 
 #[handler]
 fn ping<B: AgentBackend>(this: &mut GenericAgentActor<B>, _: Ping, ctx: &Context<GenericAgentActor<B>>) {
-    let has_subs = GlobalEventBus::has_subscribers::<B::RuntimeEvent>();
-    if !has_subs {
-        return;
-    }
-
     if !matches!(this.connection.state(), AgentConnectionState::Connected) || this.ping_in_flight {
         return;
     }
@@ -176,11 +179,37 @@ fn perform_scan_tick<B: AgentBackend>(this: &GenericAgentActor<B>, _: ScanTick, 
         return;
     };
 
-    ctx.spawn_bg_detached(async move {
-        if let Err(err) = B::perform_scan(&client).await {
-            warn!("[{}] Scan failed: {err}", B::NAME);
+    ctx.spawn_bg(async move {
+        match B::perform_scan(&client).await {
+            Ok(()) => ScanResult(true),
+            Err(err) => {
+                warn!("[{}] Scan failed: {err}", B::NAME);
+                ScanResult(false)
+            }
         }
     });
+}
+
+/// A scan that fails says something about the connection, but not on its own:
+/// a single one can lose to a decode error or a race with a process exiting.
+/// A run of them cannot, and waiting for the ping to notice leaves the page
+/// showing stale numbers for up to a ping interval with nothing said about
+/// it.
+#[handler]
+fn on_scan_result<B: AgentBackend>(this: &mut GenericAgentActor<B>, msg: ScanResult, ctx: &Context<GenericAgentActor<B>>) {
+    const FAILURES_BEFORE_GIVING_UP: u32 = 3;
+
+    if msg.0 {
+        this.failed_scans = 0;
+        return;
+    }
+
+    this.failed_scans += 1;
+    if this.failed_scans >= FAILURES_BEFORE_GIVING_UP {
+        warn!("[{}] {} scans in a row failed, treating the agent as gone", B::NAME, this.failed_scans);
+        this.failed_scans = 0;
+        ctx.addr().send(ConnectionLost);
+    }
 }
 
 #[handler]
@@ -191,8 +220,13 @@ async fn schedule_retry<B: AgentBackend>(ctx: AsyncContext<GenericAgentActor<B>>
 }
 
 #[handler]
-fn on_retry_elapsed<B: AgentBackend>(_: &GenericAgentActor<B>, _: RetryTimerElapsed, ctx: &Context<GenericAgentActor<B>>) {
-    ctx.addr().send(StartConnect);
+fn on_retry_elapsed<B: AgentBackend>(this: &mut GenericAgentActor<B>, _: RetryTimerElapsed, ctx: &Context<GenericAgentActor<B>>) {
+    if let Some(t) = this.apply(ConnectionEvent::RetryDelayElapsed)
+        && t.to == AgentConnectionState::Connecting
+    {
+        this.publish_state(None);
+        this.spawn_connect(ctx);
+    }
 }
 
 #[handler]
@@ -203,6 +237,7 @@ fn on_connection_lost<B: AgentBackend>(this: &mut GenericAgentActor<B>, _: Conne
     warn!("[{}] Connection lost", B::NAME);
     this.client = None;
     this.ping_in_flight = false;
+    this.failed_scans = 0;
     this.publish_state(None);
     ctx.addr().send(StartConnect);
 }

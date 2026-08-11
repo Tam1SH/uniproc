@@ -122,6 +122,20 @@ impl<S: RpcService> RpcHandle<S> {
         Ok(Self { tx })
     }
 
+    /// How long a request may go unanswered before it is called a failure.
+    ///
+    /// There has to be a bound. A call whose reply never arrives leaves the
+    /// caller awaiting forever, and the ping is the caller that matters: the
+    /// actor keeps a `ping_in_flight` latch, so one ping that never returns
+    /// stops every later ping - and the ping is the only thing that notices a
+    /// dead agent. The result was an agent that had gone away hours ago,
+    /// still reported as connected, with nothing in the log to say so.
+    ///
+    /// Generous on purpose: the agent answers a scan in milliseconds, and the
+    /// slowest legitimate call (restarting a service) is still well inside
+    /// this.
+    const CALL_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
+
     pub async fn call(&self, request: S::Request) -> anyhow::Result<S::Reply> {
         let (reply_tx, reply_rx) = oneshot::channel();
 
@@ -130,8 +144,13 @@ impl<S: RpcService> RpcHandle<S> {
             .await
             .map_err(|_| anyhow!("[{}] rpc thread is gone", S::NAME))?;
 
-        reply_rx
-            .await
-            .map_err(|_| anyhow!("[{}] rpc thread dropped the request", S::NAME))?
+        match tokio::time::timeout(Self::CALL_TIMEOUT, reply_rx).await {
+            Ok(reply) => reply.map_err(|_| anyhow!("[{}] rpc thread dropped the request", S::NAME))?,
+            Err(_) => Err(anyhow!(
+                "[{}] no reply within {:?} - treating the session as dead",
+                S::NAME,
+                Self::CALL_TIMEOUT
+            )),
+        }
     }
 }
