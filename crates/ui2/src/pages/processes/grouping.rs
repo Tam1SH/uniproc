@@ -1,4 +1,4 @@
-use app_contracts2::features::processes::ProcessRow;
+use app_contracts2::features::processes::{ProcessCategory, ProcessRow};
 use std::collections::HashMap;
 use std::collections::HashSet;
 
@@ -72,41 +72,140 @@ pub(super) fn group_by_name(rows: &[ProcessRow], leader_pid: Option<u32>) -> Vec
         .collect()
 }
 
-/// Flattens `groups` into the single sequence the table actually renders:
-/// leaders at `depth: 0`, members of any group named in `expanded`
-/// following at `depth: 1`. Purely presentation - `depth`/`is_expanded`/
-/// `has_children` exist because `guinea::widgets::table` wants a flat
-/// `Vec<T>` with per-row chevron/indent flags, not because they mean
-/// anything about the process itself.
+/// A heading row and the process groups filed under it.
+///
+/// Sections are derived, not stored: category membership is a property of
+/// each row (`ProcessRow::category`, decided in the domain), and this only
+/// arranges them for display.
+pub(super) struct Section {
+    pub(super) category: ProcessCategory,
+    groups: Vec<ProcessGroup>,
+}
+
+/// Splits `groups` by their leader's category, in [`ProcessCategory::ORDER`].
+/// Empty categories are dropped rather than rendered as empty headings.
+///
+/// A group takes the most user-facing category any of its members has, in
+/// [`ProcessCategory::ORDER`]. The leader alone cannot decide: a browser is
+/// twenty-odd processes of which exactly one owns the window, and the leader
+/// is whichever has the lowest pid - so going by the leader filed Chrome
+/// under Background while it sat visible on screen.
+pub(super) fn split_by_category(groups: Vec<ProcessGroup>) -> Vec<Section> {
+    let mut by_category: HashMap<ProcessCategory, Vec<ProcessGroup>> = HashMap::new();
+    for group in groups {
+        by_category.entry(group_category(&group)).or_default().push(group);
+    }
+
+    ProcessCategory::ORDER
+        .into_iter()
+        .filter_map(|category| {
+            let groups = by_category.remove(&category)?;
+            (!groups.is_empty()).then_some(Section { category, groups })
+        })
+        .collect()
+}
+
+/// The category a whole group is filed under: the earliest one in
+/// [`ProcessCategory::ORDER`] among its members, so a single windowed member
+/// is enough to make the group an app.
+fn group_category(group: &ProcessGroup) -> ProcessCategory {
+    let rank = |c: ProcessCategory| {
+        ProcessCategory::ORDER
+            .iter()
+            .position(|o| *o == c)
+            .unwrap_or(usize::MAX)
+    };
+    group
+        .members
+        .iter()
+        .map(|m| m.category)
+        .min_by_key(|c| rank(*c))
+        .unwrap_or(group.leader.category)
+}
+
+/// Metrics summed over every process a heading covers.
+#[derive(Default, Clone, Copy)]
+struct SectionTotals {
+    cpu_percent: f32,
+    memory_bytes: u64,
+    disk_bytes: u64,
+    net_bytes: u64,
+    /// Groups, not processes: a browser is one entry in this count no matter
+    /// how many renderer processes it spawned, which is what Task Manager
+    /// shows and what a person means by "how many apps do I have open".
+    group_count: usize,
+}
+
+impl SectionTotals {
+    fn of<'a>(groups: impl Iterator<Item = &'a ProcessGroup>) -> Self {
+        let mut totals = Self::default();
+        for group in groups {
+            // The leader already carries the group's sums, so adding the
+            // members again would double-count.
+            totals.cpu_percent += group.leader.cpu_percent;
+            totals.memory_bytes += group.leader.memory_bytes;
+            totals.disk_bytes += group.leader.disk_bytes;
+            totals.net_bytes += group.leader.net_bytes;
+            totals.group_count += 1;
+        }
+        totals
+    }
+}
+
+/// Flattens `sections` into the single sequence the table actually renders:
+/// a heading (0), then each group's leader (1), then the members of any
+/// expanded group (2).
+///
+/// Purely presentation - `depth`/`is_expanded`/`has_children` exist because
+/// `guinea::widgets::table` wants a flat `Vec<T>` with per-row
+/// chevron/indent flags, not because they mean anything about the process.
 ///
 /// This runs fresh every render; `pin_display_row` (applied by the caller
 /// afterward) is what actually keeps the selected row from jumping to a
 /// new position on every re-sort.
 pub(super) fn flatten_for_display(
-    groups: &[ProcessGroup],
+    sections: &[Section],
     expanded: &HashSet<String>,
+    collapsed_sections: &HashSet<ProcessCategory>,
 ) -> Vec<DisplayRow> {
     let mut out = Vec::new();
-    for group in groups {
-        let has_children = group.members.len() > 1;
-        let is_expanded = has_children && expanded.contains(&group.leader.name);
 
-        out.push(DisplayRow {
-            row: group.leader.clone(),
-            depth: 0,
-            has_children,
-            is_expanded,
-            group_size: group.members.len(),
-        });
+    for section in sections {
+        let totals = SectionTotals::of(section.groups.iter());
+        let section_expanded = !collapsed_sections.contains(&section.category);
+        out.push(DisplayRow::section(
+            section.category,
+            totals,
+            section_expanded,
+        ));
 
-        if is_expanded {
-            out.extend(group.members[1..].iter().map(|r| DisplayRow {
-                row: r.clone(),
+        if !section_expanded {
+            continue;
+        }
+
+        for group in &section.groups {
+            let has_children = group.members.len() > 1;
+            let is_expanded = has_children && expanded.contains(&group.leader.name);
+
+            out.push(DisplayRow {
+                row: group.leader.clone(),
                 depth: 1,
-                has_children: false,
-                is_expanded: false,
-                group_size: 1,
-            }));
+                has_children,
+                is_expanded,
+                group_size: group.members.len(),
+                section: None,
+            });
+
+            if is_expanded {
+                out.extend(group.members[1..].iter().map(|r| DisplayRow {
+                    row: r.clone(),
+                    depth: 2,
+                    has_children: false,
+                    is_expanded: false,
+                    group_size: 1,
+                    section: None,
+                }));
+            }
         }
     }
     out
@@ -124,7 +223,7 @@ pub(super) struct GroupsCache {
     rows_ptr: *const ProcessRow,
     rows_len: usize,
     selected: Option<u32>,
-    groups: Vec<ProcessGroup>,
+    sections: Vec<Section>,
 }
 
 impl GroupsCache {
@@ -133,20 +232,27 @@ impl GroupsCache {
             rows_ptr: std::ptr::null(),
             rows_len: 0,
             selected: None,
-            groups: Vec::new(),
+            sections: Vec::new(),
         }
     }
 
-    pub(super) fn get(&mut self, rows: &[ProcessRow], selected: Option<u32>) -> &[ProcessGroup] {
+    pub(super) fn get(&mut self, rows: &[ProcessRow], selected: Option<u32>) -> &[Section] {
         let rows_ptr = rows.as_ptr();
         if self.rows_ptr != rows_ptr || self.rows_len != rows.len() || self.selected != selected {
-            self.groups = group_by_name(rows, selected);
+            self.sections = split_by_category(group_by_name(rows, selected));
             self.rows_ptr = rows_ptr;
             self.rows_len = rows.len();
             self.selected = selected;
         }
-        &self.groups
+        &self.sections
     }
+}
+
+/// Marks a [`DisplayRow`] as a heading rather than a process.
+#[derive(Clone, PartialEq)]
+pub(super) struct SectionRow {
+    /// The category this heading names and collapses.
+    pub(super) category: ProcessCategory,
 }
 
 #[derive(Clone)]
@@ -156,6 +262,39 @@ pub(super) struct DisplayRow {
     pub(super) has_children: bool,
     pub(super) is_expanded: bool,
     pub(super) group_size: usize,
+    /// `Some` for heading rows. Their `row` is synthetic: it exists only so
+    /// every column has something to format, and its `pid` is 0, which no
+    /// real process has - selection and pinning both key on `pid`, so a
+    /// heading can never be selected by accident.
+    pub(super) section: Option<SectionRow>,
+}
+
+impl DisplayRow {
+    fn section(category: ProcessCategory, totals: SectionTotals, is_expanded: bool) -> Self {
+        let label = category.label();
+        Self {
+            // The metric columns format whatever this row carries, so
+            // filling in the section's totals is all it takes for a heading
+            // to show what its contents add up to.
+            row: ProcessRow {
+                pid: 0,
+                name: label.to_string(),
+                display_name: label.to_string(),
+                cpu_percent: totals.cpu_percent,
+                memory_bytes: totals.memory_bytes,
+                disk_bytes: totals.disk_bytes,
+                net_bytes: totals.net_bytes,
+                exe_path: String::new(),
+                package_full_name: String::new(),
+                category: ProcessCategory::App,
+            },
+            depth: 0,
+            has_children: totals.group_count > 0,
+            is_expanded,
+            group_size: totals.group_count,
+            section: Some(SectionRow { category }),
+        }
+    }
 }
 
 /// Keeps `target_pid`'s row at its previous on-screen position, the same
@@ -190,16 +329,40 @@ mod tests {
     use super::*;
 
     fn row(pid: u32, name: &str) -> ProcessRow {
+        categorised(pid, name, ProcessCategory::App)
+    }
+
+    fn categorised(pid: u32, name: &str, category: ProcessCategory) -> ProcessRow {
         ProcessRow {
             pid,
             name: name.to_string(),
+            display_name: name.to_string(),
             cpu_percent: pid as f32, // distinct per row, handy for eyeballing failures
             memory_bytes: 0,
             disk_bytes: 0,
             net_bytes: 0,
             exe_path: String::new(),
             package_full_name: String::new(),
+            category,
         }
+    }
+
+    /// Rows the table renders for actual processes, ignoring headings.
+    fn process_pids(rows: &[DisplayRow]) -> Vec<u32> {
+        rows.iter()
+            .filter(|d| d.section.is_none())
+            .map(|d| d.row.pid)
+            .collect()
+    }
+
+    fn labels(rows: &[DisplayRow]) -> Vec<&str> {
+        rows.iter()
+            .filter_map(|d| d.section.as_ref().map(|s| s.category.label()))
+            .collect()
+    }
+
+    fn one_section(groups: Vec<ProcessGroup>) -> Vec<Section> {
+        split_by_category(groups)
     }
 
     fn pids(rows: &[DisplayRow]) -> Vec<u32> {
@@ -270,35 +433,146 @@ mod tests {
 
     #[test]
     fn collapsed_groups_render_as_a_single_leader_row() {
-        let groups = vec![group(
+        let sections = one_section(vec![group(
             row(2, "chrome.exe"),
             vec![row(5, "chrome.exe"), row(9, "chrome.exe")],
-        )];
-        let out = flatten_for_display(&groups, &HashSet::new());
+        )]);
+        let out = flatten_for_display(&sections, &HashSet::new(), &HashSet::new());
 
-        assert_eq!(pids(&out), vec![2]);
-        assert!(out[0].has_children);
-        assert_eq!(out[0].group_size, 3);
+        assert_eq!(process_pids(&out), vec![2]);
+        let leader = out.iter().find(|d| d.section.is_none()).unwrap();
+        assert!(leader.has_children);
+        assert_eq!(leader.group_size, 3);
     }
 
     #[test]
     fn expanding_a_group_inserts_members_right_after_its_leader() {
-        let groups = vec![
+        let sections = one_section(vec![
             group(row(10, "alpha"), vec![]),
             group(row(2, "chrome.exe"), vec![row(5, "chrome.exe")]),
             group(row(20, "zeta"), vec![]),
-        ];
+        ]);
         let mut expanded = HashSet::new();
         expanded.insert("chrome.exe".to_string());
-        let out = flatten_for_display(&groups, &expanded);
+        let out = flatten_for_display(&sections, &expanded, &HashSet::new());
 
         // Leader (2) then its one member (5), flanked by the untouched
         // neighbors - nothing before/after the group moved.
-        assert_eq!(pids(&out), vec![10, 2, 5, 20]);
-        assert_eq!(out[1].depth, 0);
-        assert_eq!(out[2].depth, 1);
-        assert!(!out[2].has_children);
+        assert_eq!(process_pids(&out), vec![10, 2, 5, 20]);
+        let member = out.iter().find(|d| d.row.pid == 5).unwrap();
+        assert_eq!(member.depth, 2, "a group member sits one below its leader");
+        assert!(!member.has_children);
     }
+
+    // --- split_by_category / section headings ---
+
+    #[test]
+    fn categories_render_in_order_under_their_parent_headings() {
+        let sections = split_by_category(vec![
+            group(categorised(1, "svchost.exe", ProcessCategory::WindowsService), vec![]),
+            group(categorised(2, "chrome.exe", ProcessCategory::App), vec![]),
+            group(categorised(3, "updater.exe", ProcessCategory::BackgroundThirdParty), vec![]),
+            group(categorised(4, "System", ProcessCategory::WindowsKernel), vec![]),
+            group(categorised(5, "RuntimeBroker.exe", ProcessCategory::BackgroundMicrosoft), vec![]),
+        ]);
+        let out = flatten_for_display(&sections, &HashSet::new(), &HashSet::new());
+
+        // Third-party before Microsoft: the user's own software first.
+        assert_eq!(
+            labels(&out),
+            vec![
+                "Apps",
+                "Background processes",
+                "Background processes (Microsoft)",
+                "Services",
+                "Windows kernel",
+            ]
+        );
+        assert_eq!(process_pids(&out), vec![2, 3, 5, 1, 4]);
+    }
+
+    #[test]
+    fn an_empty_category_gets_no_heading() {
+        let sections = split_by_category(vec![group(
+            categorised(1, "chrome.exe", ProcessCategory::App),
+            vec![],
+        )]);
+        let out = flatten_for_display(&sections, &HashSet::new(), &HashSet::new());
+
+        assert_eq!(labels(&out), vec!["Apps"]);
+    }
+
+    #[test]
+    fn collapsing_a_category_hides_its_processes_but_keeps_the_heading() {
+        let sections = split_by_category(vec![
+            group(categorised(1, "chrome.exe", ProcessCategory::App), vec![]),
+            group(categorised(2, "svchost.exe", ProcessCategory::WindowsService), vec![]),
+        ]);
+        let mut collapsed = HashSet::new();
+        collapsed.insert(ProcessCategory::WindowsService);
+        let out = flatten_for_display(&sections, &HashSet::new(), &collapsed);
+
+        assert_eq!(process_pids(&out), vec![1], "the service row is hidden");
+        assert!(
+            labels(&out).contains(&"Services"),
+            "its heading stays"
+        );
+    }
+
+    /// A heading counts groups, not processes: twenty renderer processes
+    /// are one browser, which is the number Task Manager shows.
+    #[test]
+    fn a_heading_counts_groups_not_processes() {
+        let sections = split_by_category(vec![
+            group(
+                categorised(1, "chrome.exe", ProcessCategory::App),
+                vec![
+                    categorised(2, "chrome.exe", ProcessCategory::BackgroundThirdParty),
+                    categorised(3, "chrome.exe", ProcessCategory::BackgroundThirdParty),
+                ],
+            ),
+            group(categorised(4, "code.exe", ProcessCategory::App), vec![]),
+        ]);
+        let out = flatten_for_display(&sections, &HashSet::new(), &HashSet::new());
+
+        let heading = out.iter().find(|d| d.section.is_some()).unwrap();
+        assert_eq!(heading.group_size, 2, "two apps, not four processes");
+    }
+
+    /// One windowed member is enough: the leader is the lowest pid, which
+    /// for a browser is a renderer, and going by it filed Chrome under
+    /// Background while it sat visible on screen.
+    #[test]
+    fn a_group_is_an_app_if_any_member_owns_a_window() {
+        let sections = split_by_category(vec![group(
+            categorised(1, "chrome.exe", ProcessCategory::BackgroundThirdParty),
+            vec![
+                categorised(2, "chrome.exe", ProcessCategory::BackgroundThirdParty),
+                categorised(3, "chrome.exe", ProcessCategory::App),
+            ],
+        )]);
+
+        assert_eq!(labels(&flatten_for_display(
+            &sections,
+            &HashSet::new(),
+            &HashSet::new()
+        )), vec!["Apps"]);
+    }
+
+    #[test]
+    fn a_heading_can_never_be_selected() {
+        let sections = split_by_category(vec![group(
+            categorised(1, "chrome.exe", ProcessCategory::App),
+            vec![],
+        )]);
+        let out = flatten_for_display(&sections, &HashSet::new(), &HashSet::new());
+
+        // Selection and pinning key on pid; 0 is the idle process and never
+        // appears in a report, so no heading can collide with a real row.
+        assert!(out.iter().filter(|d| d.section.is_some()).all(|d| d.row.pid == 0));
+    }
+
+    // --- pin_display_row: presentation only ---
 
     #[test]
     fn pin_keeps_the_selected_row_at_its_previous_position_across_a_resort() {
@@ -311,6 +585,7 @@ mod tests {
                 has_children: false,
                 is_expanded: false,
                 group_size: 1,
+                section: None,
             })
             .collect();
 
@@ -344,6 +619,7 @@ mod tests {
             has_children: false,
             is_expanded: false,
             group_size: 1,
+            section: None,
         }];
         // pid 99 doesn't exist in this list - e.g. a non-leader member of
         // a collapsed group.
