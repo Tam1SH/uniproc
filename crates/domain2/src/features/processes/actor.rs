@@ -1,12 +1,14 @@
 use std::cmp::Ordering;
 use std::rc::Rc;
 
-use app_contracts2::features::agents::{WindowsAction, WindowsActionRequest, WindowsReportMessage};
-use app_contracts2::features::processes::{
-    MachineSummary, ProcessRow, ProcessesMsg, ProcessesPort,
+use app_contracts2::features::agents::{
+    AgentConnectionState, SignatureStatus, WindowsAction, WindowsActionRequest, WindowsReportMessage,
 };
-use guinea_core::actor::event_bus::GlobalEventBus;
+use app_contracts2::features::processes::{
+    MachineSummary, ProcessCategory, ProcessRow, ProcessesMsg, ProcessesPort,
+};
 use guinea_core::actor::ManagedActor;
+use guinea_core::actor::event_bus::GlobalEventBus;
 use guinea_macros::{actor_manifest, handler};
 use uuid::Uuid;
 
@@ -17,6 +19,7 @@ pub struct ProcessesActor<P: ProcessesPort> {
     sort_column: String,
     descending: bool,
     selected: Option<u32>,
+    agent_state: AgentConnectionState,
 }
 
 impl<P: ProcessesPort> std::fmt::Debug for ProcessesActor<P> {
@@ -36,6 +39,7 @@ impl<P: ProcessesPort> ProcessesActor<P> {
             ui_port,
             rows: Rc::from(Vec::new()),
             machine_summary: MachineSummary::default(),
+            agent_state: AgentConnectionState::Disconnected,
             sort_column: "cpu".to_string(),
             descending: true,
             selected: None,
@@ -46,6 +50,7 @@ impl<P: ProcessesPort> ProcessesActor<P> {
         self.ui_port.send(ProcessesMsg::SetRows {
             rows: self.rows.clone(),
             machine: self.machine_summary.clone(),
+            agent_state: self.agent_state,
         });
     }
 
@@ -123,7 +128,19 @@ impl<P: ProcessesPort> ManagedActor for ProcessesActor<P> {
 
 #[handler]
 fn on_windows_report<P: ProcessesPort>(this: &mut ProcessesActor<P>, msg: WindowsReportMessage) {
-    let machine = &msg.0.machine;
+    let report = match msg {
+        WindowsReportMessage::Report(report) => report,
+        // The agent is gone. Keep the rows on screen - they are the last
+        // thing that was true, and blanking the table would lose the user
+        // their scroll position and selection over a blip.
+        WindowsReportMessage::Unavailable(state) => {
+            this.agent_state = state;
+            this.publish_rows();
+            return;
+        }
+    };
+    this.agent_state = AgentConnectionState::Connected;
+    let machine = &report.machine;
     this.machine_summary = MachineSummary {
         cpu_percent: machine.cpu_percent,
         cpu_current_mhz: machine.cpu_current_mhz,
@@ -137,20 +154,36 @@ fn on_windows_report<P: ProcessesPort>(this: &mut ProcessesActor<P>, msg: Window
         .and_then(|pid| this.rows.iter().position(|r| r.pid == pid));
     let pinned_pid = this.selected;
 
-    let mut rows: Vec<ProcessRow> = msg
-        .0
+    let mut rows: Vec<ProcessRow> = report
         .processes
         .into_iter()
         .map(|mut p| ProcessRow {
             pid: p.pid,
             cpu_percent: p.cpu_percent,
-            memory_bytes: p.working_set_kb * 1024,
+            memory_bytes: p.memory_kb() * 1024,
             disk_bytes: p.disk_read_bytes + p.disk_write_bytes,
             net_bytes: p.net_rx_bytes + p.net_tx_bytes,
-            exe_path: if p.cmdline.is_empty() {
-                String::new()
+
+            exe_path: if p.image_path.is_empty() {
+                if p.cmdline.is_empty() {
+                    String::new()
+                } else {
+                    p.cmdline.swap_remove(0)
+                }
             } else {
-                p.cmdline.swap_remove(0)
+                std::mem::take(&mut p.image_path)
+            },
+            category: ProcessCategory::classify(
+                p.has_visible_window,
+                p.is_kernel_process,
+                p.is_service,
+                p.signature == SignatureStatus::Microsoft,
+            ),
+
+            display_name: if p.display_name.is_empty() {
+                p.name.clone()
+            } else {
+                std::mem::take(&mut p.display_name)
             },
             name: p.name,
             package_full_name: p.package_full_name,
@@ -216,12 +249,14 @@ mod tests {
         ProcessRow {
             pid,
             name: name.to_string(),
+            display_name: name.to_string(),
             cpu_percent: cpu,
             memory_bytes: 0,
             disk_bytes: 0,
             net_bytes: 0,
             exe_path: String::new(),
             package_full_name: String::new(),
+            category: ProcessCategory::App,
         }
     }
 

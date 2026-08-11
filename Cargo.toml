@@ -59,7 +59,7 @@ windows-reference = { git = "https://github.com/Tam1SH/windows-rs", rev = "d0fd3
 
 # --- Custom & Git Dependencies ---
 ogurpchik = { git = "https://github.com/uniproc-dev/oguRPChik", tag = "v0.4.0" }
-uniproc-protocol = { git = "https://github.com/uniproc-dev/uniproc-protocol", tag = "v0.2.0" }
+uniproc-protocol = { git = "https://github.com/uniproc-dev/uniproc-protocol", tag = "v0.4.0" }
 capnp = "0.27"
 capnp-rpc = "0.27"
 

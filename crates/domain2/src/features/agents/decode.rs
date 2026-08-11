@@ -66,6 +66,7 @@ fn windows_process(r: windows_capnp::process_stats::Reader<'_>) -> capnp::Result
         working_set_kb: r.get_working_set_kb(),
         private_bytes_kb: r.get_private_bytes_kb(),
         peak_working_set_kb: r.get_peak_working_set_kb(),
+        private_working_set_kb: r.get_private_working_set_kb(),
         disk_read_bytes: r.get_disk_read_bytes(),
         disk_write_bytes: r.get_disk_write_bytes(),
         disk_read_iops: r.get_disk_read_iops(),
@@ -80,6 +81,7 @@ fn windows_process(r: windows_capnp::process_stats::Reader<'_>) -> capnp::Result
         // degrade to Unknown rather than failing the whole report.
         signature: r.get_signature().map(signature).unwrap_or_default(),
         image_path: text(r.get_image_path()?)?,
+        display_name: text(r.get_display_name()?)?,
     })
 }
 

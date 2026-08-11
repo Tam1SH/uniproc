@@ -78,6 +78,7 @@ pub struct WindowsProcessStats {
     pub working_set_kb: u64,
     pub private_bytes_kb: u64,
     pub peak_working_set_kb: u64,
+    pub private_working_set_kb: u64,
 
     pub disk_read_bytes: u64,
     pub disk_write_bytes: u64,
@@ -93,6 +94,17 @@ pub struct WindowsProcessStats {
     pub is_windows_process: bool,
     pub signature: SignatureStatus,
     pub image_path: String,
+    pub display_name: String,
+}
+
+impl WindowsProcessStats {
+    pub fn memory_kb(&self) -> u64 {
+        if self.private_working_set_kb > 0 {
+            self.private_working_set_kb
+        } else {
+            self.working_set_kb
+        }
+    }
 }
 
 /// Mirrors `windows.capnp`'s `Report`.
@@ -102,8 +114,19 @@ pub struct WindowsReport {
     pub processes: Vec<WindowsProcessStats>,
 }
 
+/// One scan tick's outcome: either a report, or the reason there isn't one.
+///
+/// The connection state rides the same channel as the data on purpose. A
+/// consumer that only ever hears about successful scans cannot tell "the
+/// machine is idle" from "the agent died ten minutes ago and these numbers
+/// are stale" - it just keeps showing the last thing it was handed.
 #[derive(Clone, Debug)]
-pub struct WindowsReportMessage(pub WindowsReport);
+pub enum WindowsReportMessage {
+    Report(WindowsReport),
+    /// No data this tick. Carries where the connection currently stands, so
+    /// a consumer can say "reconnecting" rather than going blank.
+    Unavailable(AgentConnectionState),
+}
 impl Message for WindowsReportMessage {}
 
 #[derive(Clone, Debug)]
@@ -283,12 +306,20 @@ pub struct LinuxReport {
 
 /// A scan result from a non-host agent, tagged with which one produced it.
 #[derive(Clone, Debug)]
-pub struct RemoteScanResult {
+pub struct RemoteScan {
     pub schema_id: &'static str,
     pub processes: Vec<LinuxProcessStats>,
     pub machine: LinuxMachineStats,
     pub environments: Vec<LinuxEnvironmentInfo>,
     pub docker_containers: Vec<LinuxDockerContainerInfo>,
+}
+
+/// The non-host equivalent of [`WindowsReportMessage`]: data, or the state
+/// that explains its absence.
+#[derive(Clone, Debug)]
+pub enum RemoteScanResult {
+    Scan(RemoteScan),
+    Unavailable(AgentConnectionState),
 }
 impl Message for RemoteScanResult {}
 
