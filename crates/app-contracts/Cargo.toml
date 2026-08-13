@@ -4,16 +4,23 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-forsl-core.workspace = true
-forsl-macros.workspace = true
-cfg-if.workspace = true
-inventory.workspace = true
-ogurpchik.workspace = true
-rkyv.workspace = true
-serde.workspace = true
-slint.workspace = true
-uniproc-protocol.workspace = true
-uuid.workspace = true
+guinea = { workspace = true }
+guinea-core = { workspace = true }
+guinea-macros = { workspace = true }
+inventory = { workspace = true }
+anyhow = { workspace = true }
+fluent-templates = { workspace = true }
+fluent-bundle = { workspace = true }
+unic-langid = { workspace = true }
+cfg-if = { workspace = true }
+uuid = { workspace = true }
+guicons = { workspace = true }
+amethystate = { workspace = true }
+serde = { workspace = true }
 
 [build-dependencies]
-forsl-codegen.workspace = true
+guinea-codegen = { workspace = true }
+guicons-build = { workspace = true }
+
+[lints]
+workspace = true

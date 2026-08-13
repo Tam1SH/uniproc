@@ -1,0 +1,20 @@
+[package]
+name = "ui"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+windows = { workspace = true }
+windows-canvas = { workspace = true }
+windows-reactor = { workspace = true }
+app-contracts = { workspace = true }
+context = { workspace = true }
+guinea = { workspace = true, features = ["widgets"] }
+guicons = { workspace = true, features = ["windows-reactor"] }
+amethystate = { workspace = true }
+guinea-core = { workspace = true }
+uuid = { workspace = true }
+tracing = { workspace = true }
+
+[lints]
+workspace = true

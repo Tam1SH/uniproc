@@ -1,3 +1,7 @@
-mod model;
+mod connection;
+mod linux;
+mod windows;
 
-pub use model::*;
+pub use connection::*;
+pub use linux::*;
+pub use windows::*;

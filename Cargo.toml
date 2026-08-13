@@ -5,25 +5,15 @@ edition = "2024"
 
 [workspace]
 resolver = "2"
-default-members = ["crates/desktop2"]
+default-members = ["crates/desktop"]
 members = [
-    "crates/app-contracts2",
-    "crates/context2",
-    "crates/desktop2",
-    "crates/domain2",
-    "crates/ui2",
+    "crates/app-contracts",
+    "crates/context",
+    "crates/desktop",
+    "crates/domain",
+    "crates/ui",
     "crates/xtask",
 ]
-
-# The crates below (context, domain, domain-test-kit, domain/src/features/*,
-# app-contracts, slint-adapter, widgets, macros, desktop) are the old
-# Slint + forsl stack. They're deliberately NOT workspace members right now:
-# their path deps pointed at a `../forsl` checkout that no longer exists
-# (forsl was renamed/moved to the `guinea` repo, with a materially different
-# API - Reducer/Scope/Router redesign), so fixing their manifests just to
-# keep them compiling isn't worth it. New features are being rebuilt fresh
-# against `guinea` in crates/*2 alongside them; the old crates stay on disk,
-# inert, until each feature's new version is done, then get deleted outright.
 
 [workspace.dependencies]
 # --- guinea ---
@@ -42,10 +32,10 @@ guicons = "0.3.2"
 guicons-build = "0.3.2"
 
 # --- Internal ---
-app-contracts2 = { path = "crates/app-contracts2" }
-context2 = { path = "crates/context2" }
-domain2 = { path = "crates/domain2" }
-ui2 = { path = "crates/ui2" }
+app-contracts = { path = "crates/app-contracts" }
+context = { path = "crates/context" }
+domain = { path = "crates/domain" }
+ui = { path = "crates/ui" }
 
 # Pinned to the exact rev guinea's own workspace pins, for the same reason
 # guinea pins it: two separate lockfiles resolving an unpinned `git = "..."`
@@ -59,44 +49,28 @@ windows-reference = { git = "https://github.com/Tam1SH/windows-rs", rev = "d0fd3
 
 # --- Custom & Git Dependencies ---
 ogurpchik = { git = "https://github.com/uniproc-dev/oguRPChik", tag = "v0.4.0" }
-uniproc-protocol = { git = "https://github.com/uniproc-dev/uniproc-protocol", tag = "v0.6.0" }
+uniproc-protocol = { git = "https://github.com/uniproc-dev/uniproc-protocol", tag = "v0.7.0" }
 capnp = "0.27"
 capnp-rpc = "0.27"
 
-
-# --- UI Stack (Slint & Windowing) ---
-slint = { version = "=1.17.1", features = ["renderer-skia"] }
-slint-build = "=1.17.1"
-i-slint-backend-winit = "=1.17.1"
-i-slint-compiler = "=1.17.1"
-i-slint-core = "=1.17.1"
-i-slint-backend-testing = "=1.17.1"
-winit = "0.30.12"
-window-vibrancy = "0.7.1"
 raw-window-handle = "0.6.2"
 
 # --- Async & Networking ---
 tokio = { version = "1.49.0", features = ["full"] }
 compio = { version = "0.18.0", features = ["net", "io-compat", "process", "macros", "time"] }
 futures = "0.3.31"
-async-trait = "0.1.89"
 flume = { version = "0.12.0", features = ["async"] }
-bytes = "1.11.1"
-socket2 = "0.6.2"
 
 # --- Serialization & Data ---
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
 toml = "0.9.8"
-rkyv = { version = "0.8.14", features = ["bytecheck", "std"] }
 uuid = { version = "1.23.0", features = ["v4"] }
 amethystate = "0.9.4"
 
 # --- Logging & Diagnostics ---
 tracing = { version = "0.1.44", features = ["release_max_level_warn"] }
 tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
-tracing-appender = "0.2.3"
-dhat = "0.3"
 
 # --- System & Platform ---
 windows = { version = "0.61.3", features = [
@@ -108,31 +82,15 @@ windows = { version = "0.61.3", features = [
     "UI_ViewManagement", "Win32_System_Hypervisor", "Management", "Management_Deployment",
     "ApplicationModel", "ApplicationModel_Core", "Win32_Storage_Packaging", "Win32_Storage_Packaging_Appx", "Win32_System_Services",
 ] }
-libc = "1.0.0-alpha.2"
-sysinfo = "0.38.0"
-
-# --- Proc-Macro & Code Generation ---
-proc-macro2 = "1.0"
-quote = "1.0"
-syn = { version = "2.0", features = ["full", "extra-traits"] }
 
 # --- Utilities ---
 anyhow = "1.0.100"
-arc-swap = "1.7.1"
-bon = "3.9.1"
 cfg-if = "1"
-dashmap = { version = "6.1.0", features = ["serde"] }
-fxhash = "0.2.1"
 fluent-templates = "0.14.0"
 fluent-bundle = "0.16.0"
 unic-langid = { version = "0.9.6", features = ["macros"] }
-lazy_static = "1.5.0"
-smallvec = "1.15.1"
-static_assertions = "1.1.0"
 ttl_cache = "0.5"
-walkdir = "2.5.0"
-derive_more = "2.1.1"
-smol_str = "0.3.6"
+derive_more = { version = "2.1.1", features = ["debug"] }
 
 [workspace.lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage)'] }

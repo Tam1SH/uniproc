@@ -4,31 +4,30 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-anyhow.workspace = true
-forsl-core.workspace = true
-context.workspace = true
-dhat.workspace = true
-domain.workspace = true
-domain-agents.workspace = true
-domain-environments.workspace = true
-domain-navigation.workspace = true
-domain-processes.workspace = true
-slint.workspace = true
-slint-adapter.workspace = true
-tokio.workspace = true
-tracing.workspace = true
-tracing-appender.workspace = true
-tracing-subscriber.workspace = true
-forsl.workspace = true
+app-contracts = { workspace = true }
+domain = { workspace = true }
+guinea = { workspace = true }
+guinea-core = { workspace = true }
+guinea-macros = { workspace = true }
+ui = { workspace = true }
+guicons = { workspace = true, features = ["windows-reactor"] }
+guinea-meta = { workspace = true }
+guinea-trace = { workspace = true }
+amethystate = { workspace = true }
+anyhow = { workspace = true }
+uuid = { workspace = true }
+unic-langid = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+windows-collections = { workspace = true }
+windows-core = { workspace = true }
+windows-reference = { workspace = true }
+windows-reactor = { workspace = true }
 
 [build-dependencies]
-guicons-core.workspace = true
-winresource = "0.1.30"
+windows-reactor-setup = { workspace = true }
+guinea-meta-build = { workspace = true }
 
-
-[package.metadata.packager]
-before-packaging-command = "cargo bdev"
-product-name = "Slint example"
-identifier = "com.slint.example"
-resources = ["Cargo.toml", "../../assets/ui", "icon.ico"]
-icons = ["icon.ico"]
+[lints]
+workspace = true

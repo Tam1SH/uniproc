@@ -1,12 +1,7 @@
-use forsl_macros::capability;
-
-mod bindings;
+mod messages;
 mod model;
-mod ports;
+mod state;
 
-pub use bindings::*;
+pub use messages::*;
 pub use model::*;
-pub use ports::*;
-
-#[capability("services")]
-pub struct ServicesCapability;
+pub use state::*;

@@ -1,50 +1,35 @@
-use amethystate::{AmeType, ReactiveMap, amethystate};
-use serde::{Deserialize, Serialize};
+use amethystate::{ReactiveMap, amethystate};
+use app_contracts::features::processes::ColumnConfig;
 
-#[amethystate(prefix = "process")]
-pub struct ProcessSettings {
-    #[amestate(default = 1500u64)]
+#[amethystate(prefix = "processes")]
+pub struct ProcessesSettings {
+    #[amestate(default = 500u64)]
     scan_interval_ms: u64,
 
-    #[amestate(default = 5000u64)]
-    terminate_timeout_ms: u64,
+    #[amestate(nested)]
+    columns: ProcessesColumnsSettings,
 
     #[amestate(nested)]
-    columns: ColumnsSettings,
+    grouping: ProcessesGroupingSettings,
 }
 
 #[amethystate]
-pub struct ColumnsSettings {
-    #[amestate(default = 70u64)]
-    default_width_px: u64,
+pub struct ProcessesGroupingSettings {
+    #[amestate(default = {})]
+    expanded_groups: ReactiveMap<String, bool>,
 
-    #[amestate(default = {
-        "name": 200u64,
-        "cpu": 90u64,
-        "memory": 120u64,
-    })]
-    widths_px: ReactiveMap<String, u64>,
-
-    #[amestate(default = {
-        "name": ColumnMetadata { is_text: true, ..Default::default() },
-        "cpu": ColumnMetadata { is_metric: true, ..Default::default() },
-        "memory": ColumnMetadata { is_metric: true, ..Default::default() },
-    })]
-    column_metadata: ReactiveMap<String, ColumnMetadata>,
-
-    #[amestate(default = {
-        "name": 120u64,
-        "cpu": 90u64,
-        "memory": 120u64,
-    })]
-    min_widths_px: ReactiveMap<String, u64>,
+    #[amestate(default = {})]
+    collapsed_sections: ReactiveMap<String, bool>,
 }
 
-#[derive(Default, Debug, Clone, Serialize, Deserialize, AmeType)]
-pub struct ColumnMetadata {
-    #[serde(default)]
-    pub is_text: bool,
-
-    #[serde(default)]
-    pub is_metric: bool,
+#[amethystate]
+pub struct ProcessesColumnsSettings {
+    #[amestate(default = {
+        "name": ColumnConfig { width: 280, min_width: 200, visible: true },
+        "cpu": ColumnConfig { width: 120, min_width: 90, visible: true },
+        "memory": ColumnConfig { width: 140, min_width: 90, visible: true },
+        "net": ColumnConfig { width: 110, min_width: 80, visible: true },
+        "disk": ColumnConfig { width: 110, min_width: 80, visible: true },
+    })]
+    configs: ReactiveMap<String, ColumnConfig>,
 }

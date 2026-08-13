@@ -1,11 +1,11 @@
 use super::backend::AgentBackend;
-use crate::features::agents::connection::*;
+use super::connection::*;
 use amethystate::{DefaultStore, Field, WritableMode};
 use app_contracts::features::agents::{AgentConnectionState, ScanTick};
-use forsl_core::actor::event_bus::EventBus;
-use forsl_core::actor::{AsyncContext, Context, Message, NoOp};
-use forsl_core::messages;
-use forsl_macros::handler;
+use guinea_core::actor::event_bus::GlobalEventBus;
+use guinea_core::actor::{AsyncContext, Context, Message};
+use guinea_core::messages;
+use guinea_macros::{actor_manifest, handler};
 use std::fmt::Debug;
 use tracing::{info, warn};
 
@@ -16,7 +16,8 @@ messages! {
     TryConnectWithDelay(u64),
     RetryTimerElapsed,
     ConnectionLost,
-    PingResult(Option<i32>)
+    PingResult(Option<i32>),
+    ScanResult(bool)
 }
 
 struct ConnectResult<C>(Option<C>);
@@ -26,6 +27,7 @@ pub struct GenericAgentActor<B: AgentBackend> {
     client: Option<B::Client>,
     connection: ConnectionMachine,
     ping_in_flight: bool,
+    failed_scans: u32,
     connect_timeout_secs: Field<u64, DefaultStore, WritableMode>,
 }
 
@@ -35,6 +37,7 @@ impl<B: AgentBackend> GenericAgentActor<B> {
             client: None,
             connection: ConnectionMachine::new(),
             ping_in_flight: false,
+            failed_scans: 0,
             connect_timeout_secs,
         }
     }
@@ -43,20 +46,19 @@ impl<B: AgentBackend> GenericAgentActor<B> {
         match self.connection.apply(event) {
             Ok(t) => Some(t),
             Err(err) => {
-                warn!(
-                    "[{}] FSM invalid: {:?} on {:?}",
-                    B::NAME,
-                    err.event,
-                    err.state
-                );
+                warn!("[{}] FSM invalid: {:?} on {:?}", B::NAME, err.event, err.state);
                 None
             }
         }
     }
 
     fn publish_state(&self, latency_ms: Option<i32>) {
-        let event = B::create_runtime_event(self.connection.state(), latency_ms);
-        EventBus::publish(event);
+        let state = self.connection.state();
+        GlobalEventBus::publish(B::create_runtime_event(state, latency_ms));
+
+        if !matches!(state, AgentConnectionState::Connected) {
+            GlobalEventBus::publish(B::scan_unavailable(state));
+        }
     }
 
     fn spawn_connect(&self, ctx: &Context<Self>) {
@@ -73,23 +75,31 @@ impl<B: AgentBackend> GenericAgentActor<B> {
     }
 }
 
+#[actor_manifest]
+impl<B: AgentBackend> guinea_core::actor::ManagedActor for GenericAgentActor<B> {
+    type Handlers = handlers!(
+        @Init,
+        @StartConnect,
+        @ConnectResult<B::Client>,
+        @Ping,
+        @PingResult,
+        @ScanTick,
+        @ScanResult,
+        @TryConnectWithDelay,
+        @RetryTimerElapsed,
+        @ConnectionLost
+    );
+}
+
 #[handler]
-fn init<B: AgentBackend>(
-    this: &GenericAgentActor<B>,
-    _: Init,
-    ctx: &Context<GenericAgentActor<B>>,
-) {
+fn init<B: AgentBackend>(this: &GenericAgentActor<B>, _: Init, ctx: &Context<GenericAgentActor<B>>) {
     info!("[{}] Actor init", B::NAME);
     this.publish_state(None);
     ctx.addr().send(StartConnect);
 }
 
 #[handler]
-fn start_connect<B: AgentBackend>(
-    this: &mut GenericAgentActor<B>,
-    _: StartConnect,
-    ctx: &Context<GenericAgentActor<B>>,
-) {
+fn start_connect<B: AgentBackend>(this: &mut GenericAgentActor<B>, _: StartConnect, ctx: &Context<GenericAgentActor<B>>) {
     if let Some(t) = this.apply(ConnectionEvent::BeginConnect)
         && t.to == AgentConnectionState::Connecting
     {
@@ -127,16 +137,7 @@ fn on_connect_result<B: AgentBackend>(
 }
 
 #[handler]
-fn ping<B: AgentBackend>(
-    this: &mut GenericAgentActor<B>,
-    _: Ping,
-    ctx: &Context<GenericAgentActor<B>>,
-) {
-    let has_subs = EventBus::has_subscribers::<B::RuntimeEvent>();
-    if !has_subs {
-        return;
-    }
-
+fn ping<B: AgentBackend>(this: &mut GenericAgentActor<B>, _: Ping, ctx: &Context<GenericAgentActor<B>>) {
     if !matches!(this.connection.state(), AgentConnectionState::Connected) || this.ping_in_flight {
         return;
     }
@@ -156,11 +157,7 @@ fn ping<B: AgentBackend>(
 }
 
 #[handler]
-fn on_ping_result<B: AgentBackend>(
-    this: &mut GenericAgentActor<B>,
-    msg: PingResult,
-    ctx: &Context<GenericAgentActor<B>>,
-) {
+fn on_ping_result<B: AgentBackend>(this: &mut GenericAgentActor<B>, msg: PingResult, ctx: &Context<GenericAgentActor<B>>) {
     if !this.ping_in_flight {
         return;
     }
@@ -172,11 +169,7 @@ fn on_ping_result<B: AgentBackend>(
 }
 
 #[handler]
-fn perform_scan_tick<B: AgentBackend>(
-    this: &GenericAgentActor<B>,
-    _: ScanTick,
-    ctx: &Context<GenericAgentActor<B>>,
-) {
+fn perform_scan_tick<B: AgentBackend>(this: &GenericAgentActor<B>, _: ScanTick, ctx: &Context<GenericAgentActor<B>>) {
     if !matches!(this.connection.state(), AgentConnectionState::Connected) {
         return;
     }
@@ -187,44 +180,59 @@ fn perform_scan_tick<B: AgentBackend>(
     };
 
     ctx.spawn_bg(async move {
-        if let Err(err) = B::perform_scan(&client).await {
-            warn!("[{}] Scan failed: {err}", B::NAME);
+        match B::perform_scan(&client).await {
+            Ok(()) => ScanResult(true),
+            Err(err) => {
+                warn!("[{}] Scan failed: {err}", B::NAME);
+                ScanResult(false)
+            }
         }
-        NoOp
     });
 }
 
 #[handler]
-async fn schedule_retry<B: AgentBackend>(
-    ctx: AsyncContext<GenericAgentActor<B>>,
-    msg: TryConnectWithDelay,
-) {
+fn on_scan_result<B: AgentBackend>(this: &mut GenericAgentActor<B>, msg: ScanResult, ctx: &Context<GenericAgentActor<B>>) {
+    const FAILURES_BEFORE_GIVING_UP: u32 = 3;
+
+    if msg.0 {
+        this.failed_scans = 0;
+        return;
+    }
+
+    this.failed_scans += 1;
+    if this.failed_scans >= FAILURES_BEFORE_GIVING_UP {
+        warn!("[{}] {} scans in a row failed, treating the agent as gone", B::NAME, this.failed_scans);
+        this.failed_scans = 0;
+        ctx.addr().send(ConnectionLost);
+    }
+}
+
+#[handler]
+async fn schedule_retry<B: AgentBackend>(ctx: AsyncContext<GenericAgentActor<B>>, msg: TryConnectWithDelay) {
     let secs = msg.0;
     tokio::time::sleep(std::time::Duration::from_secs(secs)).await;
     ctx.send(RetryTimerElapsed);
 }
 
 #[handler]
-fn on_retry_elapsed<B: AgentBackend>(
-    _: &GenericAgentActor<B>,
-    _: RetryTimerElapsed,
-    ctx: &Context<GenericAgentActor<B>>,
-) {
-    ctx.addr().send(StartConnect);
+fn on_retry_elapsed<B: AgentBackend>(this: &mut GenericAgentActor<B>, _: RetryTimerElapsed, ctx: &Context<GenericAgentActor<B>>) {
+    if let Some(t) = this.apply(ConnectionEvent::RetryDelayElapsed)
+        && t.to == AgentConnectionState::Connecting
+    {
+        this.publish_state(None);
+        this.spawn_connect(ctx);
+    }
 }
 
 #[handler]
-fn on_connection_lost<B: AgentBackend>(
-    this: &mut GenericAgentActor<B>,
-    _: ConnectionLost,
-    ctx: &Context<GenericAgentActor<B>>,
-) {
+fn on_connection_lost<B: AgentBackend>(this: &mut GenericAgentActor<B>, _: ConnectionLost, ctx: &Context<GenericAgentActor<B>>) {
     if this.apply(ConnectionEvent::ConnectionLost).is_none() {
         return;
     }
     warn!("[{}] Connection lost", B::NAME);
     this.client = None;
     this.ping_in_flight = false;
+    this.failed_scans = 0;
     this.publish_state(None);
     ctx.addr().send(StartConnect);
 }
@@ -232,43 +240,29 @@ fn on_connection_lost<B: AgentBackend>(
 #[cfg(windows)]
 mod windows {
     use super::*;
-    use crate::agents_impl::providers::windows::WindowsBackend;
+    use crate::features::agents::providers::windows::{WindowsBackend, WindowsReply, WindowsRequest};
     use app_contracts::features::agents::{WindowsActionRequest, WindowsActionResponse};
-    use std::ops::Deref;
     use tracing::error;
-    use uniproc_protocol::WindowsResponse;
 
     #[handler]
     fn handle_windows_action(
         this: &GenericAgentActor<WindowsBackend>,
         msg: WindowsActionRequest,
+        ctx: &Context<GenericAgentActor<WindowsBackend>>,
     ) {
         let Some(client) = this.client.clone() else {
-            error!("Client not initialized");
+            error!("Dropping {:?}: not connected to the agent", msg.action);
             return;
         };
 
         let correlation_id = msg.correlation_id;
-        let request = match msg.decode_request() {
-            Ok(request) => request,
-            Err(err) => {
-                error!("Failed to decode backend request: {:?}", err);
-                return;
-            }
-        };
-
-        tokio::spawn(async move {
-            match client.call(request).await {
-                Ok(resp_data) => {
-                    if let Ok(response) = rkyv::deserialize::<WindowsResponse, rkyv::rancor::Error>(
-                        *resp_data.deref(),
-                    ) {
-                        EventBus::publish(WindowsActionResponse::new(correlation_id, &response));
-                    }
+        ctx.spawn_bg_detached(async move {
+            match client.call(WindowsRequest::Action(msg.action)).await {
+                Ok(WindowsReply::Code(code)) => {
+                    GlobalEventBus::publish(WindowsActionResponse::new(correlation_id, code));
                 }
-                Err(e) => {
-                    error!("Backend call failed: {:?}", e);
-                }
+                Ok(_) => error!("Agent answered an action with something else"),
+                Err(err) => error!("Action call failed: {err}"),
             }
         });
     }

@@ -1,7 +1,3 @@
-pub mod bindings;
-pub mod model;
-pub mod ports;
+mod contracts;
 
-pub use bindings::*;
-pub use model::*;
-pub use ports::*;
+pub use contracts::{SidebarActions, SidebarBinder, SidebarMsg, SidebarPort, SidebarReducer, SidebarState};

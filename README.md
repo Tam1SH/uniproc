@@ -4,7 +4,7 @@
 **A modern, blazing fast 🚀 system monitor for the Windows 11 & WSL.**
 
 [![Rust](https://img.shields.io/badge/language-Rust-orange.svg)](https://www.rust-lang.org/)
-[![UI](https://img.shields.io/badge/UI-Slint-blue.svg)](https://slint.dev/)
+[![UI](https://img.shields.io/badge/UI-WinUI%203-blue.svg)](https://learn.microsoft.com/windows/apps/winui/winui3/)
 [![Platform](https://img.shields.io/badge/platform-Windows%2011-blue.svg)]()
 </div>
 
@@ -12,7 +12,7 @@
 
 ## What is it?
 
-**Uniproc** is a modern and fast system monitor for Windows 11 built with **Rust** and **Slint**. It serves as a
+**Uniproc** is a modern and fast system monitor for Windows 11 built with **Rust** and **WinUI 3**. It serves as a
 lightweight alternative to the default Task Manager, providing unified process monitoring across Windows, WSL, and
 Docker in a single, seamless interface.
 

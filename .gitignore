@@ -9,5 +9,5 @@
 /.cache
 
 crates/ui2/.cache/
-run_desktop2.log
+run_desktop.log
 *.lnk

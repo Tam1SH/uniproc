@@ -1,113 +1,62 @@
-use crate::features::sidebar::settings::SidebarSettings;
-use app_contracts::features::sidebar::{
-    RequestTransition, SidebarBinder, SidebarPartialBinder, UiSidebarBindings, UiSidebarPort,
-    UiSidebarPortMsg,
-};
-use forsl_core::actor::ManagedActor;
-use forsl_core::trace::{current_meta, install_current_meta};
-use forsl_macros::handler;
-use macros::actor_manifest;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::{Duration, Instant};
+use app_contracts::features::sidebar::{SidebarMsg, SidebarPort};
+use guinea_core::actor::ManagedActor;
+use guinea_macros::{actor_manifest, handler};
 
-#[actor_manifest(binder = SidebarBinder)]
-impl<P: UiSidebarPort + Clone> ManagedActor for SidebarActor<P> {
-    type Bus = bus!(
-        @RequestTransition
-    );
-    type Handlers = handlers!(
-        @RequestTransition,
-        #[bind]
-        SideBarWidthChanged(u64)
-    );
-}
+use super::settings::SidebarSettings;
 
-pub struct SidebarActor<P: UiSidebarPort> {
+#[derive(derive_more::Debug)]
+pub struct SidebarActor<P: SidebarPort> {
+    #[debug(skip)]
     ui_port: P,
+    #[debug(skip)]
     settings: SidebarSettings,
-    anim_token: Arc<AtomicU64>,
 }
 
-impl<P: UiSidebarPort + Clone> SidebarActor<P> {
+impl<P: SidebarPort> SidebarActor<P> {
     pub fn new(ui_port: P, settings: SidebarSettings) -> Self {
-        Self {
-            ui_port,
-            settings,
-            anim_token: Arc::new(AtomicU64::new(0)),
-        }
+        Self { ui_port, settings }
     }
 
-    fn run_animation_step(
-        ui: P,
-        token_ref: Arc<AtomicU64>,
-        target_token: u64,
-        start: Instant,
-        duration: Duration,
-    ) {
-        let meta = current_meta();
-        slint::Timer::single_shot(Duration::from_millis(16), move || {
-            let _meta_guard = meta.clone().map(install_current_meta);
-            if token_ref.load(Ordering::SeqCst) != target_token {
-                return;
-            }
-
-            let elapsed = start.elapsed().as_secs_f32();
-            let t = (elapsed / duration.as_secs_f32().max(0.001)).clamp(0.0, 1.0);
-
-            let eased = if t < 0.5 {
-                8.0 * t * t * t * t
-            } else {
-                1.0 - f32::powi(-2.0 * t + 2.0, 4) / 2.0
-            };
-
-            ui.send(UiSidebarPortMsg::SetSwitchProgress(eased));
-
-            if t < 1.0 {
-                Self::run_animation_step(ui, token_ref, target_token, start, duration);
-            } else {
-                ui.send(UiSidebarPortMsg::SetSwitchProgress(1.0));
-            }
-        });
+    fn publish(&self) {
+        let open = self.settings.open().get();
+        let width = self.settings.width().get();
+        tracing::debug!(open, width, "sidebar publish");
+        self.ui_port.send(SidebarMsg::Set { open, width });
     }
 }
 
-#[handler]
-fn handle_transition<P: UiSidebarPort + Clone>(this: &SidebarActor<P>, msg: RequestTransition) {
-    let ui = this.ui_port.clone();
-
-    ui.send(UiSidebarPortMsg::SetSwitchTransition {
-        from_index: msg.from_index,
-        to_index: msg.to_index,
-        progress: 0.0,
-    });
-    ui.send(UiSidebarPortMsg::SetContentVisible(false));
-
-    let next_token = this.anim_token.fetch_add(1, Ordering::SeqCst) + 1;
-    let duration = Duration::from_millis(600);
-
-    SidebarActor::<P>::run_animation_step(
-        ui.clone(),
-        this.anim_token.clone(),
-        next_token,
-        Instant::now(),
-        duration,
+#[actor_manifest]
+impl<P: SidebarPort> ManagedActor for SidebarActor<P> {
+    type Handlers = handlers!(
+        bind {
+            Toggle,
+            SetOpen(bool),
+            SetWidth(u64)
+        },
+        Refresh
     );
-
-    let h_delay = Duration::from_millis(this.settings.switch_hide_delay_ms().get());
-    let s_delay = Duration::from_millis(this.settings.switch_show_delay_ms().get());
-    let meta = current_meta();
-
-    slint::Timer::single_shot(h_delay, move || {
-        let _meta_guard = meta.clone().map(install_current_meta);
-        let ui_inner = ui.clone();
-        slint::Timer::single_shot(s_delay, move || {
-            ui_inner.send(UiSidebarPortMsg::SetContentVisible(true));
-        });
-    });
 }
 
 #[handler]
-fn handle_width_change<P: UiSidebarPort>(this: &mut SidebarActor<P>, msg: SideBarWidthChanged) {
-    this.settings.width().set(msg.0).ok();
+fn toggle<P: SidebarPort>(this: &mut SidebarActor<P>, _: Toggle) {
+    let open = !this.settings.open().get();
+    let _ = this.settings.open().set(open);
+    this.publish();
+}
+
+#[handler]
+fn set_open<P: SidebarPort>(this: &mut SidebarActor<P>, SetOpen(open): SetOpen) {
+    let _ = this.settings.open().set(open);
+    this.publish();
+}
+
+#[handler]
+fn set_width<P: SidebarPort>(this: &mut SidebarActor<P>, SetWidth(width): SetWidth) {
+    let _ = this.settings.width().set(width);
+    this.publish();
+}
+
+#[handler]
+fn refresh<P: SidebarPort>(this: &SidebarActor<P>, _: Refresh) {
+    this.publish();
 }

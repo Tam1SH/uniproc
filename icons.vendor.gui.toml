@@ -8,7 +8,16 @@ iconify = "mdi:docker"
 iconify = "flat-color-icons:linux"
 
 [ubuntu]
-file = "ubuntu.svg"
+iconify = "logos:ubuntu"
+
+[centos]
+iconify = "logos:centos-icon"
+
+[debian]
+iconify = "logos:debian"
+
+[fedora]
+iconify = "logos:fedora"
 
 [windows]
 file = "windows.svg"

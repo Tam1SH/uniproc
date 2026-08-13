@@ -4,33 +4,25 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-anyhow.workspace = true
-app-contracts.workspace = true
-forsl-core.workspace = true
-context.workspace = true
-dashmap.workspace = true
-fluent-templates.workspace = true
-unic-langid.workspace = true
-macros.workspace = true
-forsl-macros.workspace = true
-serde.workspace = true
-serde_json.workspace = true
-slint.workspace = true
-sysinfo.workspace = true
-tokio.workspace = true
-tracing.workspace = true
-uniproc-protocol.workspace = true
-uuid.workspace = true
-widgets.workspace = true
-forsl.workspace = true
-amethystate.workspace = true
+app-contracts = { workspace = true }
+guinea = { workspace = true, features = ["widgets"] }
+guinea-core = { workspace = true }
+guinea-macros = { workspace = true }
+amethystate = { workspace = true }
+anyhow = { workspace = true }
+serde = { workspace = true }
+cfg-if = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+ogurpchik = { workspace = true }
+uniproc-protocol = { workspace = true }
+capnp = { workspace = true }
+compio = { workspace = true }
+flume = { workspace = true }
+futures = { workspace = true }
+uuid = { workspace = true }
+derive_more = { workspace = true }
+windows = { workspace = true }
 
-[target.'cfg(target_os = "windows")'.dependencies]
-windows.workspace = true
-
-[build-dependencies]
-app-contracts.workspace = true
-forsl-codegen.workspace = true
-
-[features]
-test-utils = ["forsl-core/test-utils"]
+[lints]
+workspace = true

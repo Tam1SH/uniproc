@@ -2,30 +2,12 @@
 name = "context"
 version.workspace = true
 edition.workspace = true
-links = "context-icons"
 
 [dependencies]
-anyhow.workspace = true
-forsl-core.workspace = true
-bon.workspace = true
-guicons.workspace = true
-i-slint-backend-winit.workspace = true
-serde.workspace = true
-serde_json.workspace = true
-slint.workspace = true
-tracing.workspace = true
-tracing-subscriber.workspace = true
-ttl_cache.workspace = true
-forsl.workspace = true
+windows = { workspace = true }
+ttl_cache = { workspace = true }
+tracing = { workspace = true }
+png = "0.18.1"
 
-raw-window-handle.workspace = true
-[target.'cfg(target_os = "windows")'.dependencies]
-window-vibrancy.workspace = true
-windows.workspace = true
-
-[dev-dependencies]
-uuid.workspace = true
-
-[build-dependencies]
-forsl-codegen.workspace = true
-guicons-build.workspace = true
+[lints]
+workspace = true

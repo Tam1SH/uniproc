@@ -21,7 +21,7 @@ fn agent_check(extra_args: &[String]) -> anyhow::Result<()> {
     let workspace_root = workspace_root()?;
     ensure_agent_running(&workspace_root)?;
 
-    let mut args = vec!["run", "-p", "domain2", "--example", "agent_e2e"];
+    let mut args = vec!["run", "-p", "domain", "--example", "agent_e2e"];
     if !extra_args.is_empty() {
         args.push("--");
         args.extend(extra_args.iter().map(|s| s.as_str()));
@@ -46,7 +46,7 @@ fn run() -> anyhow::Result<()> {
     let workspace_root = workspace_root()?;
 
     if !cfg!(target_os = "windows") {
-        println!("Non-Windows host: starting desktop2 only.");
+        println!("Non-Windows host: starting desktop only.");
         return run_desktop(&workspace_root);
     }
 
@@ -80,17 +80,17 @@ fn ensure_agent_running(workspace_root: &Path) -> anyhow::Result<()> {
 
 fn run_desktop(workspace_root: &Path) -> anyhow::Result<()> {
     let mut desktop = Command::new("cargo")
-        .args(["run", "-p", "desktop2"])
+        .args(["run", "-p", "desktop"])
         .current_dir(workspace_root)
         .stdin(Stdio::inherit())
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .spawn()
-        .map_err(|e| anyhow::anyhow!("failed to spawn desktop2: {e}"))?;
+        .map_err(|e| anyhow::anyhow!("failed to spawn desktop: {e}"))?;
 
     let status = desktop.wait()?;
     if !status.success() {
-        anyhow::bail!("desktop2 exited with {status}");
+        anyhow::bail!("desktop exited with {status}");
     }
     Ok(())
 }

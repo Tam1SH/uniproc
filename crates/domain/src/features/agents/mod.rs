@@ -1,23 +1,39 @@
 pub mod actor;
 pub mod backend;
 pub mod connection;
+pub mod decode;
 pub mod providers;
+pub mod rpc;
 pub mod settings;
 
-use crate::agents_impl::providers::{windows, wsl};
-use forsl::feature::{AppFeature, AppFeatureDeinitContext, AppFeatureInitContext};
-use forsl_macros::app_feature;
+use app_contracts::features::agents::ScanTick;
+use guinea::feature::{AppFeature, AppFeatureInitContext, ContextStoreExt};
+use guinea_core::actor::event_bus::GlobalEventBus;
+use guinea_core::signal::Signal;
+use guinea_macros::app_feature;
+use settings::AgentSettings;
 use tracing::info;
+
+const MIN_SCAN_INTERVAL_MS: u64 = 100;
 
 #[app_feature]
 pub fn agents_feature(ctx: &mut AppFeatureInitContext) -> anyhow::Result<()> {
     info!("Agents feature installed");
+
+    let store = ctx.store();
+    let settings = AgentSettings::new_with(&store)?;
+    let interval = Signal::new(settings.scan_interval_ms().get().max(MIN_SCAN_INTERVAL_MS));
+    let heartbeat = ctx.reactor.add_heartbeat(interval, || {
+        GlobalEventBus::publish(ScanTick);
+    });
+    ctx.tracker.track_loop(heartbeat);
+
     cfg_if::cfg_if! {
         if #[cfg(target_os = "windows")] {
-            wsl::wsl_agent_feature(ctx)?;
-            windows::windows_agent_feature(ctx)?;
+            providers::wsl::wsl_agent_feature(ctx)?;
+            providers::windows::windows_agent_feature(ctx)?;
         } else {
-            linux::linux_agent_feature(ctx)?;
+            providers::linux::linux_agent_feature(ctx)?;
         }
     }
 

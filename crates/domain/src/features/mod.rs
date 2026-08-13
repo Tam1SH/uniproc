@@ -1,11 +1,6 @@
-pub mod cosmetics;
-pub mod l10n;
-pub mod page_status;
+pub mod agents;
+pub mod metrics;
+pub mod processes;
 pub mod services;
 pub mod sidebar;
-pub mod tabs;
-#[cfg(feature = "test-utils")]
-pub mod test_discovery;
-pub mod trace_settings;
-pub mod window_actions;
-pub mod windows_manager;
+pub mod wsl;
