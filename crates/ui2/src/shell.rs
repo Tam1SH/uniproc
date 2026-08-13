@@ -30,7 +30,7 @@ fn nav_items() -> Vec<(&'static str, &'static str, Icon)> {
             "Services",
             icon!(puzzle).size(NAV_ICON_SIZE).build(),
         ),
-        ("wsl", "WSL", icon!(server).size(NAV_ICON_SIZE).build()),
+        ("wsl", "WSL", icon!(linux).size(NAV_ICON_SIZE).build()),
     ]
 }
 

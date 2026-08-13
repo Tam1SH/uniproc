@@ -1,4 +1,6 @@
 use app_contracts2::features::processes::{ProcessCategory, ProcessRow};
+
+pub(super) const MEMORY_COMPRESSION: &str = "Memory Compression";
 use std::collections::HashMap;
 use std::collections::HashSet;
 
@@ -92,6 +94,7 @@ struct SectionTotals {
     disk_bytes: u64,
     net_bytes: u64,
     group_count: usize,
+    compressed_bytes: u64,
 }
 
 impl SectionTotals {
@@ -103,6 +106,10 @@ impl SectionTotals {
             totals.disk_bytes += group.leader.disk_bytes;
             totals.net_bytes += group.leader.net_bytes;
             totals.group_count += 1;
+
+            if group.leader.name == MEMORY_COMPRESSION {
+                totals.compressed_bytes += group.leader.memory_bytes;
+            }
         }
         totals
     }
@@ -188,6 +195,7 @@ impl GroupsCache {
 #[derive(Clone, PartialEq)]
 pub(super) struct SectionRow {
     pub(super) category: ProcessCategory,
+    pub(super) compressed_bytes: u64,
 }
 
 #[derive(Clone)]
@@ -209,7 +217,7 @@ impl DisplayRow {
                 name: label.to_string(),
                 display_name: label.to_string(),
                 cpu_percent: totals.cpu_percent,
-                memory_bytes: totals.memory_bytes,
+                memory_bytes: totals.memory_bytes.saturating_sub(totals.compressed_bytes),
                 disk_bytes: totals.disk_bytes,
                 net_bytes: totals.net_bytes,
                 exe_path: String::new(),
@@ -220,7 +228,10 @@ impl DisplayRow {
             has_children: totals.group_count > 0,
             is_expanded,
             group_size: totals.group_count,
-            section: Some(SectionRow { category }),
+            section: Some(SectionRow {
+                category,
+                compressed_bytes: totals.compressed_bytes,
+            }),
         }
     }
 }
@@ -418,6 +429,33 @@ mod tests {
             labels(&out).contains(&"Services"),
             "its heading stays"
         );
+    }
+
+    #[test]
+    fn the_kernel_heading_takes_compressed_memory_out_of_its_total() {
+        let mut compression = categorised(4, MEMORY_COMPRESSION, ProcessCategory::WindowsKernel);
+        compression.memory_bytes = 3_000;
+        let mut system = categorised(5, "System", ProcessCategory::WindowsKernel);
+        system.memory_bytes = 1_000;
+
+        let sections = split_by_category(vec![group(compression, vec![]), group(system, vec![])]);
+        let out = flatten_for_display(&sections, &HashSet::new(), &HashSet::new());
+        let heading = out.iter().find(|d| d.section.is_some()).unwrap();
+
+        assert_eq!(heading.row.memory_bytes, 1_000);
+        assert_eq!(heading.section.as_ref().unwrap().compressed_bytes, 3_000);
+    }
+
+    #[test]
+    fn other_sections_report_no_compression() {
+        let sections = split_by_category(vec![group(
+            categorised(1, "chrome.exe", ProcessCategory::App),
+            vec![],
+        )]);
+        let out = flatten_for_display(&sections, &HashSet::new(), &HashSet::new());
+        let heading = out.iter().find(|d| d.section.is_some()).unwrap();
+
+        assert_eq!(heading.section.as_ref().unwrap().compressed_bytes, 0);
     }
 
     #[test]

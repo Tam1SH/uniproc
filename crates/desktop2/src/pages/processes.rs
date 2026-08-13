@@ -16,7 +16,14 @@ impl Page for Processes {
         let settings = domain2::features::processes::settings::ProcessesSettings::new()
             .expect("processes settings must construct");
         let settings = cx.use_ref(settings);
-        let map = settings.borrow().columns().configs();
-        ui2::pages::processes::processes_view(cx, &map)
+        let borrowed = settings.borrow();
+        let map = borrowed.columns().configs();
+        let grouping = borrowed.grouping();
+        ui2::pages::processes::processes_view(
+            cx,
+            &map,
+            &grouping.expanded_groups(),
+            &grouping.collapsed_sections(),
+        )
     }
 }

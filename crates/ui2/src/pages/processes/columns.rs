@@ -3,8 +3,8 @@ use guicons::icon;
 use guinea::widgets::table::ColumnSpec;
 use guinea_core::signal::Signal;
 use windows_reactor::{
-    border, component, hstack, text_block, Color, Component, Element, ElementExt, HookRef, Image,
-    RenderCx, SetState, ThemeRef,
+    border, component, grid, hstack, text_block, Color, Component, Element, ElementExt,
+    GridLength, HookRef, Image, RenderCx, SetState, ThemeRef,
 };
 
 use crate::table_styles;
@@ -22,22 +22,16 @@ pub(super) fn sort_indicator_icon(descending: bool) -> Element {
 
 const CHEVRON_SLOT_WIDTH: f64 = 14.0;
 const NAME_CELL_SPACING: f64 = 6.0;
-const MEMORY_COMPRESSION: &str = "Memory Compression";
+use super::grouping::MEMORY_COMPRESSION;
 
-fn heat_color(row: &ProcessRow, accent: Color) -> Color {
+fn memory_heat_color(row: &ProcessRow, accent: Color) -> Color {
     if row.name == MEMORY_COMPRESSION {
-        MUTED_HEAT_COLOR
+        table_styles::MUTED_HEAT_COLOR
     } else {
         accent
     }
 }
 
-const MUTED_HEAT_COLOR: Color = Color {
-    a: 255,
-    r: 150,
-    g: 150,
-    b: 150,
-};
 
 fn expand_chevron(expanded: bool) -> Element {
     if expanded {
@@ -187,7 +181,7 @@ fn heat_column(
         table_styles::TABLE_STYLES.heat_cell(
             fmt(&d.row),
             intensity(&d.row),
-            heat_color(&d.row, accent),
+            accent,
         )
     })
     .min_width(min_width)
@@ -221,7 +215,7 @@ fn cpu_column(
         table_styles::TABLE_STYLES.heat_cell(
             format!("{cpu_percent:.1}%"),
             intensity,
-            heat_color(&d.row, accent),
+            accent,
         )
     })
     .min_width(min_width)
@@ -254,10 +248,20 @@ fn memory_column(
         } else {
             0.0
         };
+        let compressed = d.section.as_ref().map_or(0, |s| s.compressed_bytes);
+        if compressed > 0 {
+            return table_styles::TABLE_STYLES.split_heat_cell(
+                table_styles::format_bytes(d.row.memory_bytes),
+                intensity,
+                accent,
+                d.row.memory_bytes,
+                compressed,
+            );
+        }
         table_styles::TABLE_STYLES.heat_cell(
             table_styles::format_bytes(d.row.memory_bytes),
             intensity,
-            heat_color(&d.row, accent),
+            memory_heat_color(&d.row, accent),
         )
     })
     .min_width(min_width)

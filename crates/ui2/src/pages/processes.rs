@@ -44,15 +44,36 @@ const CARD_BACKGROUND: Color = Color { a: 240, r: 32, g: 32, b: 32 };
 pub fn processes_view<S: amethystate::Store>(
     cx: &mut PageCx,
     map: &amethystate::ReactiveMap<String, ColumnConfig, S, amethystate::WritableMode>,
+    expanded_groups: &amethystate::ReactiveMap<String, bool, S, amethystate::WritableMode>,
+    collapsed_sections_store: &amethystate::ReactiveMap<String, bool, S, amethystate::WritableMode>,
 ) -> Element {
     let (state, dispatch) = cx.use_reducer::<ProcessesReducer>();
     let (metrics_state, _) = cx.use_reducer::<MetricsReducer>();
 
     let layout = cx.use_ref(ColumnLayout::new(map));
     let icons = cx.use_ref(context2::IconCache::new());
-    let (expanded, set_expanded) = cx.use_state(HashSet::<String>::new());
-    let (collapsed_sections, set_collapsed_sections) =
-        cx.use_state(HashSet::<ProcessCategory>::new());
+    let (revision, bump_revision) = cx.use_state(0u64);
+    let _ = revision;
+
+    let expanded: HashSet<String> = expanded_groups
+        .entries()
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|(_, on)| *on)
+        .map(|(name, _)| name)
+        .collect();
+
+    let collapsed_sections: HashSet<ProcessCategory> = collapsed_sections_store
+        .entries()
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|(_, on)| *on)
+        .filter_map(|(label, _)| {
+            ProcessCategory::ORDER
+                .into_iter()
+                .find(|c| c.label() == label)
+        })
+        .collect();
     let groups_cache = cx.use_ref(GroupsCache::empty());
     let pinned_display_pos = cx.use_ref(Option::<usize>::None);
 
@@ -93,26 +114,40 @@ pub fn processes_view<S: amethystate::Store>(
             let layout = layout.borrow();
 
             let toggle_expanded = {
+                let store = expanded_groups.clone();
                 let expanded = expanded.clone();
+                let bump = bump_revision.clone();
                 SetState::new(move |name: String| {
-                    let mut next = expanded.clone();
-                    if !next.remove(&name) {
-                        next.insert(name);
+                    let now_on = !expanded.contains(&name);
+                    let result = if now_on {
+                        store.set_or_create(name.clone(), &true)
+                    } else {
+                        store.remove(name.clone()).map(|_| ())
+                    };
+                    if let Err(err) = result {
+                        tracing::warn!(%name, ?err, "expanded_groups write failed");
                     }
-                    set_expanded.call(next);
+                    bump.call(revision + 1);
                 })
             };
 
             let mut groups_cache = groups_cache.borrow_mut();
             let sections = groups_cache.get(rows, state.selected);
             let toggle_section = {
+                let store = collapsed_sections_store.clone();
                 let collapsed = collapsed_sections.clone();
+                let bump = bump_revision.clone();
                 SetState::new(move |category: ProcessCategory| {
-                    let mut next = collapsed.clone();
-                    if !next.remove(&category) {
-                        next.insert(category);
+                    let label = category.label().to_string();
+                    let result = if collapsed.contains(&category) {
+                        store.remove(label.clone()).map(|_| ())
+                    } else {
+                        store.set_or_create(label.clone(), &true)
+                    };
+                    if let Err(err) = result {
+                        tracing::warn!(%label, ?err, "collapsed_sections write failed");
                     }
-                    set_collapsed_sections.call(next);
+                    bump.call(revision + 1);
                 })
             };
 

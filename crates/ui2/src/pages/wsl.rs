@@ -73,7 +73,7 @@ pub fn wsl_view(cx: &mut PageCx) -> Element {
             let columns = vec![
                 ColumnSpec::new("name", "Distribution", 220u64, |row: &DistroRow| {
                     let content = hstack((
-                        icon!(app).size(16.0).build_element(),
+                        icon!(linux).size(16.0).build_element(),
                         table_styles::cell_text(row.name.clone()),
                     ))
                     .spacing(6.0);

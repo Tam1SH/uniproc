@@ -121,9 +121,6 @@ file = "restore.svg"
 [search]
 iconify = "fluent:search-24-regular"
 
-[server]
-iconify = "fluent:server-24-regular"
-
 [settings]
 iconify = "fluent-color:settings-24"
 

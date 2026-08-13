@@ -8,6 +8,18 @@ pub struct ProcessesSettings {
 
     #[amestate(nested)]
     columns: ProcessesColumnsSettings,
+
+    #[amestate(nested)]
+    grouping: ProcessesGroupingSettings,
+}
+
+#[amethystate]
+pub struct ProcessesGroupingSettings {
+    #[amestate(default = {})]
+    expanded_groups: ReactiveMap<String, bool>,
+
+    #[amestate(default = {})]
+    collapsed_sections: ReactiveMap<String, bool>,
 }
 
 #[amethystate]

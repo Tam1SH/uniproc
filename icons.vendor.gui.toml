@@ -5,7 +5,7 @@ root = "assets/ui"
 iconify = "mdi:docker"
 
 [linux]
-file = "linux.svg"
+iconify = "flat-color-icons:linux"
 
 [ubuntu]
 file = "ubuntu.svg"

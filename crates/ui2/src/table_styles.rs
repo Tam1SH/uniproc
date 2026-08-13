@@ -1,5 +1,8 @@
 use windows::UI::ViewManagement::{UIColorType, UISettings};
-use windows_reactor::{border, text_block, Color, Element, ElementExt, TextBlock, TextTrimming, TextWrapping, Thickness};
+use windows_reactor::{
+    border, grid, text_block, Color, Element, ElementExt, GridLength, HorizontalAlignment,
+    TextBlock, TextTrimming, TextWrapping, Thickness, VerticalAlignment,
+};
 
 const MUTED_TEXT_COLOR: Color = Color {
     a: 255,
@@ -7,6 +10,27 @@ const MUTED_TEXT_COLOR: Color = Color {
     g: 140,
     b: 140,
 };
+
+const HEAT_CORNER: f64 = 4.0;
+const HEAT_MARGIN: f64 = 4.0;
+
+pub const MUTED_HEAT_COLOR: Color = Color {
+    a: 255,
+    r: 150,
+    g: 150,
+    b: 150,
+};
+
+fn heat_alpha(intensity: f32) -> u8 {
+    const HEAT_THRESHOLD: f32 = 0.01;
+
+    let clamped = intensity.clamp(0.0, 1.0);
+    if clamped < HEAT_THRESHOLD {
+        return 0;
+    }
+    let normalized = (clamped - HEAT_THRESHOLD) / (1.0 - HEAT_THRESHOLD);
+    (normalized.powf(0.6) * 230.0) as u8
+}
 
 const SEMIBOLD: u16 = 600;
 
@@ -56,21 +80,59 @@ impl TableStyles {
     }
 
     pub fn heat_cell(&self, content: impl Into<String>, intensity: f32, accent: Color) -> Element {
-        const HEAT_THRESHOLD: f32 = 0.01;
-
-        let clamped = intensity.clamp(0.0, 1.0);
-        let alpha = if clamped < HEAT_THRESHOLD {
-            0
-        } else {
-            let normalized = (clamped - HEAT_THRESHOLD) / (1.0 - HEAT_THRESHOLD);
-            (normalized.powf(0.6) * 230.0) as u8
+        let wash = Color {
+            a: heat_alpha(intensity),
+            ..accent
         };
-        let wash = Color { a: alpha, ..accent };
         border(self.text_cell(content))
             .background(wash)
-            .corner_radius(4.0)
-            .margin(Thickness::xy(4.0, 0.0))
+            .corner_radius(HEAT_CORNER)
+            .margin(Thickness::xy(HEAT_MARGIN, 0.0))
             .into()
+    }
+
+    // TODO: unfinished, do not build on it yet.
+    // - corners: windows-reactor exposes one f64, so the outer corners cannot
+    //   be rounded while the seam stays square (issue filed upstream).
+    // - the seam is a bare colour change; it needs a divider once the corners
+    //   are sorted, otherwise the two segments read as one pill with a stain.
+    // - a small share renders as a sliver: no minimum width, and nothing tells
+    //   the reader whether a thin band means "a little" or "almost none".
+    // - the text sits over both segments, so it can straddle the seam and lose
+    //   contrast on either side.
+    pub fn split_heat_cell(
+        &self,
+        content: impl Into<String>,
+        intensity: f32,
+        accent: Color,
+        left_share: u64,
+        right_share: u64,
+    ) -> Element {
+        let alpha = heat_alpha(intensity);
+        let left = Color { a: alpha, ..accent };
+        let right = Color {
+            a: alpha,
+            ..MUTED_HEAT_COLOR
+        };
+
+        border(
+            grid((
+                border(Element::Empty)
+                    .background(right)
+                    .horizontal_alignment(HorizontalAlignment::Stretch)
+                    .vertical_alignment(VerticalAlignment::Stretch)
+                    .grid_column(1),
+                self.text_cell(content).grid_column(0).grid_column_span(2),
+            ))
+            .columns([
+                GridLength::Star(left_share.max(1) as f64),
+                GridLength::Star(right_share.max(1) as f64),
+            ]),
+        )
+        .background(left)
+        .corner_radius(HEAT_CORNER)
+        .margin(Thickness::xy(HEAT_MARGIN, 0.0))
+        .into()
     }
 }
 
