@@ -74,7 +74,6 @@ pub struct WindowsProcessStats {
     pub net_tx_bytes: u64,
 
     pub is_service: bool,
-    pub has_visible_window: bool,
     pub is_kernel_process: bool,
     pub is_windows_process: bool,
     pub signature: SignatureStatus,

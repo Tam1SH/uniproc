@@ -66,7 +66,6 @@ fn windows_process(r: windows_capnp::process_stats::Reader<'_>) -> capnp::Result
         net_rx_bytes: r.get_net_rx_bytes(),
         net_tx_bytes: r.get_net_tx_bytes(),
         is_service: r.get_is_service(),
-        has_visible_window: r.get_has_visible_window(),
         is_kernel_process: r.get_is_kernel_process(),
         is_windows_process: r.get_is_windows_process(),
         signature: r.get_signature().map(signature).unwrap_or_default(),

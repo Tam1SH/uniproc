@@ -89,13 +89,12 @@ mod windows {
         let enriched: Vec<&WindowsProcessStats> = report
             .processes
             .iter()
-            .filter(|p| p.is_service || p.has_visible_window || p.is_kernel_process)
+            .filter(|p| p.is_service || p.is_kernel_process)
             .collect();
 
         println!(
-            "  enrichment: {} services, {} with a window, {} kernel, {} signed by microsoft",
+            "  enrichment: {} services, {} kernel, {} signed by microsoft",
             report.processes.iter().filter(|p| p.is_service).count(),
-            report.processes.iter().filter(|p| p.has_visible_window).count(),
             report.processes.iter().filter(|p| p.is_kernel_process).count(),
             report
                 .processes
@@ -106,11 +105,10 @@ mod windows {
 
         for p in enriched.iter().take(6) {
             println!(
-                "    pid={:<6} {:<26} svc={} win={} krn={} sig={:?} {}",
+                "    pid={:<6} {:<26} svc={} krn={} sig={:?} {}",
                 p.pid,
                 truncate(&p.name, 26),
                 p.is_service,
-                p.has_visible_window,
                 p.is_kernel_process,
                 p.signature,
                 truncate(&p.image_path, 48),
