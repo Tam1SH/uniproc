@@ -190,11 +190,6 @@ fn perform_scan_tick<B: AgentBackend>(this: &GenericAgentActor<B>, _: ScanTick, 
     });
 }
 
-/// A scan that fails says something about the connection, but not on its own:
-/// a single one can lose to a decode error or a race with a process exiting.
-/// A run of them cannot, and waiting for the ping to notice leaves the page
-/// showing stale numbers for up to a ping interval with nothing said about
-/// it.
 #[handler]
 fn on_scan_result<B: AgentBackend>(this: &mut GenericAgentActor<B>, msg: ScanResult, ctx: &Context<GenericAgentActor<B>>) {
     const FAILURES_BEFORE_GIVING_UP: u32 = 3;
@@ -263,9 +258,6 @@ mod windows {
         let correlation_id = msg.correlation_id;
         ctx.spawn_bg_detached(async move {
             match client.call(WindowsRequest::Action(msg.action)).await {
-                // The agent answers every action with a bare Win32 code, so a
-                // non-zero one is a real failure the requester has to see -
-                // publish it rather than logging and dropping it here.
                 Ok(WindowsReply::Code(code)) => {
                     GlobalEventBus::publish(WindowsActionResponse::new(correlation_id, code));
                 }

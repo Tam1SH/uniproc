@@ -9,7 +9,6 @@ use windows::Win32::System::Com::{CoInitializeEx, COINIT_APARTMENTTHREADED};
 use windows::Win32::UI::Shell::*;
 use windows::Win32::UI::WindowsAndMessaging::*;
 
-/// Top-down, 4 bytes/pixel, RGBA order.
 pub struct RgbaImage {
     pub pixels: Vec<u8>,
     pub width: u32,
@@ -39,9 +38,6 @@ pub fn extract_icon_rgba(path: &str) -> Option<RgbaImage> {
     }
 }
 
-/// Whether `exe_path` embeds at least one icon resource of its own, as
-/// opposed to falling back to the generic executable icon Explorer shows
-/// for icon-less binaries.
 pub fn has_own_icon(exe_path: &str) -> bool {
     let mut buffer = [0u16; 260];
     for (i, wide_char) in exe_path.encode_utf16().enumerate() {
@@ -98,17 +94,6 @@ unsafe fn hicon_to_rgba(hicon: HICON) -> Option<RgbaImage> {
 
         let has_alpha = bgra_swap_and_detect_alpha(&mut buffer);
         if !has_alpha {
-            // Classic (non-32bpp-ARGB) icons don't carry real alpha in
-            // hbmColor at all - GDI just leaves that channel zeroed, which
-            // is indistinguishable from "everything is transparent" by
-            // looking at hbmColor alone. The actual transparency lives in
-            // the separate AND mask GetIconInfo also handed back (already
-            // fetched into `icon_info.hbmMask`, previously only held for
-            // its RAII drop and never read) - without it, the old
-            // "no alpha -> assume fully opaque" fallback painted every
-            // masked-out pixel with hbmColor's leftover (usually black)
-            // RGB, i.e. exactly the solid-block-behind-the-icon look this
-            // fixes.
             match read_and_mask(hdc, icon_info.hbmMask, w, h) {
                 Some(mask) => apply_and_mask(&mut buffer, &mask, w, h),
                 None => {
@@ -129,8 +114,6 @@ unsafe fn hicon_to_rgba(hicon: HICON) -> Option<RgbaImage> {
     }
 }
 
-/// Reads a 1bpp AND mask (`1` = transparent, `0` = opaque), row-padded to a
-/// 4-byte stride per the DIB spec.
 unsafe fn read_and_mask(hdc: HDC, hbmp: HBITMAP, w: i32, h: i32) -> Option<Vec<u8>> {
     unsafe {
         let stride = (((w + 31) / 32) * 4) as usize;
@@ -330,10 +313,6 @@ unsafe fn hbitmap_to_rgba(hbitmap: HBITMAP) -> Option<RgbaImage> {
 
         let has_alpha = bgra_swap_and_detect_alpha(&mut buffer);
         if !has_alpha {
-            // No separate AND mask exists for this source (Shell's
-            // IShellItemImageFactory always renders a plain ARGB bitmap,
-            // not a classic icon+mask pair), so there's nothing better
-            // than treating a fully-zero alpha channel as opaque here.
             for chunk in buffer.chunks_exact_mut(4) {
                 chunk[3] = 255;
             }
@@ -346,8 +325,6 @@ unsafe fn hbitmap_to_rgba(hbitmap: HBITMAP) -> Option<RgbaImage> {
     }
 }
 
-/// GDI hands back BGRA; swaps to RGBA in place and reports whether any
-/// pixel actually carried a nonzero alpha value.
 fn bgra_swap_and_detect_alpha(buffer: &mut [u8]) -> bool {
     let mut has_alpha = false;
     for chunk in buffer.chunks_exact_mut(4) {

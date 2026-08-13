@@ -1,26 +1,3 @@
-//! End-to-end probe of the agent client stack against *real* running agents.
-//!
-//! Not a `#[test]` on purpose: it needs `uniproc-windows-agent` running with
-//! administrator rights (and, for the `--wsl` half, a WSL VM with the Linux
-//! agent listening on vsock). That is a property of one developer machine, not
-//! something CI or a fresh checkout can satisfy, so it stays a thing you run
-//! deliberately:
-//!
-//! ```text
-//! cargo run -p xtask -- agent-check          # checks the agent is up first
-//! cargo run -p domain2 --example agent_e2e   # or drive it directly
-//! cargo run -p domain2 --example agent_e2e -- --wsl
-//! ```
-//!
-//! What it actually exercises is the part that is ours and unproven: the
-//! `RpcHandle` thread bridge (tokio caller -> compio/capnp thread), the capnp
-//! -> owned-DTO decoders, and the `AgentBackend` impls. It deliberately does
-//! *not* call `perform_scan`, which publishes onto `GlobalEventBus` and needs
-//! the actor runtime to be up; the only thing that adds over what is checked
-//! here is a match arm and a publish.
-//!
-//! Read-only: it issues no process or service commands.
-
 #[cfg(not(target_os = "windows"))]
 fn main() {
     eprintln!("agent_e2e targets the Windows host agents; nothing to probe here.");
@@ -66,8 +43,6 @@ mod windows {
             .context("connect failed - is uniproc-windows-agent running (as admin)?")?;
         println!("connect: ok ({} ms)", started.elapsed().as_millis());
 
-        // The backend trait is what the actor actually calls, so probe it
-        // rather than only the layer underneath it.
         let latency = WindowsBackend::ping(&handle).await.context("ping failed")?;
         println!("ping via AgentBackend: {latency} ms");
 
@@ -108,8 +83,6 @@ mod windows {
             m.net_tx_bytes,
         );
 
-        // Sanity, not decoration: an all-zero machine block or an empty
-        // process list means the decode silently produced defaults.
         assert!(m.total_physical_kb > 0, "total physical memory decoded as 0");
         assert!(!report.processes.is_empty(), "no processes in the report");
 
@@ -145,10 +118,6 @@ mod windows {
         }
     }
 
-    /// Dispatches are spawned per request precisely so a slow one cannot hold
-    /// up the rest; this is what proves that. A `getReport` on a busy machine
-    /// takes long enough to notice, so pings issued alongside it must keep
-    /// answering promptly instead of queueing behind it.
     async fn concurrency_probe(handle: &RpcHandle<WindowsRpc>) -> anyhow::Result<()> {
         let report_handle = handle.clone();
         let report = tokio::spawn(async move { report_handle.call(WindowsRequest::GetReport).await });
@@ -172,13 +141,10 @@ mod windows {
         Ok(())
     }
 
-    /// Dropping the last handle is the only disconnect path, so it had better
-    /// actually close the session rather than leaking the thread.
     async fn teardown_probe(handle: RpcHandle<WindowsRpc>) -> anyhow::Result<()> {
         let orphan = handle.clone();
         drop(handle);
 
-        // A surviving clone must still work - teardown is on the *last* drop.
         orphan.call(WindowsRequest::Ping).await.context("clone stopped working after a sibling dropped")?;
 
         drop(orphan);
@@ -204,17 +170,11 @@ mod wsl {
     use domain2::features::agents::rpc::RpcHandle;
     use std::time::Instant;
 
-    /// Far longer than the Windows side: this launches the agent itself, and it
-    /// has to bring eBPF up before it starts listening.
     const CONNECT_TIMEOUT_SECS: u64 = 40;
 
     pub async fn probe() -> anyhow::Result<()> {
         println!("== wsl agent ==");
 
-        // Normally published by `wsl_agent_feature`; the probe does not boot
-        // the feature graph, so it has to say where the agent lives itself.
-        // Override with WSL_DISTRO / WSL_AGENT_PATH when testing a build that
-        // is not the installed one.
         let distro = std::env::var("WSL_DISTRO").unwrap_or_else(|_| "Ubuntu".to_string());
         let agent_path = std::env::var("WSL_AGENT_PATH")
             .unwrap_or_else(|_| "/usr/local/bin/uniproc-agent".to_string());
@@ -230,9 +190,6 @@ mod wsl {
         let latency = WslBackend::ping(&handle).await.context("ping failed")?;
         println!("ping via AgentBackend: {latency} ms");
 
-        // The agent derives cpu_percent from the delta between two consecutive
-        // collects, so the very first report always has cpu=0.0% for every
-        // process. Take a throwaway sample first, then measure.
         let _ = handle.call(WslRequest::GetReport).await?;
         tokio::time::sleep(std::time::Duration::from_millis(1000)).await;
 
@@ -254,9 +211,6 @@ mod wsl {
                 assert!(m.total_kb > 0, "total memory decoded as 0");
                 assert!(!report.processes.is_empty(), "no processes in the report");
 
-                // Sorted by rss so the sample is comparable against
-                // `ps -eo pid,rss,comm --sort=-rss`; unsorted map order is
-                // dominated by idle processes and tells you nothing.
                 let mut top: Vec<_> = report.processes.iter().collect();
                 top.sort_by_key(|p| std::cmp::Reverse(p.rss_kb));
                 let with_rss = report.processes.iter().filter(|p| p.rss_kb > 0).count();

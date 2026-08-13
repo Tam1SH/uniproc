@@ -48,8 +48,6 @@ impl<P: ServicesPort> ServicesActor<P> {
     }
 
     fn resort(&mut self) {
-        // Same "can't sort an Rc in place" reasoning as ProcessesActor::resort
-        // - this clone is paid only on a user-triggered sort click.
         let mut rows = self.rows.to_vec();
         sort_rows(&mut rows, &self.sort_column, self.descending);
         self.rows = Rc::from(rows);
@@ -73,11 +71,6 @@ fn sort_rows(rows: &mut [ServiceRow], column: &str, descending: bool) {
     });
 }
 
-/// Result of a local `scanner::scan_services()` call, sent by
-/// `handle_scan_tick` back to this same actor. Not a `bind{}` entry -
-/// `bind{}` types are plain newtypes derived straight from a UI action's
-/// argument; this instead carries the `Result` from a fallible background
-/// call, so it needs its own `Message` impl.
 enum ScanResult {
     Rows(Vec<ServiceRow>),
     Failed,

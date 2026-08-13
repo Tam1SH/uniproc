@@ -8,7 +8,6 @@ use guinea_core::signal::Signal;
 use super::actor::{Deselect, ProcessesActor, Select, Sort, Terminate};
 use super::settings::ProcessesSettings;
 
-/// Floor for the user-facing scan interval - anything faster is pointless UI churn.
 const MIN_SCAN_INTERVAL_MS: u64 = 100;
 
 pub fn install(ctx: &FeatureInitContext) -> anyhow::Result<()> {
@@ -32,8 +31,6 @@ pub fn install(ctx: &FeatureInitContext) -> anyhow::Result<()> {
         .on_terminate::<Terminate>()
         .build();
 
-    // First scan immediately; the heartbeat re-arms from here on. The loop
-    // stops when the page scope drops the actor (and the LoopHandle with it).
     GlobalEventBus::publish(ScanTick);
 
     Ok(())

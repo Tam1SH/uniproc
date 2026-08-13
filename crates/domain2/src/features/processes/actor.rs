@@ -12,6 +12,8 @@ use guinea_core::actor::event_bus::GlobalEventBus;
 use guinea_macros::{actor_manifest, handler};
 use uuid::Uuid;
 
+use super::windows_scan;
+
 pub struct ProcessesActor<P: ProcessesPort> {
     ui_port: P,
     rows: Rc<[ProcessRow]>,
@@ -58,11 +60,6 @@ impl<P: ProcessesPort> ProcessesActor<P> {
         let pinned_pos = self
             .selected
             .and_then(|pid| self.rows.iter().position(|r| r.pid == pid));
-        // `self.rows` is shared with whatever `SetRows` message the UI last
-        // received (that's the whole point of the `Rc` - the common case,
-        // publishing, is a refcount bump instead of a deep clone), so it
-        // can't be sorted in place here; `to_vec()` is the one clone this
-        // path pays, and only on a user-triggered sort click, not per tick.
         let mut rows = self.rows.to_vec();
         sort_rows_pinned(
             &mut rows,
@@ -130,9 +127,6 @@ impl<P: ProcessesPort> ManagedActor for ProcessesActor<P> {
 fn on_windows_report<P: ProcessesPort>(this: &mut ProcessesActor<P>, msg: WindowsReportMessage) {
     let report = match msg {
         WindowsReportMessage::Report(report) => report,
-        // The agent is gone. Keep the rows on screen - they are the last
-        // thing that was true, and blanking the table would lose the user
-        // their scroll position and selection over a blip.
         WindowsReportMessage::Unavailable(state) => {
             this.agent_state = state;
             this.publish_rows();
@@ -148,6 +142,8 @@ fn on_windows_report<P: ProcessesPort>(this: &mut ProcessesActor<P>, msg: Window
         memory_used_bytes: machine.used_physical_kb * 1024,
         memory_total_bytes: machine.total_physical_kb * 1024,
     };
+
+    let windowed = windows_scan::visible_window_pids();
 
     let pinned_pos = this
         .selected
@@ -174,7 +170,7 @@ fn on_windows_report<P: ProcessesPort>(this: &mut ProcessesActor<P>, msg: Window
                 std::mem::take(&mut p.image_path)
             },
             category: ProcessCategory::classify(
-                p.has_visible_window,
+                windowed.contains(&p.pid),
                 p.is_kernel_process,
                 p.is_service,
                 p.signature == SignatureStatus::Microsoft,
@@ -268,7 +264,6 @@ mod tests {
             row(3, "gamma", 1.0),
         ];
 
-        // Sort by cpu descending with pid 2 pinned at index 1.
         sort_rows_pinned(&mut rows, "cpu", true, Some(1), Some(2));
 
         assert_eq!(rows[1].pid, 2, "pinned row must stay at index 1");
@@ -278,8 +273,6 @@ mod tests {
 
     #[test]
     fn pinned_row_keeps_position_when_report_reorders() {
-        // New report arrives in a different raw order: pinned pid 2 is at index 2,
-        // but it was pinned at index 1 in the previous snapshot.
         let mut rows = vec![
             row(3, "gamma", 1.0),
             row(1, "alpha", 5.0),
@@ -304,7 +297,6 @@ mod tests {
         sort_rows_pinned(&mut rows, "cpu", true, Some(1), Some(2));
         assert_eq!(rows[1].pid, 2);
 
-        // Simulate metric drift: beta now has the lowest cpu.
         for r in &mut rows {
             if r.pid == 2 {
                 r.cpu_percent = 0.5;

@@ -41,29 +41,12 @@ fn ensure_app_features() {
                 vec![Box::new(domain2::features::agents::AgentsFeature)],
             )
             .expect("install app features");
-        // Must outlive every actor/loop it spawned - leaked deliberately, not
-        // a bug: it lives for the process, same as the app itself.
         Box::leak(Box::new(app_features));
     });
 }
 
 fn root(cx: &mut RenderCx) -> Element {
     ensure_app_features();
-    // Tables render through a native ListView, whose row height comes from the
-    // `ListViewItemMinHeight` theme resource; the default leaves rows far
-    // taller than a dense process/service list wants.
-    //
-    // Declared on the tree rather than poked into
-    // `Application::Current().Resources()`: WinUI resolves a resource by
-    // walking up, so a subtree entry reaches every ListView under it just the
-    // same, without needing the reactor to expose `Application` at all and
-    // without mutating global state behind the framework's back.
-    //
-    // The `border` is load-bearing, not decoration: `Element::Component` has no
-    // modifier slot at all (`modifiers_mut` returns `None` for it), and every
-    // `ElementExt` setter silently returns the element untouched in that case.
-    // Hanging this straight off `RouterRx::render` compiled fine and did
-    // exactly nothing.
     border(RouterRx::render(cx, Route::Processes {}, amethystate::global_store()))
         .resources([("ListViewItemMinHeight", 30.0)])
         .into()

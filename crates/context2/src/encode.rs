@@ -2,7 +2,6 @@ use std::fs::File;
 use std::io::{self, BufWriter};
 use std::path::Path;
 
-/// Writes `pixels` (top-down, 4 bytes/px, RGBA order) as a PNG file.
 pub fn write_png(path: &Path, width: u32, height: u32, pixels_rgba: &[u8]) -> io::Result<()> {
     let expected_len = (width as usize) * (height as usize) * 4;
     if pixels_rgba.len() != expected_len {

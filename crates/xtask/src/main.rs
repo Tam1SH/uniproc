@@ -13,9 +13,6 @@ fn main() -> anyhow::Result<()> {
     }
 }
 
-/// Runs the E2E probe (`domain2`'s `agent_e2e` example) against the real
-/// agents, after making sure the Windows one is actually up - it has to be
-/// started by hand with administrator rights, same as for `run`.
 fn agent_check(extra_args: &[String]) -> anyhow::Result<()> {
     if !cfg!(target_os = "windows") {
         anyhow::bail!("agent-check probes the Windows host agents; nothing to do here.");
@@ -57,8 +54,6 @@ fn run() -> anyhow::Result<()> {
     run_desktop(&workspace_root)
 }
 
-/// The agent needs administrator rights, which we cannot grant it from here -
-/// so wait for the developer to start it rather than failing outright.
 fn ensure_agent_running(workspace_root: &Path) -> anyhow::Result<()> {
     if agent_running() {
         println!("uniproc-windows-agent is already running.");

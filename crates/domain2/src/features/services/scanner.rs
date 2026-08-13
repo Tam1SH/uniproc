@@ -2,13 +2,6 @@ use app_contracts2::features::services::ServiceRow;
 use windows::Win32::System::Services::*;
 use windows::core::PWSTR;
 
-/// Temporary: scans services locally via `EnumServicesStatusExW`, ported
-/// as-is from the old domain's `scanner/windows.rs`. This is a stand-in
-/// until the windows-agent gains its own service enumeration and starts
-/// reporting it as part of `WindowsReport` (see the
-/// `services_scanner_belongs_to_agent` note) - at that point this whole
-/// module goes away and `ServicesActor` switches to reacting to
-/// `WindowsReportMessage` the same way `ProcessesActor` already does.
 pub fn scan_services() -> anyhow::Result<Vec<ServiceRow>> {
     let mut results = Vec::new();
 

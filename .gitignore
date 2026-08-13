@@ -7,3 +7,7 @@
 /dhat-heap.json
 /crates/app-contracts/contracts-schema.json
 /.cache
+
+crates/ui2/.cache/
+run_desktop2.log
+*.lnk

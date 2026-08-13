@@ -47,12 +47,6 @@ impl ConnectionMachine {
         Self {
             state: AgentConnectionState::Disconnected,
             next_retry_delay_secs: 1,
-            // Capped low on purpose. A long backoff is for sparing a remote
-            // service; here the agent is a local process the user may have
-            // just restarted, and waiting a quarter of a minute to notice
-            // reads as the app being broken. Five seconds is short enough
-            // that a reconnect looks immediate and long enough that a
-            // genuinely absent agent is not hammered.
             max_retry_delay_secs: 5,
         }
     }
@@ -100,11 +94,6 @@ impl ConnectionMachine {
 mod tests {
     use super::*;
 
-    /// The whole point of the retry state: it has to lead back to a connect
-    /// attempt. `RetryTimerElapsed` used to be answered with `BeginConnect`,
-    /// which is not legal here - the machine rejected it and stayed in
-    /// `WaitingRetry` for good, so one failed connect (an agent that starts
-    /// after the GUI) disabled reconnection for the session.
     #[test]
     fn waiting_retry_leads_back_to_connecting() {
         let mut machine = ConnectionMachine::new();
@@ -121,8 +110,6 @@ mod tests {
         assert_eq!(t.to, AgentConnectionState::Connecting);
     }
 
-    /// A dead agent has to end up back at a connect attempt too, without the
-    /// backoff having anything to say about it.
     #[test]
     fn a_lost_connection_can_be_reconnected() {
         let mut machine = ConnectionMachine::new();

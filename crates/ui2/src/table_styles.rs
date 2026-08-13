@@ -1,9 +1,6 @@
 use windows::UI::ViewManagement::{UIColorType, UISettings};
-use windows_reactor::{border, text_block, Color, Element, ElementExt, TextTrimming, Thickness};
+use windows_reactor::{border, text_block, Color, Element, ElementExt, TextBlock, TextTrimming, TextWrapping, Thickness};
 
-/// Grey for rows that exist but are not things the user acts on. Fixed
-/// rather than theme-derived: it has to stay legible on both the light and
-/// dark row backgrounds, and mid-grey is the one value that does.
 const MUTED_TEXT_COLOR: Color = Color {
     a: 255,
     r: 140,
@@ -11,15 +8,11 @@ const MUTED_TEXT_COLOR: Color = Color {
     b: 140,
 };
 
-/// WinUI numeric font weights: 400 is normal, 600 semibold, 700 bold.
 const SEMIBOLD: u16 = 600;
 
 #[derive(Clone, Copy, Debug)]
 pub struct TableStyles {
     pub row_height: f64,
-    /// Headings get more room than a process row: the larger font needs it,
-    /// and the extra air is what separates one section from the last row of
-    /// the previous one.
     pub section_row_height: f64,
     pub font_size: f64,
     pub separator_color: Color,
@@ -27,7 +20,6 @@ pub struct TableStyles {
 }
 
 impl TableStyles {
-    //const Default?, lol.
     #[allow(clippy::new_without_default)]
     pub const fn new() -> Self {
         Self {
@@ -45,7 +37,7 @@ impl TableStyles {
     }
 
     pub fn text_cell(&self, content: impl Into<String>) -> Element {
-        text_block(content)
+        no_wrap(text_block(content))
             .font_size(self.font_size)
             .height(self.row_height)
             .max_height(self.row_height)
@@ -53,15 +45,9 @@ impl TableStyles {
             .into()
     }
 
-    /// A group heading's label. Two points larger than a process row so the
-    /// headings read as structure rather than as another row that happens to
-    /// have a bold-ish name; everything else about the cell is unchanged, so
-    /// heading and process rows still share a baseline and a row height.
     pub fn section_cell(&self, content: impl Into<String>) -> Element {
-        text_block(content)
+        no_wrap(text_block(content))
             .font_size(self.font_size + 2.0)
-            // Semibold, not bold: the heading has to separate itself from the
-            // rows without turning into the loudest thing on the page.
             .font_weight(SEMIBOLD)
             .height(self.section_row_height)
             .max_height(self.section_row_height)
@@ -69,23 +55,6 @@ impl TableStyles {
             .into()
     }
 
-    /// A cell with a background wash whose opacity tracks `intensity`
-    /// (`0.0..=1.0`) - the periphery-readable "heat" for a metric value,
-    /// without a separate bar/progress control competing with the text.
-    ///
-    /// Below `HEAT_THRESHOLD` there's no wash at all - most rows sit at a
-    /// fraction of a percent and a hairline tint on literally every row
-    /// would just be noise, not signal. From the threshold up, the curve
-    /// is `normalized.powf(0.6)`, not linear: a linear ramp made everything
-    /// below ~80% read as barely-there, since the visually interesting
-    /// cases (rows approaching the limit) are exactly what a linear map
-    /// compresses hardest into the low end.
-    ///
-    /// The wash sits 4px in from the cell's left/right edges (`margin`,
-    /// not `padding` - padding would shrink the *text* inside a
-    /// still-edge-to-edge colored box; margin shrinks the colored box
-    /// itself), so it reads as a floating pill rather than colored
-    /// wall-to-wall banding between adjacent cells.
     pub fn heat_cell(&self, content: impl Into<String>, intensity: f32, accent: Color) -> Element {
         const HEAT_THRESHOLD: f32 = 0.01;
 
@@ -105,10 +74,6 @@ impl TableStyles {
     }
 }
 
-/// Reads the live system accent color (`UIColorType::Accent`) once per call.
-/// Callers driving per-row heat cells should resolve this a single time per
-/// render pass and capture it by value, not call it from inside a per-row
-/// closure - `UISettings` round-trips through the OS on every read.
 pub fn accent_color() -> Color {
     const FALLBACK: Color = Color {
         a: 255,
@@ -128,6 +93,17 @@ pub fn accent_color() -> Color {
 }
 
 pub const TABLE_STYLES: TableStyles = TableStyles::new();
+
+pub fn no_wrap(mut block: TextBlock) -> TextBlock {
+    block.text_wrapping = TextWrapping::NoWrap;
+    block
+}
+
+pub fn cell_text(content: impl Into<String>) -> TextBlock {
+    no_wrap(text_block(content))
+        .font_size(TABLE_STYLES.font_size)
+        .text_trimming(TextTrimming::CharacterEllipsis)
+}
 
 pub fn format_bytes(v: u64) -> String {
     const KIB: f64 = 1024.0;

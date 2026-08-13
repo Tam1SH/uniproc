@@ -20,14 +20,9 @@ use std::time::{Duration, Instant};
 use tracing::instrument;
 use uniproc_protocol::windows_capnp::windows_agent;
 
-/// Service identity by convention: `\\.\pipe\<APP_NAME>.<AGENT_SERVICE_NAME>`,
-/// matching what the agent binds (`uniproc-windows-agent`'s `rpc::vars`).
 const APP_NAME: &str = "uniproc";
 const AGENT_SERVICE_NAME: &str = "windows-agent";
 
-/// The bootstrap capability we hand *the agent*. capnp-rpc is symmetric and
-/// wants one from each side; we expose no methods, so every default returns
-/// `unimplemented`.
 struct HostStub;
 impl windows_agent::Server for HostStub {}
 
@@ -40,15 +35,12 @@ pub enum WindowsRequest {
 pub enum WindowsReply {
     Pong,
     Report(WindowsReport),
-    /// Win32 error code; `0` is success.
     Code(u32),
 }
 
 pub struct WindowsRpc;
 
 impl RpcService for WindowsRpc {
-    // The whole session, not just the client: dropping `RpcSession` drops the
-    // driver task with it, which would tear the connection down under us.
     type Session = Rc<RpcSession<windows_agent::Client>>;
     type Request = WindowsRequest;
     type Reply = WindowsReply;
@@ -59,9 +51,6 @@ impl RpcService for WindowsRpc {
         let endpoint =
             Endpoint::for_service(APP_NAME, AGENT_SERVICE_NAME).map_err(|e| anyhow!("{e:?}"))?;
 
-        // `connect_ready` rather than a plain `connect`: the agent is a Windows
-        // service that may still be starting, and retrying inside the timeout
-        // is cheaper than bouncing all the way back through the FSM's backoff.
         let mut conn = endpoint
             .connect_ready(Duration::from_secs(timeout_secs))
             .await
@@ -99,8 +88,6 @@ impl RpcService for WindowsRpc {
     }
 }
 
-/// One arm per mutating method on the `WindowsAgent` interface. They all answer
-/// with a bare Win32 code, so the reply shape is shared.
 async fn perform_action(client: &windows_agent::Client, action: WindowsAction) -> anyhow::Result<u32> {
     macro_rules! by_pid {
         ($request:ident, $pid:expr) => {{
@@ -194,9 +181,6 @@ pub fn windows_agent_feature(ctx: &mut AppFeatureInitContext) -> anyhow::Result<
     ctx.spawn_heartbeat(&addr, settings.ping_interval_ms(), || Ping);
 
     GlobalEventBus::subscribe::<GenericAgentActor<WindowsBackend>, ScanTick>(addr.clone());
-    // Without this the process/service commands published by other features
-    // reach nobody - the actor implements the handler, but a `Handler` impl
-    // alone routes nothing.
     GlobalEventBus::subscribe::<GenericAgentActor<WindowsBackend>, WindowsActionRequest>(addr.clone());
     addr.send(Init);
 

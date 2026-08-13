@@ -11,15 +11,6 @@ pub struct ShellLayout;
 impl Layout for ShellLayout {
     fn install(ctx: &FeatureInitContext, _uri: &AppUri) -> anyhow::Result<()> {
         ctx.install(domain2::features::sidebar::install)?;
-        // Installed here (layout scope), not from the Processes page: the
-        // sidebar's metric tiles render as part of the shell, an ancestor
-        // scope of every page. `ctx.install` (not a bare call) marks this
-        // scope as metrics' owner so any descendant page that only wants
-        // to *read* it must say so explicitly via `ctx.inherit(...)` -
-        // previously a page-scoped install here left a descendant's
-        // `use_reducer::<MetricsReducer>()` silently resolving to a
-        // disconnected local instance with no actor behind it, orphaning
-        // the real one and flatlining its chart.
         ctx.install(domain2::features::metrics::install)
     }
 
@@ -31,6 +22,7 @@ impl Layout for ShellLayout {
         let selected_tag = match current {
             Route::Processes { .. } => "processes",
             Route::Services { .. } => "services",
+            Route::Wsl { .. } => "wsl",
         };
 
         let content = cx.outlet();
@@ -52,6 +44,7 @@ impl Layout for ShellLayout {
             move |tag: String| match tag.as_str() {
                 "processes" => nav.to(Route::Processes {}),
                 "services" => nav.to(Route::Services {}),
+                "wsl" => nav.to(Route::Wsl {}),
                 _ => {}
             },
             set_width,

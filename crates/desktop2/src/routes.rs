@@ -1,7 +1,7 @@
 use guinea_macros::routes;
 
 use crate::layouts::{ShellLayout, TabsLayout};
-use crate::pages::{Processes, Services};
+use crate::pages::{Processes, Services, Wsl};
 
 routes! {
     Route {
@@ -9,6 +9,7 @@ routes! {
             layout(ShellLayout) {
                 page(Processes, "/")
                 page(Services, "/services")
+                page(Wsl, "/wsl")
             }
         }
     }

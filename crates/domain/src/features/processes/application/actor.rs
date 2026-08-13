@@ -252,7 +252,6 @@ fn terminate_selected_process<P: UiProcessesPort>(this: &mut ProcessActor<P>, _:
         return;
     };
 
-    // TODO: bullshit
     let mut system = System::new();
     system.refresh_processes(ProcessesToUpdate::Some(&[Pid::from_u32(pid)]), false);
     if let Some(process) = system.process(Pid::from_u32(pid)) {

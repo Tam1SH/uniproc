@@ -1,9 +1,3 @@
-//! capnp readers -> owned contract types.
-//!
-//! Readers borrow from the message buffer that produced them and are `!Send`,
-//! so nothing above the transport can hold one. Everything an agent returns is
-//! copied out here, once, on the RPC thread, before it goes near the bus.
-
 use app_contracts2::features::agents::{
     EnvironmentKind, LinuxDockerContainerInfo, LinuxEnvironmentInfo, LinuxMachineStats, LinuxProcessStats,
     LinuxReport, ProcessPriority, SignatureStatus, WindowsMachineStats, WindowsProcessStats, WindowsReport,
@@ -14,8 +8,6 @@ use uniproc_protocol::windows_capnp;
 fn text(reader: capnp::text::Reader<'_>) -> capnp::Result<String> {
     Ok(reader.to_str()?.to_string())
 }
-
-// ─────────────────────────────── Windows ───────────────────────────────
 
 pub fn windows_report(reader: windows_capnp::report::Reader<'_>) -> capnp::Result<WindowsReport> {
     let processes = reader
@@ -77,8 +69,6 @@ fn windows_process(r: windows_capnp::process_stats::Reader<'_>) -> capnp::Result
         has_visible_window: r.get_has_visible_window(),
         is_kernel_process: r.get_is_kernel_process(),
         is_windows_process: r.get_is_windows_process(),
-        // An unrecognised discriminant means the agent is newer than us -
-        // degrade to Unknown rather than failing the whole report.
         signature: r.get_signature().map(signature).unwrap_or_default(),
         image_path: text(r.get_image_path()?)?,
         display_name: text(r.get_display_name()?)?,
@@ -104,8 +94,6 @@ pub fn priority(priority: ProcessPriority) -> windows_capnp::ProcessPriority {
         ProcessPriority::Realtime => windows_capnp::ProcessPriority::Realtime,
     }
 }
-
-// ──────────────────────────────── Linux ────────────────────────────────
 
 pub fn linux_report(reader: linux_capnp::report::Reader<'_>) -> capnp::Result<LinuxReport> {
     let processes = reader
@@ -162,6 +150,7 @@ fn linux_machine(r: linux_capnp::machine_stats::Reader<'_>) -> capnp::Result<Lin
         pipe_read_bytes: r.get_pipe_read_bytes(),
         pipe_write_bytes: r.get_pipe_write_bytes(),
         sendfile_bytes: r.get_sendfile_bytes(),
+        cpu_count: r.get_cpu_count(),
     })
 }
 

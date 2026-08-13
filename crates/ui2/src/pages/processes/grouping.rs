@@ -2,30 +2,11 @@ use app_contracts2::features::processes::{ProcessCategory, ProcessRow};
 use std::collections::HashMap;
 use std::collections::HashSet;
 
-/// A family of same-named processes with their metrics summed - a fact
-/// about the system, independent of how (or whether) it gets rendered as a
-/// collapsible row. No `depth`/`is_expanded`/chevron concept belongs here;
-/// those exist only because of how a table widget draws a group, which is
-/// [`flatten_for_display`]'s job, not this one's.
 pub(super) struct ProcessGroup {
-    /// Identity fields (pid/name/exe_path/package_full_name) come from the
-    /// leader; CPU/memory/disk/net are summed across every member.
     leader: ProcessRow,
-    /// All members, including the leader at `[0]`.
     members: Vec<ProcessRow>,
 }
 
-/// Groups `rows` (already sorted by the active column) by process name.
-/// Group order follows each group's first-seen position in `rows`, not a
-/// separate alphabetical pass - the old Slint app's `ProcessTreeBuilder`
-/// always regrouped alphabetically regardless of the active sort, which
-/// would fight the table's own per-column sorting here.
-///
-/// `leader_pid`, if it names a member of a group, is promoted to that
-/// group's leader instead of the default lowest-pid choice - otherwise
-/// selecting (or pinning) any instance but the lowest-pid one would vanish
-/// from view the instant its group collapses in the UI, since only the
-/// leader row renders at all when collapsed.
 pub(super) fn group_by_name(rows: &[ProcessRow], leader_pid: Option<u32>) -> Vec<ProcessGroup> {
     let mut order: Vec<String> = Vec::new();
     let mut groups: HashMap<String, Vec<ProcessRow>> = HashMap::new();
@@ -46,9 +27,6 @@ pub(super) fn group_by_name(rows: &[ProcessRow], leader_pid: Option<u32>) -> Vec
             if members.is_empty() {
                 return None;
             }
-            // Base order is lowest-pid-first, stable across snapshots as
-            // long as that process stays alive; the requested leader (if a
-            // member) then takes the slot on top of that.
             members.sort_unstable_by_key(|r| r.pid);
             let leader_idx = leader_pid
                 .and_then(|pid| members.iter().position(|r| r.pid == pid))
@@ -72,24 +50,11 @@ pub(super) fn group_by_name(rows: &[ProcessRow], leader_pid: Option<u32>) -> Vec
         .collect()
 }
 
-/// A heading row and the process groups filed under it.
-///
-/// Sections are derived, not stored: category membership is a property of
-/// each row (`ProcessRow::category`, decided in the domain), and this only
-/// arranges them for display.
 pub(super) struct Section {
     pub(super) category: ProcessCategory,
     groups: Vec<ProcessGroup>,
 }
 
-/// Splits `groups` by their leader's category, in [`ProcessCategory::ORDER`].
-/// Empty categories are dropped rather than rendered as empty headings.
-///
-/// A group takes the most user-facing category any of its members has, in
-/// [`ProcessCategory::ORDER`]. The leader alone cannot decide: a browser is
-/// twenty-odd processes of which exactly one owns the window, and the leader
-/// is whichever has the lowest pid - so going by the leader filed Chrome
-/// under Background while it sat visible on screen.
 pub(super) fn split_by_category(groups: Vec<ProcessGroup>) -> Vec<Section> {
     let mut by_category: HashMap<ProcessCategory, Vec<ProcessGroup>> = HashMap::new();
     for group in groups {
@@ -105,9 +70,6 @@ pub(super) fn split_by_category(groups: Vec<ProcessGroup>) -> Vec<Section> {
         .collect()
 }
 
-/// The category a whole group is filed under: the earliest one in
-/// [`ProcessCategory::ORDER`] among its members, so a single windowed member
-/// is enough to make the group an app.
 fn group_category(group: &ProcessGroup) -> ProcessCategory {
     let rank = |c: ProcessCategory| {
         ProcessCategory::ORDER
@@ -123,16 +85,12 @@ fn group_category(group: &ProcessGroup) -> ProcessCategory {
         .unwrap_or(group.leader.category)
 }
 
-/// Metrics summed over every process a heading covers.
 #[derive(Default, Clone, Copy)]
 struct SectionTotals {
     cpu_percent: f32,
     memory_bytes: u64,
     disk_bytes: u64,
     net_bytes: u64,
-    /// Groups, not processes: a browser is one entry in this count no matter
-    /// how many renderer processes it spawned, which is what Task Manager
-    /// shows and what a person means by "how many apps do I have open".
     group_count: usize,
 }
 
@@ -140,8 +98,6 @@ impl SectionTotals {
     fn of<'a>(groups: impl Iterator<Item = &'a ProcessGroup>) -> Self {
         let mut totals = Self::default();
         for group in groups {
-            // The leader already carries the group's sums, so adding the
-            // members again would double-count.
             totals.cpu_percent += group.leader.cpu_percent;
             totals.memory_bytes += group.leader.memory_bytes;
             totals.disk_bytes += group.leader.disk_bytes;
@@ -152,17 +108,6 @@ impl SectionTotals {
     }
 }
 
-/// Flattens `sections` into the single sequence the table actually renders:
-/// a heading (0), then each group's leader (1), then the members of any
-/// expanded group (2).
-///
-/// Purely presentation - `depth`/`is_expanded`/`has_children` exist because
-/// `guinea::widgets::table` wants a flat `Vec<T>` with per-row
-/// chevron/indent flags, not because they mean anything about the process.
-///
-/// This runs fresh every render; `pin_display_row` (applied by the caller
-/// afterward) is what actually keeps the selected row from jumping to a
-/// new position on every re-sort.
 pub(super) fn flatten_for_display(
     sections: &[Section],
     expanded: &HashSet<String>,
@@ -211,14 +156,6 @@ pub(super) fn flatten_for_display(
     out
 }
 
-/// Caches [`group_by_name`]'s output across renders that don't change what
-/// it depends on - `rows` (compared by pointer, not value: `state.rows` is
-/// an `Rc<[ProcessRow]>` that's only replaced wholesale on a new `SetRows`,
-/// so a stale render triggered by something unrelated, e.g. a metrics tick
-/// or a column-width drag, still points at the exact same allocation) and
-/// `selected` (which promotes a group member to leader). Grouping clones
-/// every row once; without this, that cost was paid on every render
-/// regardless of whether either input had actually changed.
 pub(super) struct GroupsCache {
     rows_ptr: *const ProcessRow,
     rows_len: usize,
@@ -248,10 +185,8 @@ impl GroupsCache {
     }
 }
 
-/// Marks a [`DisplayRow`] as a heading rather than a process.
 #[derive(Clone, PartialEq)]
 pub(super) struct SectionRow {
-    /// The category this heading names and collapses.
     pub(super) category: ProcessCategory,
 }
 
@@ -262,10 +197,6 @@ pub(super) struct DisplayRow {
     pub(super) has_children: bool,
     pub(super) is_expanded: bool,
     pub(super) group_size: usize,
-    /// `Some` for heading rows. Their `row` is synthetic: it exists only so
-    /// every column has something to format, and its `pid` is 0, which no
-    /// real process has - selection and pinning both key on `pid`, so a
-    /// heading can never be selected by accident.
     pub(super) section: Option<SectionRow>,
 }
 
@@ -273,9 +204,6 @@ impl DisplayRow {
     fn section(category: ProcessCategory, totals: SectionTotals, is_expanded: bool) -> Self {
         let label = category.label();
         Self {
-            // The metric columns format whatever this row carries, so
-            // filling in the section's totals is all it takes for a heading
-            // to show what its contents add up to.
             row: ProcessRow {
                 pid: 0,
                 name: label.to_string(),
@@ -297,18 +225,6 @@ impl DisplayRow {
     }
 }
 
-/// Keeps `target_pid`'s row at its previous on-screen position, the same
-/// way `domain2::ProcessesActor::sort_rows_pinned` stabilizes the raw list
-/// before grouping - but that pin operates on individual `ProcessRow`s by
-/// index, and grouping can collapse several of those into one displayed
-/// row, or promote a different member to the leader slot. Once the rows
-/// reaching the table are `DisplayRow`s, the *rendered* row's position is
-/// the only stability guarantee that still means anything, so it has to be
-/// re-applied here on the post-grouping list.
-///
-/// Returns the row's new position (`None` if `target_pid` isn't rendered
-/// at all right now, e.g. a non-leader member of a collapsed group) - feed
-/// that back in as `prev_pos` on the next call to keep the pin anchored.
 pub(super) fn pin_display_row(
     rows: &mut Vec<DisplayRow>,
     target_pid: Option<u32>,
@@ -337,7 +253,7 @@ mod tests {
             pid,
             name: name.to_string(),
             display_name: name.to_string(),
-            cpu_percent: pid as f32, // distinct per row, handy for eyeballing failures
+            cpu_percent: pid as f32,
             memory_bytes: 0,
             disk_bytes: 0,
             net_bytes: 0,
@@ -347,7 +263,6 @@ mod tests {
         }
     }
 
-    /// Rows the table renders for actual processes, ignoring headings.
     fn process_pids(rows: &[DisplayRow]) -> Vec<u32> {
         rows.iter()
             .filter(|d| d.section.is_none())
@@ -375,8 +290,6 @@ mod tests {
         ProcessGroup { leader, members }
     }
 
-    // --- group_by_name: pure domain computation, no UI concepts ---
-
     #[test]
     fn ungrouped_rows_form_singleton_groups() {
         let rows = vec![row(1, "alpha"), row(2, "beta"), row(3, "gamma")];
@@ -402,10 +315,6 @@ mod tests {
 
     #[test]
     fn selecting_a_non_lowest_pid_member_promotes_it_to_leader() {
-        // Regression: before leader promotion, selecting/pinning any group
-        // member but the lowest-pid one made it vanish the instant its
-        // group collapsed in the UI, because only the (unrelated) leader
-        // row rendered.
         let rows = vec![
             row(5, "chrome.exe"),
             row(2, "chrome.exe"),
@@ -425,11 +334,8 @@ mod tests {
         let rows = vec![row(1, "chrome.exe"), row(2, "chrome.exe")];
         let groups = group_by_name(&rows, None);
 
-        // cpu_percent was seeded as `pid as f32` in the `row` helper.
         assert_eq!(groups[0].leader.cpu_percent, 1.0 + 2.0);
     }
-
-    // --- flatten_for_display: presentation only ---
 
     #[test]
     fn collapsed_groups_render_as_a_single_leader_row() {
@@ -456,15 +362,11 @@ mod tests {
         expanded.insert("chrome.exe".to_string());
         let out = flatten_for_display(&sections, &expanded, &HashSet::new());
 
-        // Leader (2) then its one member (5), flanked by the untouched
-        // neighbors - nothing before/after the group moved.
         assert_eq!(process_pids(&out), vec![10, 2, 5, 20]);
         let member = out.iter().find(|d| d.row.pid == 5).unwrap();
         assert_eq!(member.depth, 2, "a group member sits one below its leader");
         assert!(!member.has_children);
     }
-
-    // --- split_by_category / section headings ---
 
     #[test]
     fn categories_render_in_order_under_their_parent_headings() {
@@ -477,7 +379,6 @@ mod tests {
         ]);
         let out = flatten_for_display(&sections, &HashSet::new(), &HashSet::new());
 
-        // Third-party before Microsoft: the user's own software first.
         assert_eq!(
             labels(&out),
             vec![
@@ -519,8 +420,6 @@ mod tests {
         );
     }
 
-    /// A heading counts groups, not processes: twenty renderer processes
-    /// are one browser, which is the number Task Manager shows.
     #[test]
     fn a_heading_counts_groups_not_processes() {
         let sections = split_by_category(vec![
@@ -539,9 +438,6 @@ mod tests {
         assert_eq!(heading.group_size, 2, "two apps, not four processes");
     }
 
-    /// One windowed member is enough: the leader is the lowest pid, which
-    /// for a browser is a renderer, and going by it filed Chrome under
-    /// Background while it sat visible on screen.
     #[test]
     fn a_group_is_an_app_if_any_member_owns_a_window() {
         let sections = split_by_category(vec![group(
@@ -567,12 +463,8 @@ mod tests {
         )]);
         let out = flatten_for_display(&sections, &HashSet::new(), &HashSet::new());
 
-        // Selection and pinning key on pid; 0 is the idle process and never
-        // appears in a report, so no heading can collide with a real row.
         assert!(out.iter().filter(|d| d.section.is_some()).all(|d| d.row.pid == 0));
     }
-
-    // --- pin_display_row: presentation only ---
 
     #[test]
     fn pin_keeps_the_selected_row_at_its_previous_position_across_a_resort() {
@@ -589,7 +481,6 @@ mod tests {
             })
             .collect();
 
-        // First call: nothing to anchor to yet, just report where it is.
         let mut first = display.clone();
         let pos = pin_display_row(&mut first, Some(2), None);
         assert_eq!(pos, Some(1));
@@ -599,8 +490,6 @@ mod tests {
             "no prior position - nothing should move yet"
         );
 
-        // Simulate a re-sort that pushed pid 2 to the front; the pin
-        // should pull it back to its previously-reported index.
         let mut resorted = vec![display[1].clone(), display[0].clone(), display[2].clone()];
         let pos = pin_display_row(&mut resorted, Some(2), pos);
         assert_eq!(pos, Some(1));
@@ -621,8 +510,6 @@ mod tests {
             group_size: 1,
             section: None,
         }];
-        // pid 99 doesn't exist in this list - e.g. a non-leader member of
-        // a collapsed group.
         let pos = pin_display_row(&mut display, Some(99), Some(0));
         assert_eq!(pos, None);
     }

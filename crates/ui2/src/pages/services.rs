@@ -1,11 +1,12 @@
 use app_contracts2::features::services::{ServiceActionKind, ServiceRow, ServicesReducer};
+use crate::table_styles;
 use guicons::icon;
 use guinea::router::PageCx;
 use guinea::widgets::table::{ColumnSpec, SortState, table_with_sort_indicator};
 use guinea_core::Load;
 use windows_reactor::{
     body_large, border, button, grid, hstack, text_block, Color, Element, ElementExt,
-    GridLength, HorizontalAlignment, ProgressRing, SetState, Shape, TextTrimming,
+    GridLength, HorizontalAlignment, ProgressRing, SetState, Shape,
     VerticalAlignment,
 };
 
@@ -16,20 +17,10 @@ const RUNNING_GREEN: Color = Color {
     b: 79,
 };
 
-/// Generic per-row service icon (a gear, matching the old Slint app's
-/// service-list glyph) - services don't have a per-process exe/package to
-/// extract a real icon from, so unlike `processes`' `NameCell` there's no
-/// lookup here, just this one fixed icon for every row.
 fn service_icon() -> Element {
     icon!(gears).size(16.0).build_element()
 }
 
-/// Stopped services are the common/expected state, not an error - dimming
-/// (not recoloring) each cell keeps the row readable while visually
-/// receding behind whatever's actually running. Applied per-cell, not once
-/// on the row: `table_with_sort_indicator`'s row is assembled internally
-/// from each column's own cell closure, there's no single row `Element` a
-/// caller here gets to wrap.
 fn maybe_dim(el: Element, running: bool) -> Element {
     if running { el } else { el.opacity(0.55) }
 }
@@ -87,7 +78,7 @@ pub fn services_view(cx: &mut PageCx) -> Element {
                 ColumnSpec::new("name", "Name", 260u64, |row: &ServiceRow| {
                     let content = hstack((
                         service_icon(),
-                        text_block(row.display_name.clone()).text_trimming(TextTrimming::CharacterEllipsis),
+                        table_styles::cell_text(row.display_name.clone()),
                     ))
                     .spacing(6.0);
                     maybe_dim(content.into(), row.status == "Running")
@@ -96,31 +87,30 @@ pub fn services_view(cx: &mut PageCx) -> Element {
                 ColumnSpec::new("status", "Status", 90u64, |row: &ServiceRow| {
                     let running = row.status == "Running";
                     let el: Element = if running {
-                        text_block(row.status.clone())
-                            .text_trimming(TextTrimming::CharacterEllipsis)
+                        table_styles::cell_text(row.status.clone())
                             .foreground(RUNNING_GREEN)
                             .into()
                     } else {
-                        text_block(row.status.clone()).text_trimming(TextTrimming::CharacterEllipsis).into()
+                        table_styles::cell_text(row.status.clone()).into()
                     };
                     maybe_dim(el, running)
                 })
                 .sortable(),
                 ColumnSpec::new("pid", "PID", 70u64, |row: &ServiceRow| {
                     let text = if row.pid == 0 { String::new() } else { row.pid.to_string() };
-                    maybe_dim(text_block(text).into(), row.status == "Running")
+                    maybe_dim(table_styles::cell_text(text).into(), row.status == "Running")
                 })
                 .sortable(),
                 ColumnSpec::new("group", "Group", 120u64, |row: &ServiceRow| {
                     maybe_dim(
-                        text_block(row.group.clone()).text_trimming(TextTrimming::CharacterEllipsis).into(),
+                        table_styles::cell_text(row.group.clone()).into(),
                         row.status == "Running",
                     )
                 })
                 .sortable(),
                 ColumnSpec::new("description", "Description", 320u64, |row: &ServiceRow| {
                     maybe_dim(
-                        text_block(row.description.clone()).text_trimming(TextTrimming::CharacterEllipsis).into(),
+                        table_styles::cell_text(row.description.clone()).into(),
                         row.status == "Running",
                     )
                 }),

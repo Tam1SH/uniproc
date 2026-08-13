@@ -12,10 +12,6 @@ use crate::table_styles;
 use super::column_layout::ColumnLayoutEntry;
 use super::grouping::{DisplayRow, SectionRow};
 
-/// Sort direction indicator for the table header, matching the old Slint
-/// app's `SortArrow` rather than the plain text glyph the framework falls
-/// back to when no indicator is supplied.
-///
 pub(super) fn sort_indicator_icon(descending: bool) -> Element {
     if descending {
         icon!(chevron_down_regular).size(10.0).build_element()
@@ -24,24 +20,10 @@ pub(super) fn sort_indicator_icon(descending: bool) -> Element {
     }
 }
 
-/// Reserved width of the expand-chevron slot in the Name column, occupied
-/// on every row regardless of whether that row actually has one - see
-/// `name_column`.
-/// Reserved on every row, with or without a chevron in it, so that the
-/// chevrons of headings and of group leaders line up on one left edge -
-/// which is also what keeps every icon and name starting at the same x.
 const CHEVRON_SLOT_WIDTH: f64 = 14.0;
-/// Gap between the chevron slot and what follows it in a Name cell.
 const NAME_CELL_SPACING: f64 = 6.0;
-/// The kernel's compressed-page store, as the OS names it. Not localized -
-/// this is the image name, which is the same on every machine.
 const MEMORY_COMPRESSION: &str = "Memory Compression";
 
-/// The heat wash color for a row. Memory Compression gets grey instead of
-/// the accent: its working set is routinely one of the largest on the
-/// machine, and painting it the same alarming red as a runaway program says
-/// "look here" about something that is the OS doing its job. Grey keeps the
-/// magnitude readable without the call to action.
 fn heat_color(row: &ProcessRow, accent: Color) -> Color {
     if row.name == MEMORY_COMPRESSION {
         MUTED_HEAT_COLOR
@@ -50,8 +32,6 @@ fn heat_color(row: &ProcessRow, accent: Color) -> Color {
     }
 }
 
-/// Neutral grey for a heat wash - opacity still tracks the value, so the
-/// bar reads as "this much" rather than "this bad".
 const MUTED_HEAT_COLOR: Color = Color {
     a: 255,
     r: 150,
@@ -59,8 +39,6 @@ const MUTED_HEAT_COLOR: Color = Color {
     b: 150,
 };
 
-/// Expand/collapse chevron for a group leader - right-pointing when
-/// collapsed (click to reveal), down when expanded.
 fn expand_chevron(expanded: bool) -> Element {
     if expanded {
         icon!(chevron_down_regular).size(10.0).build_element()
@@ -69,22 +47,10 @@ fn expand_chevron(expanded: bool) -> Element {
     }
 }
 
-/// Generic fallback for a process whose own icon couldn't be resolved
-/// (no `exe_path`, extraction failed, ...) - `fluent-color:apps-24`, the
-/// same "generic app" glyph the old Slint app's `IconProvider` fell back
-/// to (`context::icons::keys::APP`). It's a full-color icon (its palette
-/// is baked into the SVG, not tinted via a host Foreground), so unlike the
-/// monochrome chevrons it needs no theme-color handling.
 fn fallback_process_icon() -> Element {
     icon!(app).size(16.0).build_element()
 }
 
-/// Everything the Name cell needs to decide *what* to draw: icon identity,
-/// display name, and this row's spot in the current group/expand topology.
-/// Deliberately excludes `cpu_percent`/`memory_bytes`/... - the rest of
-/// `ProcessRow` - which change on essentially every tick for a live
-/// process, unlike this set, which only changes when a process spawns/
-/// exits or a group is expanded/collapsed.
 #[derive(Clone, PartialEq)]
 struct NameCellProps {
     exe_path: String,
@@ -93,35 +59,9 @@ struct NameCellProps {
     has_children: bool,
     is_expanded: bool,
     group_size: usize,
-    /// `Some` on a heading row: no icon, and the chevron collapses a whole
-    /// category instead of one process group.
     section: Option<SectionRow>,
 }
 
-/// The `Name` column's cell: process icon, name, and - for a group leader -
-/// an expand chevron and a "(N)" size badge. Expanded members render at
-/// without a chevron of their own, at the same left edge as the leader.
-///
-/// Was wrapped in [`memo`] keyed on [`NameCellProps`], and is not any more:
-/// a memoised component whose render returns a real widget (this one returns
-/// an `hstack`) stops being re-rendered by the reconciler - upstream
-/// microsoft/windows-rs#4802, still open. In the table that showed up as
-/// cells drawn over their previous contents.
-///
-/// The memo is worth restoring once that is fixed, because the reasoning
-/// below still holds:
-///
-/// Keyed on [`NameCellProps`] - a whole-row memo key
-/// would be invalidated every render by `cpu_percent`/`memory_bytes`/...
-/// and never actually skip the icon lookup (the expensive part: an
-/// `IconCache` lookup from `exe_path`/`package_full_name`, plus building
-/// the name text/chevron). Keying on identity+topology alone means all of
-/// it is resolved once per process and reused for that process's entire
-/// lifetime in the table (or until it changes group/expand state),
-/// independent of how often its metrics change. This is also what was
-/// causing the icon to visibly flicker every tick before this change - a
-/// fresh `Image` element was being constructed on every render regardless
-/// of whether the icon itself could possibly have changed.
 struct NameCell {
     icons: HookRef<context2::IconCache>,
     toggle_expanded: SetState<String>,
@@ -154,11 +94,6 @@ impl Component<NameCellProps> for NameCell {
         };
         let text = table_styles::TABLE_STYLES.text_cell(name);
 
-        // Reserved at a fixed width on every row, whether or not this row
-        // has a chevron - otherwise rows with and without one would start
-        // their icon/name at different x offsets, which is what actually
-        // read as "overlapping" text: the eye expects one consistent left
-        // edge for the whole Name column, not one that shifts per row.
         let chevron_content: Element = if props.has_children {
             let name_key = props.name.clone();
             let toggle = self.toggle_expanded.clone();
@@ -170,10 +105,6 @@ impl Component<NameCellProps> for NameCell {
         };
         let chevron = border(chevron_content).width(CHEVRON_SLOT_WIDTH);
 
-        // No per-depth indent. Expanded group members sit at the same left
-        // edge as their leader: the leader is one of them (the lowest pid),
-        // not a parent they belong under, so stepping them in would claim a
-        // hierarchy that isn't there.
         hstack((Element::from(chevron), icon, text))
             .spacing(NAME_CELL_SPACING)
             .into()
@@ -181,9 +112,6 @@ impl Component<NameCellProps> for NameCell {
 }
 
 impl NameCell {
-    /// A heading: label, count and a chevron that hides everything under it.
-    /// No process icon: there is no process here, and borrowing one from the
-    /// first member would suggest the heading *is* that process.
     fn render_section(&self, props: &NameCellProps, section: &SectionRow) -> Element {
         let text = table_styles::TABLE_STYLES.section_cell(format!(
             "{} ({})",
@@ -212,9 +140,6 @@ fn name_column(
     toggle_expanded: SetState<String>,
     toggle_section: SetState<ProcessCategory>,
 ) -> ColumnSpec<DisplayRow> {
-    // Inset by exactly the chevron slot the cells reserve, so the header
-    // label starts on the same x as a section heading's text rather than
-    // over the chevrons.
     let header = || {
         text_block("Name")
             .padding(windows_reactor::Thickness {
@@ -226,7 +151,6 @@ fn name_column(
             .into()
     };
     ColumnSpec::new_with_header("name", header, width, move |d: &DisplayRow| {
-        // Not `memo`, deliberately - see the note on NameCell.
         let content = component(
             NameCell {
                 icons: icons.clone(),
@@ -236,9 +160,6 @@ fn name_column(
             NameCellProps {
                 exe_path: d.row.exe_path.clone(),
                 package_full_name: d.row.package_full_name.clone(),
-                // The display name is what a person reads; `name` stays the
-                // grouping key and the memo key, so a process whose
-                // resolved name is empty still behaves identically.
                 name: d.row.display_name.clone(),
                 has_children: d.has_children,
                 is_expanded: d.is_expanded,
@@ -246,27 +167,13 @@ fn name_column(
                 section: d.section.clone(),
             },
         );
-        // `row_view` (guinea's table widget) applies `.width()`/`.padding()`
-        // to whatever this closure returns - but `Element::Component` (what
-        // `memo` produces) has no modifiers slot, so those calls would
-        // silently no-op directly on it, collapsing the column's width and
-        // blowing up the whole row's layout. Wrapping in a plain `border`
-        // gives the table a real widget element to size, while the memoised
-        // content stays nested (and still skippable) inside it.
         border(content).into()
     })
     .min_width(min_width)
-    // The cell reserves its own chevron slot; the table's shared inset on
-    // top of that is what pushed every name off the left edge.
     .flush()
     .sortable()
 }
 
-/// Like [`name_column`]'s plain siblings, but washes each cell with the
-/// accent color at an opacity proportional to `intensity(row)` (expected
-/// `0.0..=1.0`) - the periphery-readable "who's using this resource" cue
-/// agreed for the metric columns, without a bar control competing with the
-/// text.
 fn heat_column(
     id: &'static str,
     header: &'static str,
@@ -287,9 +194,6 @@ fn heat_column(
     .sortable()
 }
 
-/// Single-line column header: label, then the machine-wide aggregate for
-/// that resource in a muted color. The sort indicator is appended by the
-/// table widget itself, after this element.
 fn metric_header(label: &'static str, value: String) -> Element {
     hstack((
         text_block(label),
@@ -312,8 +216,6 @@ fn cpu_column(
             .unwrap_or_else(|| text_block("CPU").into())
     };
     ColumnSpec::new_with_header("cpu", header, width, move |d: &DisplayRow| {
-        // Already normalized to the whole machine (matches the aggregate
-        // shown in the header), so it doubles as the heat intensity as-is.
         let cpu_percent = d.row.cpu_percent;
         let intensity = cpu_percent / 100.0;
         table_styles::TABLE_STYLES.heat_cell(
@@ -370,9 +272,6 @@ pub(super) fn build_columns(
     toggle_expanded: SetState<String>,
     toggle_section: SetState<ProcessCategory>,
 ) -> Vec<ColumnSpec<DisplayRow>> {
-    // Net/Disk have no machine-wide total to normalize against (unlike
-    // CPU/Memory), so their heat is relative to the busiest row currently
-    // on screen rather than a fabricated absolute percentage.
     let net_max = rows.iter().map(|r| r.net_bytes).max().unwrap_or(0).max(1) as f32;
     let disk_max = rows.iter().map(|r| r.disk_bytes).max().unwrap_or(0).max(1) as f32;
     let accent = table_styles::accent_color();

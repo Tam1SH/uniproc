@@ -1,6 +1,5 @@
 mod actor;
-mod windows_scan;
 mod install;
-pub mod settings;
+mod scanner;
 
 pub use install::install;

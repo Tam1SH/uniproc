@@ -21,20 +21,6 @@ use column_layout::ColumnLayout;
 use columns::{build_columns, sort_indicator_icon};
 use grouping::{flatten_for_display, pin_display_row, GroupsCache};
 
-/// A small card over the table while there is no live data: a spinner and
-/// one word.
-///
-/// Says nothing about an agent. That the data comes from a separate process
-/// over a pipe is an implementation detail, and naming it asks the reader to
-/// care about something they cannot act on. Nor does it distinguish
-/// connecting from retrying - both mean "working on it", which is the whole
-/// message.
-///
-/// No scrim and no explanation. The rows underneath stay readable and
-/// scrollable - they are the last state that was actually true - and
-/// darkening them to announce a blip costs more than it tells. The card is
-/// there to answer "is it hung or is it working on it", which a spinner
-/// answers on its own.
 fn disconnected_overlay() -> Element {
 
     border(
@@ -53,8 +39,6 @@ fn disconnected_overlay() -> Element {
     .into()
 }
 
-/// Near-opaque neutral so the card stays readable over whatever rows happen
-/// to be behind it.
 const CARD_BACKGROUND: Color = Color { a: 240, r: 32, g: 32, b: 32 };
 
 pub fn processes_view<S: amethystate::Store>(
@@ -64,17 +48,9 @@ pub fn processes_view<S: amethystate::Store>(
     let (state, dispatch) = cx.use_reducer::<ProcessesReducer>();
     let (metrics_state, _) = cx.use_reducer::<MetricsReducer>();
 
-    // Hooks must run in the same order on every render of this component.
-    // These used to live inside the `Load::Ready` arm of the `match` below,
-    // so a transition between `Loading`/`Ready`/`Failed` changed which hooks
-    // ran - the reconciler's dirty tracking assumes a stable hook sequence
-    // per component instance and panics ("a state-dirty component was not
-    // re-rendered by the pass") when it isn't.
     let layout = cx.use_ref(ColumnLayout::new(map));
     let icons = cx.use_ref(context2::IconCache::new());
     let (expanded, set_expanded) = cx.use_state(HashSet::<String>::new());
-    // Sections start expanded, so what's stored is the exception: which of
-    // them the user has collapsed.
     let (collapsed_sections, set_collapsed_sections) =
         cx.use_state(HashSet::<ProcessCategory>::new());
     let groups_cache = cx.use_ref(GroupsCache::empty());
@@ -116,10 +92,6 @@ pub fn processes_view<S: amethystate::Store>(
             let machine = state.machine_summary().cloned();
             let layout = layout.borrow();
 
-            // Expand/collapse is pure presentation state - it has no
-            // domain meaning and nothing else needs to observe it, so it
-            // lives here rather than round-tripping through the actor the
-            // way selection/sort do.
             let toggle_expanded = {
                 let expanded = expanded.clone();
                 SetState::new(move |name: String| {
@@ -160,9 +132,6 @@ pub fn processes_view<S: amethystate::Store>(
             *pinned_display_pos.borrow_mut() = new_pos;
 
             let selected_index = new_pos.map(|i| i as i32).unwrap_or(-1);
-            // Only `pid`s, not full `DisplayRow`s (which carry a cloned
-            // `ProcessRow` with several `String` fields each) - the
-            // selection callback needs nothing else.
             let pids_for_select: Vec<u32> = display_rows.iter().map(|d| d.row.pid).collect();
             let select_dispatch = dispatch.clone();
             let on_selection_changed = SetState::new(move |idx: i32| {
@@ -193,8 +162,6 @@ pub fn processes_view<S: amethystate::Store>(
     let body_separator = separator();
     let status_bar = text_block(format!("Processes: {}", state.total())).padding(8.0);
 
-    // Stacked in one grid cell: the overlay sits over the table rather than
-    // taking its place.
     let body = if matches!(state.agent_state, AgentConnectionState::Connected) {
         body
     } else {

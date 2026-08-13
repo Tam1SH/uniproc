@@ -54,9 +54,6 @@ pub trait ServicesActions {
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct ServicesState {
-    /// Agent reports as an async resource: `Load::Loading` until the first
-    /// snapshot arrives. An empty vec inside `Ready` is a valid answer, not
-    /// "still loading" - see `ProcessesState::rows` for the same shape.
     pub rows: Load<Rc<[ServiceRow]>>,
     pub selected: Option<String>,
     pub sort_column: String,

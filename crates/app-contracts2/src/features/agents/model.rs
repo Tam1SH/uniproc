@@ -1,12 +1,3 @@
-//! Agent-facing contracts: owned data the rest of the app consumes, plus the
-//! command vocabulary it sends back.
-//!
-//! Deliberately free of any transport/wire types. The agents now speak
-//! capnp-rpc (see `domain2::features::agents`), whose readers borrow from the
-//! message buffer they were decoded out of and are `!Send` - neither of which
-//! survives a trip through the event bus. Everything here is plain owned Rust,
-//! decoded once at the transport boundary.
-
 use guinea_core::actor::Message;
 use uuid::Uuid;
 
@@ -22,9 +13,6 @@ pub enum AgentConnectionState {
     WaitingRetry { delay_secs: u64 },
 }
 
-// ─────────────────────────────── Windows ───────────────────────────────
-
-/// Mirrors `windows.capnp`'s `SignatureStatus`.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum SignatureStatus {
     #[default]
@@ -34,7 +22,6 @@ pub enum SignatureStatus {
     ThirdParty,
 }
 
-/// Mirrors `windows.capnp`'s `ProcessPriority`.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ProcessPriority {
     Idle,
@@ -45,7 +32,6 @@ pub enum ProcessPriority {
     Realtime,
 }
 
-/// Mirrors `windows.capnp`'s `MachineStats`.
 #[derive(Clone, Debug, Default)]
 pub struct WindowsMachineStats {
     pub total_physical_kb: u64,
@@ -64,7 +50,6 @@ pub struct WindowsMachineStats {
     pub net_tx_bytes: u64,
 }
 
-/// Mirrors `windows.capnp`'s `ProcessStats`.
 #[derive(Clone, Debug, Default)]
 pub struct WindowsProcessStats {
     pub pid: u32,
@@ -107,24 +92,15 @@ impl WindowsProcessStats {
     }
 }
 
-/// Mirrors `windows.capnp`'s `Report`.
 #[derive(Clone, Debug, Default)]
 pub struct WindowsReport {
     pub machine: WindowsMachineStats,
     pub processes: Vec<WindowsProcessStats>,
 }
 
-/// One scan tick's outcome: either a report, or the reason there isn't one.
-///
-/// The connection state rides the same channel as the data on purpose. A
-/// consumer that only ever hears about successful scans cannot tell "the
-/// machine is idle" from "the agent died ten minutes ago and these numbers
-/// are stale" - it just keeps showing the last thing it was handed.
 #[derive(Clone, Debug)]
 pub enum WindowsReportMessage {
     Report(WindowsReport),
-    /// No data this tick. Carries where the connection currently stands, so
-    /// a consumer can say "reconnecting" rather than going blank.
     Unavailable(AgentConnectionState),
 }
 impl Message for WindowsReportMessage {}
@@ -136,10 +112,6 @@ pub struct WindowsAgentRuntimeEvent {
 }
 impl Message for WindowsAgentRuntimeEvent {}
 
-/// A single mutating call on the Windows agent. One variant per non-`ping`,
-/// non-`getReport` method in `windows.capnp`'s `WindowsAgent` interface; every
-/// one of them answers with a Win32 error code, hence the shared
-/// [`WindowsActionResponse`].
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum WindowsAction {
     Kill { pid: u32 },
@@ -170,7 +142,6 @@ impl WindowsActionRequest {
 #[derive(Clone, Debug)]
 pub struct WindowsActionResponse {
     pub correlation_id: Uuid,
-    /// Win32 error code as reported by the agent; `0` is success.
     pub code: u32,
 }
 impl Message for WindowsActionResponse {}
@@ -185,9 +156,6 @@ impl WindowsActionResponse {
     }
 }
 
-// ──────────────────────────────── Linux ────────────────────────────────
-
-/// Mirrors `linux.capnp`'s `EnvironmentKind`.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum EnvironmentKind {
     #[default]
@@ -197,7 +165,6 @@ pub enum EnvironmentKind {
     UnknownExternalNamespace,
 }
 
-/// Mirrors `linux.capnp`'s `MachineStats`.
 #[derive(Clone, Debug, Default)]
 pub struct LinuxMachineStats {
     pub total_kb: u64,
@@ -233,9 +200,10 @@ pub struct LinuxMachineStats {
     pub pipe_read_bytes: u64,
     pub pipe_write_bytes: u64,
     pub sendfile_bytes: u64,
+
+    pub cpu_count: u32,
 }
 
-/// Mirrors `linux.capnp`'s `ProcessStats`.
 #[derive(Clone, Debug, Default)]
 pub struct LinuxProcessStats {
     pub global_pid: u32,
@@ -274,18 +242,14 @@ pub struct LinuxProcessStats {
     pub sendfile_bytes: u64,
 }
 
-/// Mirrors `linux.capnp`'s `EnvironmentInfo`.
 #[derive(Clone, Debug, Default)]
 pub struct LinuxEnvironmentInfo {
     pub mnt_ns: u64,
     pub pid_ns: u64,
     pub kind: EnvironmentKind,
-    /// Distro name for `CurrentDistro`, container id for `DockerContainer`,
-    /// empty otherwise.
     pub name: String,
 }
 
-/// Mirrors `linux.capnp`'s `DockerContainerInfo`.
 #[derive(Clone, Debug, Default)]
 pub struct LinuxDockerContainerInfo {
     pub id: String,
@@ -295,7 +259,6 @@ pub struct LinuxDockerContainerInfo {
     pub raw_json: String,
 }
 
-/// Mirrors `linux.capnp`'s `Report`.
 #[derive(Clone, Debug, Default)]
 pub struct LinuxReport {
     pub machine: LinuxMachineStats,
@@ -304,7 +267,6 @@ pub struct LinuxReport {
     pub docker_containers: Vec<LinuxDockerContainerInfo>,
 }
 
-/// A scan result from a non-host agent, tagged with which one produced it.
 #[derive(Clone, Debug)]
 pub struct RemoteScan {
     pub schema_id: &'static str,
@@ -314,8 +276,6 @@ pub struct RemoteScan {
     pub docker_containers: Vec<LinuxDockerContainerInfo>,
 }
 
-/// The non-host equivalent of [`WindowsReportMessage`]: data, or the state
-/// that explains its absence.
 #[derive(Clone, Debug)]
 pub enum RemoteScanResult {
     Scan(RemoteScan),

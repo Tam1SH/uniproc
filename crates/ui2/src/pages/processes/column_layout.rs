@@ -10,10 +10,6 @@ const COLUMN_DEFAULT: ColumnConfig = ColumnConfig {
     visible: true,
 };
 
-/// Persisted column state as live cells over the `processes.columns` ReactiveMap
-/// entries: widths are two-way synced with the table, visibility filters which
-/// columns render. Held in a `use_ref` so the sync subscriptions live as long as
-/// the page.
 pub(super) struct ColumnLayout {
     pub(super) entries: Vec<ColumnLayoutEntry>,
 }
@@ -54,7 +50,6 @@ impl ColumnLayoutEntry {
 
         let store_source = Uuid::new_v4();
 
-        // store -> ui
         let width_for_read = width.clone();
         let min_width_for_read = min_width.clone();
         let visible_for_read = visible.clone();
@@ -71,7 +66,6 @@ impl ColumnLayoutEntry {
             visible_for_read.set(next.visible, Some(store_source));
         });
 
-        // ui width -> store
         let map_for_write_w = map.clone();
         let key_w = id.to_string();
         let write_w = width.subscribe_with_source(move |w, source| {
@@ -89,7 +83,6 @@ impl ColumnLayoutEntry {
             }
         });
 
-        // ui visible -> store
         let map_for_write_v = map.clone();
         let key_v = id.to_string();
         let write_v = visible.subscribe_with_source(move |v, source| {

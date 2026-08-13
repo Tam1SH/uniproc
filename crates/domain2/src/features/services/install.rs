@@ -31,7 +31,6 @@ pub fn install(ctx: &FeatureInitContext) -> anyhow::Result<()> {
         .on_command::<Command>()
         .build();
 
-    // First scan immediately; the heartbeat re-arms from here on.
     GlobalEventBus::publish(ScanTick);
 
     Ok(())
