@@ -26,17 +26,17 @@ members = [
 # inert, until each feature's new version is done, then get deleted outright.
 
 [workspace.dependencies]
-# --- guinea (split into its own repo, path dep to a sibling checkout) ---
-guinea-core = { path = "../guinea/crates/guinea-core" }
-guinea-macros = { path = "../guinea/crates/guinea-macros" }
-guinea-codegen = { path = "../guinea/crates/guinea-codegen" }
-guinea-trace = { path = "../guinea/crates/guinea-trace" }
-guinea = { path = "../guinea/crates/guinea" }
+# --- guinea ---
+guinea-core = { git = "https://github.com/uniproc-dev/guinea", tag = "v0.1.1" }
+guinea-macros = { git = "https://github.com/uniproc-dev/guinea", tag = "v0.1.1" }
+guinea-codegen = { git = "https://github.com/uniproc-dev/guinea", tag = "v0.1.1" }
+guinea-trace = { git = "https://github.com/uniproc-dev/guinea", tag = "v0.1.1" }
+guinea = { git = "https://github.com/uniproc-dev/guinea", tag = "v0.1.1" }
 inventory = "0.3"
 
-# --- guinea-meta (split into its own repo, path dep to a sibling checkout) ---
-guinea-meta = { path = "../guinea-meta/crates/guinea-meta" }
-guinea-meta-build = { path = "../guinea-meta/crates/guinea-meta-build" }
+# --- guinea-meta ---
+guinea-meta = { git = "https://github.com/uniproc-dev/guinea-meta", tag = "v0.1.0" }
+guinea-meta-build = { git = "https://github.com/uniproc-dev/guinea-meta", tag = "v0.1.0" }
 
 guicons = "0.3.2"
 guicons-build = "0.3.2"

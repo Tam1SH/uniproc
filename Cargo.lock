@@ -701,8 +701,8 @@ dependencies = [
  "guinea",
  "guinea-core",
  "guinea-macros",
- "guinea-meta 0.1.0",
- "guinea-meta-build 0.1.0",
+ "guinea-meta",
+ "guinea-meta-build",
  "guinea-trace",
  "tokio",
  "tracing",
@@ -1237,13 +1237,14 @@ dependencies = [
 [[package]]
 name = "guinea"
 version = "0.1.0"
+source = "git+https://github.com/uniproc-dev/guinea?tag=v0.1.1#a7b0012f7b277a56a861136c3716ec6b073f3366"
 dependencies = [
  "amethystate",
  "anyhow",
  "derive_more",
  "guinea-codegen",
  "guinea-core",
- "guinea-meta 0.1.0 (git+https://github.com/uniproc-dev/guinea-meta?tag=v0.1.0)",
+ "guinea-meta",
  "raw-window-handle",
  "serde",
  "serde_json",
@@ -1257,10 +1258,11 @@ dependencies = [
 [[package]]
 name = "guinea-codegen"
 version = "0.1.0"
+source = "git+https://github.com/uniproc-dev/guinea?tag=v0.1.1#a7b0012f7b277a56a861136c3716ec6b073f3366"
 dependencies = [
  "fluent-syntax",
  "guinea-core",
- "guinea-meta-build 0.1.0 (git+https://github.com/uniproc-dev/guinea-meta?tag=v0.1.0)",
+ "guinea-meta-build",
  "heck",
  "proc-macro2",
  "quote",
@@ -1273,6 +1275,7 @@ dependencies = [
 [[package]]
 name = "guinea-core"
 version = "0.1.0"
+source = "git+https://github.com/uniproc-dev/guinea?tag=v0.1.1#a7b0012f7b277a56a861136c3716ec6b073f3366"
 dependencies = [
  "amethystate",
  "anyhow",
@@ -1291,6 +1294,7 @@ dependencies = [
 [[package]]
 name = "guinea-macros"
 version = "0.1.0"
+source = "git+https://github.com/uniproc-dev/guinea?tag=v0.1.1#a7b0012f7b277a56a861136c3716ec6b073f3366"
 dependencies = [
  "guinea-codegen",
  "heck",
@@ -1304,20 +1308,7 @@ dependencies = [
 [[package]]
 name = "guinea-meta"
 version = "0.1.0"
-
-[[package]]
-name = "guinea-meta"
-version = "0.1.0"
 source = "git+https://github.com/uniproc-dev/guinea-meta?tag=v0.1.0#c2ed5a9cc5ae531ad624a77acf9d3428e6ee4f39"
-
-[[package]]
-name = "guinea-meta-build"
-version = "0.1.0"
-dependencies = [
- "serde",
- "toml 0.8.23",
- "winresource",
-]
 
 [[package]]
 name = "guinea-meta-build"
@@ -1332,6 +1323,7 @@ dependencies = [
 [[package]]
 name = "guinea-trace"
 version = "0.1.0"
+source = "git+https://github.com/uniproc-dev/guinea?tag=v0.1.1#a7b0012f7b277a56a861136c3716ec6b073f3366"
 dependencies = [
  "anyhow",
  "once_cell",
