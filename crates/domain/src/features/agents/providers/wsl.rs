@@ -7,10 +7,10 @@ use anyhow::{anyhow, bail};
 use app_contracts::features::agents::{
     AgentConnectionState, LinuxReport, RemoteScan, RemoteScanResult, ScanTick, WslAgentRuntimeEvent,
 };
-use guinea::feature::{AppFeature, AppFeatureInitContext, ContextActorExt, ContextReactorExt, ContextStoreExt};
+use guinea::app::FeatureBuilder;
+use guinea::feature::{ContextActorExt, ContextReactorExt};
 use guinea_core::actor::event_bus::GlobalEventBus;
 use guinea_core::ratelimit;
-use guinea_macros::app_feature;
 use ogurpchik::auth::handshake::{HandshakeMode, authenticate_client};
 use ogurpchik::endpoint::Endpoint;
 use ogurpchik::rpc::{RpcSession, Side, spawn_session};
@@ -196,20 +196,19 @@ impl AgentBackend for WslBackend {
     }
 }
 
-#[app_feature]
-pub fn wsl_agent_feature(ctx: &mut AppFeatureInitContext) -> anyhow::Result<()> {
-    let store = ctx.store();
-    let settings = AgentSettings::new_with(&store)?;
+pub fn wsl_agent_feature(app: &mut FeatureBuilder) -> anyhow::Result<()> {
+    let settings = AgentSettings::new()?;
+    let ping_interval = settings.ping_interval_ms();
 
     set_launch_config(settings.wsl_distro().get(), settings.wsl_agent_path().get());
 
-    let addr = ctx.spawn(GenericAgentActor::<WslBackend>::new(
+    let addr = app.spawn(GenericAgentActor::<WslBackend>::new(
         settings.wsl_connect_timeout_secs(),
     ));
 
-    ctx.spawn_heartbeat(&addr, settings.ping_interval_ms(), || Ping);
+    app.spawn_heartbeat(&addr, move || ping_interval.get(), || Ping);
 
-    GlobalEventBus::subscribe::<GenericAgentActor<WslBackend>, ScanTick>(addr.clone());
+    app.subscribe_actor::<_, ScanTick>(&addr);
     addr.send(Init);
 
     Ok(())

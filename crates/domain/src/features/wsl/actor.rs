@@ -6,8 +6,9 @@ use guinea_core::messages;
 use app_contracts::features::wsl::{
     AgentPresence, DistroRow, LinuxMachineSummary, WslMsg, WslPort,
 };
-use guinea_core::actor::{AsyncContext, ManagedActor, Message};
-use guinea_macros::{actor_manifest, handler};
+use guinea_core::actor::{AsyncContext, Message};
+use guinea_core::actor::Context;
+use guinea_macros::{actor, handler};
 
 use super::scanner;
 
@@ -86,9 +87,10 @@ enum ScanResult {
 }
 impl Message for ScanResult {}
 
-#[actor_manifest]
-impl<P: WslPort> ManagedActor for WslActor<P> {
-    type Handlers = handlers!(@RefreshDistros, @ScanResult, @RemoteScanResult);
+actor! {
+    WslActor<P: WslPort> {
+        handlers { RefreshDistros, ScanResult, RemoteScanResult }
+    }
 }
 
 #[handler]
@@ -103,7 +105,8 @@ async fn handle_refresh<P: WslPort>(ctx: AsyncContext<WslActor<P>>, _: RefreshDi
 }
 
 #[handler]
-fn on_scan_result<P: WslPort>(this: &mut WslActor<P>, msg: ScanResult) {
+fn on_scan_result<P: WslPort>(this: &mut WslActor<P>, ctx: Context<WslActor<P>, ScanResult>) {
+    let msg = ctx.msg;
     let ScanResult::Distros(distros) = msg else {
         return;
     };
@@ -113,7 +116,8 @@ fn on_scan_result<P: WslPort>(this: &mut WslActor<P>, msg: ScanResult) {
 }
 
 #[handler]
-fn on_remote_scan<P: WslPort>(this: &mut WslActor<P>, msg: RemoteScanResult) {
+fn on_remote_scan<P: WslPort>(this: &mut WslActor<P>, ctx: Context<WslActor<P>, RemoteScanResult>) {
+    let msg = ctx.msg;
     match msg {
         RemoteScanResult::Scan(scan) => {
             let sample = CpuSample {

@@ -1,3 +1,5 @@
-mod contracts;
+mod messages;
+mod state;
 
-pub use contracts::{SidebarActions, SidebarBinder, SidebarMsg, SidebarPort, SidebarReducer, SidebarState};
+pub use messages::*;
+pub use state::*;

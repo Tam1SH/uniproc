@@ -17,11 +17,14 @@ members = [
 
 [workspace.dependencies]
 # --- guinea ---
-guinea-core = { git = "https://github.com/uniproc-dev/guinea", tag = "v0.1.1" }
-guinea-macros = { git = "https://github.com/uniproc-dev/guinea", tag = "v0.1.1" }
-guinea-codegen = { git = "https://github.com/uniproc-dev/guinea", tag = "v0.1.1" }
-guinea-trace = { git = "https://github.com/uniproc-dev/guinea", tag = "v0.1.1" }
-guinea = { git = "https://github.com/uniproc-dev/guinea", tag = "v0.1.1" }
+guinea-core = { git = "https://github.com/uniproc-dev/guinea", rev = "0f53049" }
+guinea-macros = { git = "https://github.com/uniproc-dev/guinea", rev = "0f53049" }
+guinea-codegen = { git = "https://github.com/uniproc-dev/guinea", rev = "0f53049" }
+guinea-trace = { git = "https://github.com/uniproc-dev/guinea", rev = "0f53049" }
+guinea = { git = "https://github.com/uniproc-dev/guinea", rev = "0f53049" }
+
+guinea-plugin-store = { git = "https://github.com/uniproc-dev/guinea-plugins", rev = "e34d575" }
+guinea-plugin-l10n = { git = "https://github.com/uniproc-dev/guinea-plugins", rev = "e34d575" }
 inventory = "0.3"
 
 # --- guinea-meta ---
@@ -66,7 +69,8 @@ serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
 toml = "0.9.8"
 uuid = { version = "1.23.0", features = ["v4"] }
-amethystate = "0.9.4"
+amethystate = "0.11.0"
+amethystate-core = "0.11.0"
 
 # --- Logging & Diagnostics ---
 tracing = { version = "0.1.44", features = ["release_max_level_warn"] }
@@ -104,6 +108,7 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage)'] }
 # to name the same rev by hand, not just point at the git source).
 [patch.crates-io]
 windows-reactor = { git = "https://github.com/Tam1SH/windows-rs", rev = "d0fd3ce88" }
+
 
 # --- Profiles ---
 [profile.release]

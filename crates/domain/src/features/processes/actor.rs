@@ -4,12 +4,12 @@ use std::rc::Rc;
 use app_contracts::features::agents::{
     AgentConnectionState, SignatureStatus, WindowsAction, WindowsActionRequest, WindowsReportMessage,
 };
-use app_contracts::features::processes::{
+use app_contracts::features::processes::{Deselect, Select, Sort, Terminate, 
     MachineSummary, ProcessCategory, ProcessRow, ProcessesMsg, ProcessesPort,
 };
-use guinea_core::actor::ManagedActor;
 use guinea_core::actor::event_bus::GlobalEventBus;
-use guinea_macros::{actor_manifest, handler};
+use guinea_core::actor::Context;
+use guinea_macros::{actor, handler};
 use uuid::Uuid;
 
 use super::windows_scan;
@@ -103,21 +103,15 @@ fn sort_rows_pinned(
     }
 }
 
-#[actor_manifest]
-impl<P: ProcessesPort> ManagedActor for ProcessesActor<P> {
-    type Handlers = handlers!(
-        bind {
-            Sort(String),
-            Select(u32),
-            Deselect,
-            Terminate
-        },
-        @WindowsReportMessage
-    );
+actor! {
+    ProcessesActor<P: ProcessesPort> {
+        handlers { Sort, Select, Deselect, Terminate, WindowsReportMessage }
+    }
 }
 
 #[handler]
-fn on_windows_report<P: ProcessesPort>(this: &mut ProcessesActor<P>, msg: WindowsReportMessage) {
+fn on_windows_report<P: ProcessesPort>(this: &mut ProcessesActor<P>, ctx: Context<ProcessesActor<P>, WindowsReportMessage>) {
+    let msg = ctx.msg;
     let report = match msg {
         WindowsReportMessage::Report(report) => report,
         WindowsReportMessage::Unavailable(state) => {
@@ -190,7 +184,8 @@ fn on_windows_report<P: ProcessesPort>(this: &mut ProcessesActor<P>, msg: Window
 }
 
 #[handler]
-fn sort<P: ProcessesPort>(this: &mut ProcessesActor<P>, msg: Sort) {
+fn sort<P: ProcessesPort>(this: &mut ProcessesActor<P>, ctx: Context<ProcessesActor<P>, Sort>) {
+    let msg = ctx.msg;
     if this.sort_column == msg.0 {
         this.descending = !this.descending;
     } else {
@@ -206,19 +201,20 @@ fn sort<P: ProcessesPort>(this: &mut ProcessesActor<P>, msg: Sort) {
 }
 
 #[handler]
-fn select<P: ProcessesPort>(this: &mut ProcessesActor<P>, msg: Select) {
+fn select<P: ProcessesPort>(this: &mut ProcessesActor<P>, ctx: Context<ProcessesActor<P>, Select>) {
+    let msg = ctx.msg;
     this.selected = Some(msg.0);
     this.ui_port.send(ProcessesMsg::SetSelected(this.selected));
 }
 
 #[handler]
-fn deselect<P: ProcessesPort>(this: &mut ProcessesActor<P>, _: Deselect) {
+fn deselect<P: ProcessesPort>(this: &mut ProcessesActor<P>, _ctx: Context<ProcessesActor<P>, Deselect>) {
     this.selected = None;
     this.ui_port.send(ProcessesMsg::SetSelected(None));
 }
 
 #[handler]
-fn terminate<P: ProcessesPort>(this: &mut ProcessesActor<P>, _: Terminate) {
+fn terminate<P: ProcessesPort>(this: &mut ProcessesActor<P>, _ctx: Context<ProcessesActor<P>, Terminate>) {
     let Some(pid) = this.selected else {
         return;
     };

@@ -1,4 +1,4 @@
-use guinea_macros::{actions, port};
+use guinea_macros::port;
 use std::rc::Rc;
 
 use super::model::{DistroRow, LinuxMachineSummary};
@@ -14,5 +14,3 @@ pub trait WslPort: 'static {
     fn send(&self, msg: WslMsg);
 }
 
-#[actions]
-pub trait WslActions {}

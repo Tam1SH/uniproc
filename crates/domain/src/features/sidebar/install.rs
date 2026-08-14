@@ -1,11 +1,11 @@
-use app_contracts::features::sidebar::{SidebarBinder, SidebarReducer, SidebarState};
+use app_contracts::features::sidebar::{SidebarReducer, SidebarState};
 use guinea::feature::FeatureInitContext;
 
-use super::actor::{Refresh, SetOpen, SetWidth, SidebarActor, Toggle};
+use super::actor::{Refresh, SidebarActor};
 use super::settings::SidebarSettings;
 
 pub fn install(ctx: &FeatureInitContext) -> anyhow::Result<()> {
-    let settings = SidebarSettings::new_with(&ctx.store)?;
+    let settings = SidebarSettings::new()?;
 
     let seed = SidebarState {
         open: settings.open().get(),
@@ -16,11 +16,7 @@ pub fn install(ctx: &FeatureInitContext) -> anyhow::Result<()> {
 
     let addr = ctx.spawn_actor(SidebarActor::new(ctx.port::<SidebarReducer>(), settings));
 
-    SidebarBinder::new(&addr, &ctx.actions::<SidebarReducer>())
-        .on_toggle::<Toggle>()
-        .on_set_open::<SetOpen>()
-        .on_set_width::<SetWidth>()
-        .build();
+    ctx.wire::<SidebarReducer, _>(&addr);
 
     addr.send(Refresh);
 

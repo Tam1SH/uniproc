@@ -2,7 +2,7 @@ use guinea_core::Load;
 use guinea_macros::reducer;
 use std::rc::Rc;
 
-use super::messages::{ServicesDispatch, ServicesMsg};
+use super::messages::{Services, ServicesMsg};
 use super::model::ServiceRow;
 
 #[derive(Clone, PartialEq, Debug)]
@@ -35,7 +35,7 @@ impl ServicesState {
 }
 
 #[reducer]
-#[dispatch(ServicesActions)]
+#[dispatch(Services)]
 pub fn services_reducer(state: &mut ServicesState, msg: ServicesMsg) {
     match msg {
         ServicesMsg::SetRows { rows } => {

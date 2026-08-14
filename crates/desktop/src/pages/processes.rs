@@ -1,7 +1,7 @@
 use guinea::feature::FeatureInitContext;
 use guinea::router::{Page, PageCx};
 use guinea::uri::AppUri;
-use windows_reactor::Element;
+use windows_reactor::{text_block, Element, ElementExt};
 
 pub struct Processes;
 
@@ -23,12 +23,16 @@ impl Page for Processes {
     // The hand-rolled two-way sync in `ui/pages/processes/components/column_layout.rs`
     // goes away at the same time.
     fn view(cx: &mut PageCx) -> Element {
-        let settings = domain::features::processes::settings::ProcessesSettings::new()
-            .expect("processes settings must construct");
-        let settings = cx.use_ref(settings);
-        let borrowed = settings.borrow();
-        let map = borrowed.columns().configs();
-        let grouping = borrowed.grouping();
+        let settings = cx.use_memo((), || {
+            domain::features::processes::settings::ProcessesSettings::new()
+                .inspect_err(|err| tracing::error!(?err, "processes settings did not open"))
+                .ok()
+        });
+        let Some(settings) = settings else {
+            return text_block("Settings are unavailable").into();
+        };
+        let map = settings.columns().configs();
+        let grouping = settings.grouping();
         ui::pages::processes::processes_view(
             cx,
             &map,

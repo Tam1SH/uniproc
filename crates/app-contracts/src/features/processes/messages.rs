@@ -1,5 +1,6 @@
 use crate::features::agents::AgentConnectionState;
-use guinea_macros::{actions, port};
+use guinea_core::messages;
+use guinea_macros::port;
 use std::rc::Rc;
 
 use super::model::{MachineSummary, ProcessRow};
@@ -23,21 +24,11 @@ pub trait ProcessesPort: 'static {
     fn send(&self, msg: ProcessesMsg);
 }
 
-#[actions]
-pub trait ProcessesActions {
-    fn on_sort<F>(&self, handler: F)
-    where
-        F: Fn(String) + 'static;
-
-    fn on_select<F>(&self, handler: F)
-    where
-        F: Fn(u32) + 'static;
-
-    fn on_deselect<F>(&self, handler: F)
-    where
-        F: Fn() + 'static;
-
-    fn on_terminate<F>(&self, handler: F)
-    where
-        F: Fn() + 'static;
+messages! {
+    pub Processes {
+        Sort(String),
+        Select(u32),
+        Deselect,
+        Terminate,
+    }
 }

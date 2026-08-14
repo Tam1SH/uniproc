@@ -2,8 +2,8 @@ use app_contracts::features::agents::WindowsReportMessage;
 use app_contracts::features::metrics::{MetricsMsg, MetricsPort};
 use app_contracts::features::processes::MachineSummary;
 use guinea::widgets::chart::RingSeries;
-use guinea_core::actor::ManagedActor;
-use guinea_macros::{actor_manifest, handler};
+use guinea_core::actor::Context;
+use guinea_macros::{actor, handler};
 
 #[derive(derive_more::Debug)]
 pub struct MetricsActor<P: MetricsPort> {
@@ -36,13 +36,15 @@ impl<P: MetricsPort> MetricsActor<P> {
     }
 }
 
-#[actor_manifest]
-impl<P: MetricsPort> ManagedActor for MetricsActor<P> {
-    type Handlers = handlers!(@WindowsReportMessage);
+actor! {
+    MetricsActor<P: MetricsPort> {
+        handlers { WindowsReportMessage }
+    }
 }
 
 #[handler]
-fn on_windows_report<P: MetricsPort>(this: &mut MetricsActor<P>, msg: WindowsReportMessage) {
+fn on_windows_report<P: MetricsPort>(this: &mut MetricsActor<P>, ctx: Context<MetricsActor<P>, WindowsReportMessage>) {
+    let msg = ctx.msg;
     let WindowsReportMessage::Report(report) = msg else {
         return;
     };

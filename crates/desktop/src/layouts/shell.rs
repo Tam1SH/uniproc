@@ -1,4 +1,4 @@
-use app_contracts::features::sidebar::SidebarReducer;
+use app_contracts::features::sidebar::{SetOpen, SetWidth, SidebarReducer};
 use guinea::feature::FeatureInitContext;
 use guinea::router::{Layout, LayoutCx, UseNavigate, UseRoute};
 use guinea::uri::AppUri;
@@ -28,11 +28,11 @@ impl Layout for ShellLayout {
         let content = cx.outlet();
         let resize_dispatch = dispatch.clone();
         let set_width = SetState::new(move |w: f64| {
-            resize_dispatch.emit_on_set_width(w.round() as u64);
+            resize_dispatch.emit(SetWidth(w.round() as u64));
         });
         let open_dispatch = dispatch.clone();
         let set_open = SetState::new(move |open: bool| {
-            open_dispatch.emit_on_set_open(open);
+            open_dispatch.emit(SetOpen(open));
         });
 
         ui::shell_view(

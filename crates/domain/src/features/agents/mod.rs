@@ -7,35 +7,36 @@ pub mod rpc;
 pub mod settings;
 
 use app_contracts::features::agents::ScanTick;
-use guinea::feature::{AppFeature, AppFeatureInitContext, ContextStoreExt};
+use guinea::app::{AppFeature, FeatureBuilder};
+use guinea::feature::FeatureContext;
 use guinea_core::actor::event_bus::GlobalEventBus;
-use guinea_core::signal::Signal;
-use guinea_macros::app_feature;
 use settings::AgentSettings;
 use tracing::info;
 
 const MIN_SCAN_INTERVAL_MS: u64 = 100;
 
-#[app_feature]
-pub fn agents_feature(ctx: &mut AppFeatureInitContext) -> anyhow::Result<()> {
-    info!("Agents feature installed");
+pub struct AgentsFeature;
 
-    let store = ctx.store();
-    let settings = AgentSettings::new_with(&store)?;
-    let interval = Signal::new(settings.scan_interval_ms().get().max(MIN_SCAN_INTERVAL_MS));
-    let heartbeat = ctx.reactor.add_heartbeat(interval, || {
-        GlobalEventBus::publish(ScanTick);
-    });
-    ctx.tracker.track_loop(heartbeat);
+impl AppFeature for AgentsFeature {
+    fn install(self, app: &mut FeatureBuilder) -> anyhow::Result<()> {
+        info!("Agents feature installed");
 
-    cfg_if::cfg_if! {
-        if #[cfg(target_os = "windows")] {
-            providers::wsl::wsl_agent_feature(ctx)?;
-            providers::windows::windows_agent_feature(ctx)?;
-        } else {
-            providers::linux::linux_agent_feature(ctx)?;
+        let settings = AgentSettings::new()?;
+        let interval = settings.scan_interval_ms().get().max(MIN_SCAN_INTERVAL_MS);
+        let heartbeat = app.reactor().add_heartbeat(move || interval, || {
+            GlobalEventBus::publish(ScanTick);
+        });
+        app.tracker().track_loop(heartbeat);
+
+        cfg_if::cfg_if! {
+            if #[cfg(target_os = "windows")] {
+                providers::wsl::wsl_agent_feature(app)?;
+                providers::windows::windows_agent_feature(app)?;
+            } else {
+                providers::linux::linux_agent_feature(app)?;
+            }
         }
-    }
 
-    Ok(())
+        Ok(())
+    }
 }

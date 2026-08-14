@@ -8,10 +8,10 @@ use app_contracts::features::agents::{
     AgentConnectionState, ScanTick, WindowsAction, WindowsActionRequest, WindowsAgentRuntimeEvent, WindowsReport,
     WindowsReportMessage,
 };
-use guinea::feature::{AppFeature, AppFeatureInitContext, ContextActorExt, ContextReactorExt, ContextStoreExt};
+use guinea::app::FeatureBuilder;
+use guinea::feature::{ContextActorExt, ContextReactorExt};
 use guinea_core::actor::event_bus::GlobalEventBus;
 use guinea_core::ratelimit;
-use guinea_macros::app_feature;
 use ogurpchik::auth::handshake::{HandshakeMode, authenticate_client};
 use ogurpchik::endpoint::Endpoint;
 use ogurpchik::rpc::{RpcSession, Side, spawn_session};
@@ -171,17 +171,18 @@ impl AgentBackend for WindowsBackend {
     }
 }
 
-#[app_feature]
-pub fn windows_agent_feature(ctx: &mut AppFeatureInitContext) -> anyhow::Result<()> {
-    let store = ctx.store();
-    let settings = AgentSettings::new_with(&store)?;
+pub fn windows_agent_feature(app: &mut FeatureBuilder) -> anyhow::Result<()> {
+    let settings = AgentSettings::new()?;
+    let ping_interval = settings.ping_interval_ms();
 
-    let addr = ctx.spawn(GenericAgentActor::<WindowsBackend>::new(settings.connect_timeout_secs()));
+    let addr = app.spawn(GenericAgentActor::<WindowsBackend>::new(
+        settings.connect_timeout_secs(),
+    ));
 
-    ctx.spawn_heartbeat(&addr, settings.ping_interval_ms(), || Ping);
+    app.spawn_heartbeat(&addr, move || ping_interval.get(), || Ping);
 
-    GlobalEventBus::subscribe::<GenericAgentActor<WindowsBackend>, ScanTick>(addr.clone());
-    GlobalEventBus::subscribe::<GenericAgentActor<WindowsBackend>, WindowsActionRequest>(addr.clone());
+    app.subscribe_actor::<_, ScanTick>(&addr);
+    app.subscribe_actor::<_, WindowsActionRequest>(&addr);
     addr.send(Init);
 
     Ok(())

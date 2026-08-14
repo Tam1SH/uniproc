@@ -1,10 +1,10 @@
+use std::rc::Rc;
 use app_contracts::features::processes::{MachineSummary, ProcessCategory, ProcessRow};
 use guicons::icon;
-use guinea::widgets::table::ColumnSpec;
-use guinea_core::signal::Signal;
+use guinea::widgets::table::{ColumnSpec, Width};
 use windows_reactor::{
     border, component, hstack, text_block, tokens, Color, ColorScheme, Component, Element,
-    ElementExt, HookRef, Image, RenderCx, SetState,
+    ElementExt, Image, RenderCx, SetState,
 };
 
 use crate::format;
@@ -61,7 +61,7 @@ struct NameCellProps {
 }
 
 struct NameCell {
-    icons: HookRef<context::IconCache>,
+    icons: Rc<context::IconCache>,
     toggle_expanded: SetState<String>,
     toggle_section: SetState<ProcessCategory>,
 }
@@ -73,7 +73,7 @@ impl Component<NameCellProps> for NameCell {
         }
 
         let package = Some(props.package_full_name.as_str()).filter(|s| !s.is_empty());
-        let icon_path = self.icons.borrow().icon_path(context::IconRequest {
+        let icon_path = self.icons.icon_path(context::IconRequest {
             path: &props.exe_path,
             package_full_name: package,
         });
@@ -131,9 +131,9 @@ impl NameCell {
 }
 
 fn name_column(
-    width: Signal<u64>,
+    width: Width,
     min_width: f64,
-    icons: HookRef<context::IconCache>,
+    icons: Rc<context::IconCache>,
     toggle_expanded: SetState<String>,
     toggle_section: SetState<ProcessCategory>,
     l10n: L10n,
@@ -181,7 +181,7 @@ fn name_column(
 fn heat_column(
     id: &'static str,
     header: String,
-    width: Signal<u64>,
+    width: Width,
     min_width: f64,
     accent: Color,
     fmt: impl Fn(&ProcessRow) -> String + 'static,
@@ -204,7 +204,7 @@ fn metric_header(label: String, value: String) -> Element {
 }
 
 fn cpu_column(
-    width: Signal<u64>,
+    width: Width,
     min_width: f64,
     machine: Option<MachineSummary>,
     accent: Color,
@@ -231,7 +231,7 @@ fn cpu_column(
 }
 
 fn memory_column(
-    width: Signal<u64>,
+    width: Width,
     min_width: f64,
     machine: Option<MachineSummary>,
     accent: Color,
@@ -283,7 +283,7 @@ pub(crate) fn build_columns(
     layout: &super::column_layout::ColumnLayout,
     machine: Option<MachineSummary>,
     rows: &[ProcessRow],
-    icons: HookRef<context::IconCache>,
+    icons: Rc<context::IconCache>,
     toggle_expanded: SetState<String>,
     toggle_section: SetState<ProcessCategory>,
     scheme: ColorScheme,
@@ -296,7 +296,7 @@ pub(crate) fn build_columns(
     layout
         .entries
         .iter()
-        .filter(|e| e.visible.get())
+        .filter(|e| e.visible())
         .map(|e| {
             build_column(
                 e,
@@ -330,14 +330,14 @@ fn build_column(
     accent: Color,
     net_max: f32,
     disk_max: f32,
-    icons: HookRef<context::IconCache>,
+    icons: Rc<context::IconCache>,
     toggle_expanded: SetState<String>,
     toggle_section: SetState<ProcessCategory>,
     palette: Palette,
     l10n: L10n,
 ) -> ColumnSpec<DisplayRow> {
-    let width = entry.width.clone();
-    let min_width = entry.min_width.get() as f64;
+    let width = entry.width();
+    let min_width = entry.min_width();
     match entry.id {
         "name" => name_column(
             width,

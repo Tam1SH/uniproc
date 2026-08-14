@@ -12,6 +12,7 @@ context = { workspace = true }
 guinea = { workspace = true, features = ["widgets"] }
 guicons = { workspace = true, features = ["windows-reactor"] }
 amethystate = { workspace = true }
+
 guinea-core = { workspace = true }
 uuid = { workspace = true }
 tracing = { workspace = true }

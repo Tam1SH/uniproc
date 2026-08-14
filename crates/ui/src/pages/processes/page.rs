@@ -1,5 +1,7 @@
 use app_contracts::features::agents::AgentConnectionState;
-use app_contracts::features::processes::{ColumnConfig, ProcessCategory, ProcessesReducer};
+use app_contracts::features::processes::{
+    ColumnConfig, Deselect, ProcessCategory, ProcessesReducer, Select, Sort, Terminate,
+};
 use guicons::icon;
 use guinea::router::PageCx;
 use guinea::widgets::table::{table_with_sort_indicator, SortState};
@@ -29,13 +31,14 @@ pub fn processes_view<S: amethystate::Store>(
     let scheme = cx.use_color_scheme();
     let (state, dispatch) = cx.use_reducer::<ProcessesReducer>();
 
-    let layout = cx.use_ref(ColumnLayout::new(map));
-    let icons = cx.use_ref(context::IconCache::new());
+    let layout = cx.use_memo((), || Rc::new(ColumnLayout::new(map)));
+    let icons = cx.use_memo((), || Rc::new(context::IconCache::new()));
     let (revision, bump_revision) = cx.use_state(0u64);
     let _ = revision;
 
     let expanded: HashSet<String> = expanded_groups
         .entries()
+        .map(|it| it.collect::<Vec<_>>())
         .unwrap_or_default()
         .into_iter()
         .filter(|(_, on)| *on)
@@ -44,6 +47,7 @@ pub fn processes_view<S: amethystate::Store>(
 
     let collapsed_sections: HashSet<ProcessCategory> = collapsed_sections_store
         .entries()
+        .map(|it| it.collect::<Vec<_>>())
         .unwrap_or_default()
         .into_iter()
         .filter(|(_, on)| *on)
@@ -64,7 +68,7 @@ pub fn processes_view<S: amethystate::Store>(
         button(l10n.processes_end_task())
             .icon(icon!(prohibited).size(size::Icon))
             .enabled(state.selected.is_some())
-            .on_click(move || terminate_dispatch.emit_on_terminate()),
+            .on_click(move || terminate_dispatch.emit(Terminate)),
     ))
     .spacing(space::Header);
 
@@ -75,10 +79,9 @@ pub fn processes_view<S: amethystate::Store>(
                 descending: state.descending,
             };
             let sort_dispatch = dispatch.clone();
-            let on_sort = SetState::new(move |col: String| sort_dispatch.emit_on_sort(col));
+            let on_sort = SetState::new(move |col: String| sort_dispatch.emit(Sort(col)));
 
             let machine = state.machine_summary().cloned();
-            let layout = layout.borrow();
 
             let toggle_expanded = {
                 let store = expanded_groups.clone();
@@ -121,7 +124,7 @@ pub fn processes_view<S: amethystate::Store>(
             let mut display_rows =
                 flatten_for_display(sections, &expanded, &collapsed_sections);
             let columns = build_columns(
-                &layout,
+                layout.as_ref(),
                 machine,
                 rows,
                 icons.clone(),
@@ -142,7 +145,7 @@ pub fn processes_view<S: amethystate::Store>(
                 if idx >= 0
                     && let Some(&pid) = pids_for_select.get(idx as usize)
                 {
-                    select_dispatch.emit_on_select(pid);
+                    select_dispatch.emit(Select(pid));
                 }
             });
 
@@ -188,6 +191,6 @@ pub fn processes_view<S: amethystate::Store>(
         GridLength::Auto,
         GridLength::Auto,
     ])
-    .on_tapped(move || deselect_dispatch.emit_on_deselect())
+    .on_tapped(move || deselect_dispatch.emit(Deselect))
     .into()
 }

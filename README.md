@@ -1,7 +1,7 @@
 <div align="center">
   <img src="assets/uniproc-preview.png" alt="Uniproc Icon"/>
 
-**A modern, blazing fast 🚀 system monitor for the Windows 11 & WSL.**
+**A system monitor for Windows 11 and WSL.**
 
 [![Rust](https://img.shields.io/badge/language-Rust-orange.svg)](https://www.rust-lang.org/)
 [![UI](https://img.shields.io/badge/UI-WinUI%203-blue.svg)](https://learn.microsoft.com/windows/apps/winui/winui3/)
@@ -12,29 +12,13 @@
 
 ## What is it?
 
-**Uniproc** is a modern and fast system monitor for Windows 11 built with **Rust** and **WinUI 3**. It serves as a
-lightweight alternative to the default Task Manager, providing unified process monitoring across Windows, WSL, and
-Docker in a single, seamless interface.
+**Uniproc** is a system monitor for Windows 11 built with **Rust** and **WinUI 3**. It shows processes, services and
+machine metrics from Windows, WSL and Docker in one place, instead of one tool per environment.
 
 ## Motivation
 
-The project addresses three main pain points:
-
-* WSL Transparency: Stop treating WSL as a vmmem "black box." Uniproc lets you see the real-time resource consumption of
-  every individual Linux process — a feature [requested in 2021](https://github.com/microsoft/WSL/issues/6881) that
-  still hasn't been officially resolved.
-* **Performance:** Significantly more responsive with lower CPU and RAM overhead compared to the native Task Manager.
-  🦀🚀
-* **Aesthetics:** Unlike powerful but visually dated tools like Process Hacker, Uniproc strictly follows **Fluent Design
-  ** guidelines. It provides professional-grade monitoring without the interface "vibes" from the early 2000s.
-
-## Architecture
-
-`uniproc` is built on top of several specialized components that work together:
-
-| Component                                                                | Description                                                                                 |
-|--------------------------------------------------------------------------|---------------------------------------------------------------------------------------------|
-| [oguRPChik](https://github.com/Tam1SH/oguRPChik)                         | Transport-agnostic RPC framework — the communication backbone that ties everything together |
-| [uniproc-linux-agent](https://github.com/Tam1SH/uniproc-linux-agent)     | eBPF-based telemetry agent running inside WSL2                                              |
-| [uniproc-windows-agent](https://github.com/Tam1SH/uniproc-windows-agent) | ETW-based telemetry agent running on Windows 11                                             |
-
+* **WSL transparency.** Stop treating WSL as a `vmmem` black box. Uniproc shows the resource consumption of every
+  individual Linux process — [asked for in 2021](https://github.com/microsoft/WSL/issues/6881) and still not resolved
+  officially.
+* **Appearance.** Tools like Process Hacker are capable but look their age. Uniproc follows Fluent Design, so a
+  monitoring tool does not have to feel like it was built in 2003.

@@ -2,7 +2,7 @@ use guinea_core::Load;
 use guinea_macros::reducer;
 use std::rc::Rc;
 
-use super::messages::{WslDispatch, WslMsg};
+use super::messages::WslMsg;
 use super::model::{DistroRow, LinuxMachineSummary};
 
 #[derive(Clone, PartialEq, Debug)]
@@ -35,7 +35,6 @@ impl WslState {
 }
 
 #[reducer]
-#[dispatch(WslActions)]
 pub fn wsl_reducer(state: &mut WslState, msg: WslMsg) {
     match msg {
         WslMsg::SetDistros(distros) => {

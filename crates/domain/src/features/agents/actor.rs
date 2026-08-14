@@ -5,7 +5,7 @@ use app_contracts::features::agents::{AgentConnectionState, ScanTick};
 use guinea_core::actor::event_bus::GlobalEventBus;
 use guinea_core::actor::{AsyncContext, Context, Message};
 use guinea_core::messages;
-use guinea_macros::{actor_manifest, handler};
+use guinea_macros::{actor, handler};
 use std::fmt::Debug;
 use tracing::{info, warn};
 
@@ -75,53 +75,55 @@ impl<B: AgentBackend> GenericAgentActor<B> {
     }
 }
 
-#[actor_manifest]
-impl<B: AgentBackend> guinea_core::actor::ManagedActor for GenericAgentActor<B> {
-    type Handlers = handlers!(
-        @Init,
-        @StartConnect,
-        @ConnectResult<B::Client>,
-        @Ping,
-        @PingResult,
-        @ScanTick,
-        @ScanResult,
-        @TryConnectWithDelay,
-        @RetryTimerElapsed,
-        @ConnectionLost
-    );
+actor! {
+    GenericAgentActor<B: AgentBackend> {
+        handlers {
+            Init,
+            StartConnect,
+            ConnectResult<B::Client>,
+            Ping,
+            PingResult,
+            ScanTick,
+            ScanResult,
+            TryConnectWithDelay,
+            RetryTimerElapsed,
+            ConnectionLost,
+        }
+    }
 }
 
 #[handler]
-fn init<B: AgentBackend>(this: &GenericAgentActor<B>, _: Init, ctx: &Context<GenericAgentActor<B>>) {
+fn init<B: AgentBackend>(this: &GenericAgentActor<B>, ctx: Context<GenericAgentActor<B>, Init>) {
     info!("[{}] Actor init", B::NAME);
     this.publish_state(None);
     ctx.addr().send(StartConnect);
 }
 
 #[handler]
-fn start_connect<B: AgentBackend>(this: &mut GenericAgentActor<B>, _: StartConnect, ctx: &Context<GenericAgentActor<B>>) {
+fn start_connect<B: AgentBackend>(this: &mut GenericAgentActor<B>, ctx: Context<GenericAgentActor<B>, StartConnect>) {
     if let Some(t) = this.apply(ConnectionEvent::BeginConnect)
         && t.to == AgentConnectionState::Connecting
     {
         this.publish_state(None);
-        this.spawn_connect(ctx);
+        this.spawn_connect(&ctx.detach());
     }
 }
 
 #[handler]
 fn on_connect_result<B: AgentBackend>(
     this: &mut GenericAgentActor<B>,
-    msg: ConnectResult<B::Client>,
-    ctx: &Context<GenericAgentActor<B>>,
+    ctx: Context<GenericAgentActor<B>, ConnectResult<B::Client>>,
 ) {
-    match msg.0 {
+    let addr = ctx.addr();
+    let ConnectResult(client) = ctx.msg;
+    match client {
         Some(client) => {
             if this.apply(ConnectionEvent::ConnectSucceeded).is_some() {
                 info!("[{}] Connected", B::NAME);
                 this.client = Some(client);
                 this.ping_in_flight = false;
                 this.publish_state(None);
-                ctx.addr().send(Ping);
+                addr.send(Ping);
             }
         }
         None => {
@@ -129,7 +131,7 @@ fn on_connect_result<B: AgentBackend>(
                 this.client = None;
                 this.publish_state(None);
                 if let TransitionEffect::ScheduleRetry { delay_secs } = t.effect {
-                    ctx.addr().send(TryConnectWithDelay(delay_secs));
+                    addr.send(TryConnectWithDelay(delay_secs));
                 }
             }
         }
@@ -137,7 +139,7 @@ fn on_connect_result<B: AgentBackend>(
 }
 
 #[handler]
-fn ping<B: AgentBackend>(this: &mut GenericAgentActor<B>, _: Ping, ctx: &Context<GenericAgentActor<B>>) {
+fn ping<B: AgentBackend>(this: &mut GenericAgentActor<B>, ctx: Context<GenericAgentActor<B>, Ping>) {
     if !matches!(this.connection.state(), AgentConnectionState::Connected) || this.ping_in_flight {
         return;
     }
@@ -157,19 +159,19 @@ fn ping<B: AgentBackend>(this: &mut GenericAgentActor<B>, _: Ping, ctx: &Context
 }
 
 #[handler]
-fn on_ping_result<B: AgentBackend>(this: &mut GenericAgentActor<B>, msg: PingResult, ctx: &Context<GenericAgentActor<B>>) {
+fn on_ping_result<B: AgentBackend>(this: &mut GenericAgentActor<B>, ctx: Context<GenericAgentActor<B>, PingResult>) {
     if !this.ping_in_flight {
         return;
     }
     this.ping_in_flight = false;
-    match msg.0 {
+    match ctx.msg.0 {
         Some(ms) => this.publish_state(Some(ms)),
         None => ctx.addr().send(ConnectionLost),
     }
 }
 
 #[handler]
-fn perform_scan_tick<B: AgentBackend>(this: &GenericAgentActor<B>, _: ScanTick, ctx: &Context<GenericAgentActor<B>>) {
+fn perform_scan_tick<B: AgentBackend>(this: &GenericAgentActor<B>, ctx: Context<GenericAgentActor<B>, ScanTick>) {
     if !matches!(this.connection.state(), AgentConnectionState::Connected) {
         return;
     }
@@ -191,10 +193,10 @@ fn perform_scan_tick<B: AgentBackend>(this: &GenericAgentActor<B>, _: ScanTick, 
 }
 
 #[handler]
-fn on_scan_result<B: AgentBackend>(this: &mut GenericAgentActor<B>, msg: ScanResult, ctx: &Context<GenericAgentActor<B>>) {
+fn on_scan_result<B: AgentBackend>(this: &mut GenericAgentActor<B>, ctx: Context<GenericAgentActor<B>, ScanResult>) {
     const FAILURES_BEFORE_GIVING_UP: u32 = 3;
 
-    if msg.0 {
+    if ctx.msg.0 {
         this.failed_scans = 0;
         return;
     }
@@ -215,17 +217,17 @@ async fn schedule_retry<B: AgentBackend>(ctx: AsyncContext<GenericAgentActor<B>>
 }
 
 #[handler]
-fn on_retry_elapsed<B: AgentBackend>(this: &mut GenericAgentActor<B>, _: RetryTimerElapsed, ctx: &Context<GenericAgentActor<B>>) {
+fn on_retry_elapsed<B: AgentBackend>(this: &mut GenericAgentActor<B>, ctx: Context<GenericAgentActor<B>, RetryTimerElapsed>) {
     if let Some(t) = this.apply(ConnectionEvent::RetryDelayElapsed)
         && t.to == AgentConnectionState::Connecting
     {
         this.publish_state(None);
-        this.spawn_connect(ctx);
+        this.spawn_connect(&ctx.detach());
     }
 }
 
 #[handler]
-fn on_connection_lost<B: AgentBackend>(this: &mut GenericAgentActor<B>, _: ConnectionLost, ctx: &Context<GenericAgentActor<B>>) {
+fn on_connection_lost<B: AgentBackend>(this: &mut GenericAgentActor<B>, ctx: Context<GenericAgentActor<B>, ConnectionLost>) {
     if this.apply(ConnectionEvent::ConnectionLost).is_none() {
         return;
     }
@@ -247,9 +249,9 @@ mod windows {
     #[handler]
     fn handle_windows_action(
         this: &GenericAgentActor<WindowsBackend>,
-        msg: WindowsActionRequest,
-        ctx: &Context<GenericAgentActor<WindowsBackend>>,
+        ctx: Context<GenericAgentActor<WindowsBackend>, WindowsActionRequest>,
     ) {
+        let msg = ctx.msg.clone();
         let Some(client) = this.client.clone() else {
             error!("Dropping {:?}: not connected to the agent", msg.action);
             return;

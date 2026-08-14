@@ -1,4 +1,5 @@
-use guinea_macros::{actions, port};
+use guinea_core::messages;
+use guinea_macros::port;
 use std::rc::Rc;
 
 use super::model::{ServiceActionKind, ServiceRow};
@@ -15,21 +16,11 @@ pub trait ServicesPort: 'static {
     fn send(&self, msg: ServicesMsg);
 }
 
-#[actions]
-pub trait ServicesActions {
-    fn on_sort<F>(&self, handler: F)
-    where
-        F: Fn(String) + 'static;
-
-    fn on_select<F>(&self, handler: F)
-    where
-        F: Fn(String) + 'static;
-
-    fn on_deselect<F>(&self, handler: F)
-    where
-        F: Fn() + 'static;
-
-    fn on_command<F>(&self, handler: F)
-    where
-        F: Fn(ServiceActionKind) + 'static;
+messages! {
+    pub Services {
+        Sort(String),
+        Select(String),
+        Deselect,
+        Command(ServiceActionKind),
+    }
 }

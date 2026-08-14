@@ -14,6 +14,8 @@ guicons = { workspace = true, features = ["windows-reactor"] }
 guinea-meta = { workspace = true }
 guinea-trace = { workspace = true }
 amethystate = { workspace = true }
+guinea-plugin-store = { workspace = true }
+guinea-plugin-l10n = { workspace = true }
 anyhow = { workspace = true }
 uuid = { workspace = true }
 unic-langid = { workspace = true }

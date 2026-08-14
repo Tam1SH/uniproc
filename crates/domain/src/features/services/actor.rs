@@ -3,12 +3,12 @@ use std::rc::Rc;
 use app_contracts::features::agents::{
     WindowsAction, WindowsActionRequest, WindowsReportMessage, WindowsServiceStats,
 };
-use app_contracts::features::services::{
+use app_contracts::features::services::{Command, Deselect, Select, Sort, 
     ServiceActionKind, ServiceRow, ServicesMsg, ServicesPort,
 };
 use guinea_core::actor::event_bus::GlobalEventBus;
-use guinea_core::actor::ManagedActor;
-use guinea_macros::{actor_manifest, handler};
+use guinea_core::actor::Context;
+use guinea_macros::{actor, handler};
 use uuid::Uuid;
 
 #[derive(derive_more::Debug)]
@@ -75,21 +75,15 @@ fn sort_rows(rows: &mut [ServiceRow], column: &str, descending: bool) {
     });
 }
 
-#[actor_manifest]
-impl<P: ServicesPort> ManagedActor for ServicesActor<P> {
-    type Handlers = handlers!(
-        bind {
-            Sort(String),
-            Select(String),
-            Deselect,
-            Command(ServiceActionKind)
-        },
-        @WindowsReportMessage
-    );
+actor! {
+    ServicesActor<P: ServicesPort> {
+        handlers { Sort, Select, Deselect, Command, WindowsReportMessage }
+    }
 }
 
 #[handler]
-fn on_windows_report<P: ServicesPort>(this: &mut ServicesActor<P>, msg: WindowsReportMessage) {
+fn on_windows_report<P: ServicesPort>(this: &mut ServicesActor<P>, ctx: Context<ServicesActor<P>, WindowsReportMessage>) {
+    let msg = ctx.msg;
     let WindowsReportMessage::Report(report) = msg else {
         return;
     };
@@ -108,7 +102,8 @@ fn on_windows_report<P: ServicesPort>(this: &mut ServicesActor<P>, msg: WindowsR
 }
 
 #[handler]
-fn sort<P: ServicesPort>(this: &mut ServicesActor<P>, msg: Sort) {
+fn sort<P: ServicesPort>(this: &mut ServicesActor<P>, ctx: Context<ServicesActor<P>, Sort>) {
+    let msg = ctx.msg;
     if this.sort_column == msg.0 {
         this.descending = !this.descending;
     } else {
@@ -124,19 +119,21 @@ fn sort<P: ServicesPort>(this: &mut ServicesActor<P>, msg: Sort) {
 }
 
 #[handler]
-fn select<P: ServicesPort>(this: &mut ServicesActor<P>, msg: Select) {
+fn select<P: ServicesPort>(this: &mut ServicesActor<P>, ctx: Context<ServicesActor<P>, Select>) {
+    let msg = ctx.msg;
     this.selected = Some(msg.0.clone());
     this.ui_port.send(ServicesMsg::SetSelected(Some(msg.0)));
 }
 
 #[handler]
-fn deselect<P: ServicesPort>(this: &mut ServicesActor<P>, _: Deselect) {
+fn deselect<P: ServicesPort>(this: &mut ServicesActor<P>, _ctx: Context<ServicesActor<P>, Deselect>) {
     this.selected = None;
     this.ui_port.send(ServicesMsg::SetSelected(None));
 }
 
 #[handler]
-fn command<P: ServicesPort>(this: &mut ServicesActor<P>, msg: Command) {
+fn command<P: ServicesPort>(this: &mut ServicesActor<P>, ctx: Context<ServicesActor<P>, Command>) {
+    let msg = ctx.msg;
     let Some(name) = this.selected.clone() else {
         return;
     };

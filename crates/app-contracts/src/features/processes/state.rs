@@ -3,7 +3,7 @@ use guinea_core::Load;
 use guinea_macros::reducer;
 use std::rc::Rc;
 
-use super::messages::{ProcessesDispatch, ProcessesMsg};
+use super::messages::{Processes, ProcessesMsg};
 use super::model::{MachineSummary, ProcessRow};
 
 #[derive(Clone, PartialEq, Debug)]
@@ -44,7 +44,7 @@ impl ProcessesState {
 }
 
 #[reducer]
-#[dispatch(ProcessesActions)]
+#[dispatch(Processes)]
 pub fn processes_reducer(state: &mut ProcessesState, msg: ProcessesMsg) {
     match msg {
         ProcessesMsg::SetRows { rows, machine, agent_state } => {

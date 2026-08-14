@@ -19,13 +19,14 @@ dependencies = [
 
 [[package]]
 name = "amethystate"
-version = "0.9.4"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aac45574e39e189232fc81ccd0db63c5066fb69dc628581c3cd212530ad7751e"
+checksum = "74d528f6ea90fd5c8d8c09a7af8ebc107d2efa1bf5d7710c0d55bd0f472d90e0"
 dependencies = [
  "amethystate-core",
  "amethystate-macros",
  "etcetera",
+ "futures-core",
  "inventory",
  "parking_lot",
  "petgraph 0.8.3",
@@ -40,9 +41,9 @@ dependencies = [
 
 [[package]]
 name = "amethystate-core"
-version = "0.9.4"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "62c678d00e8a29b6db00d5d08d729e9f2d4e95cbf9b7ffcd4c4922e5ad66c139"
+checksum = "b881b9698750668500ce5be665c4214967d17c4a09c3507533b3fef1a288d2ec"
 dependencies = [
  "arc-swap",
  "inventory",
@@ -54,9 +55,9 @@ dependencies = [
 
 [[package]]
 name = "amethystate-macros"
-version = "0.9.4"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "95d9bfb8756c4c238f6ff2781d461f059323076ecccd271657b79b34e2dedc74"
+checksum = "2cdb4b8febb0dc3c1e7fc4b13f4d9e74eb76daac8b55575b3814fe544547233e"
 dependencies = [
  "amethystate-macros-core",
  "darling",
@@ -68,9 +69,9 @@ dependencies = [
 
 [[package]]
 name = "amethystate-macros-core"
-version = "0.9.4"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fb0f4f4158b7fe2aa319d7a002a77d9f028d0a308d228c719c005302c02a8489"
+checksum = "69394dba32945f59978cd6f101fd8b78b7b213f5e4926d2060824476c15e4a11"
 dependencies = [
  "darling",
  "proc-macro2",
@@ -703,6 +704,8 @@ dependencies = [
  "guinea-macros",
  "guinea-meta",
  "guinea-meta-build",
+ "guinea-plugin-l10n",
+ "guinea-plugin-store",
  "guinea-trace",
  "tokio",
  "tracing",
@@ -1238,9 +1241,8 @@ dependencies = [
 [[package]]
 name = "guinea"
 version = "0.1.0"
-source = "git+https://github.com/uniproc-dev/guinea?tag=v0.1.1#a7b0012f7b277a56a861136c3716ec6b073f3366"
+source = "git+https://github.com/uniproc-dev/guinea?rev=0f53049#0f53049d284bdc56c522cb9b1fa7216b36b428ee"
 dependencies = [
- "amethystate",
  "anyhow",
  "derive_more",
  "guinea-codegen",
@@ -1259,7 +1261,7 @@ dependencies = [
 [[package]]
 name = "guinea-codegen"
 version = "0.1.0"
-source = "git+https://github.com/uniproc-dev/guinea?tag=v0.1.1#a7b0012f7b277a56a861136c3716ec6b073f3366"
+source = "git+https://github.com/uniproc-dev/guinea?rev=0f53049#0f53049d284bdc56c522cb9b1fa7216b36b428ee"
 dependencies = [
  "fluent-syntax",
  "guinea-core",
@@ -1276,9 +1278,8 @@ dependencies = [
 [[package]]
 name = "guinea-core"
 version = "0.1.0"
-source = "git+https://github.com/uniproc-dev/guinea?tag=v0.1.1#a7b0012f7b277a56a861136c3716ec6b073f3366"
+source = "git+https://github.com/uniproc-dev/guinea?rev=0f53049#0f53049d284bdc56c522cb9b1fa7216b36b428ee"
 dependencies = [
- "amethystate",
  "anyhow",
  "arc-swap",
  "derive_more",
@@ -1295,7 +1296,7 @@ dependencies = [
 [[package]]
 name = "guinea-macros"
 version = "0.1.0"
-source = "git+https://github.com/uniproc-dev/guinea?tag=v0.1.1#a7b0012f7b277a56a861136c3716ec6b073f3366"
+source = "git+https://github.com/uniproc-dev/guinea?rev=0f53049#0f53049d284bdc56c522cb9b1fa7216b36b428ee"
 dependencies = [
  "guinea-codegen",
  "heck",
@@ -1322,9 +1323,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "guinea-plugin-l10n"
+version = "0.1.0"
+source = "git+https://github.com/uniproc-dev/guinea-plugins?rev=e34d575#e34d5756582908e038d2fd8ac26330386710b360"
+dependencies = [
+ "anyhow",
+ "guinea",
+ "guinea-core",
+ "guinea-plugin-store",
+ "tracing",
+]
+
+[[package]]
+name = "guinea-plugin-store"
+version = "0.1.0"
+source = "git+https://github.com/uniproc-dev/guinea-plugins?rev=e34d575#e34d5756582908e038d2fd8ac26330386710b360"
+dependencies = [
+ "amethystate",
+ "anyhow",
+ "guinea",
+ "tracing",
+]
+
+[[package]]
 name = "guinea-trace"
 version = "0.1.0"
-source = "git+https://github.com/uniproc-dev/guinea?tag=v0.1.1#a7b0012f7b277a56a861136c3716ec6b073f3366"
+source = "git+https://github.com/uniproc-dev/guinea?rev=0f53049#0f53049d284bdc56c522cb9b1fa7216b36b428ee"
 dependencies = [
  "anyhow",
  "once_cell",

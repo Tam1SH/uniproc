@@ -1,4 +1,6 @@
-use app_contracts::features::services::{ServiceActionKind, ServiceRow, ServicesReducer};
+use app_contracts::features::services::{
+    Command, Deselect, Select, ServiceActionKind, ServiceRow, ServicesReducer, Sort,
+};
 use guinea::router::PageCx;
 use guinea::widgets::table::{table_with_sort_indicator, SortState};
 use guinea_core::Load;
@@ -25,13 +27,13 @@ pub fn services_view(cx: &mut PageCx) -> Element {
         body_large(l10n.services_title()).padding(space::Header),
         button(l10n.services_start())
             .enabled(has_selection)
-            .on_click(move || start_dispatch.emit_on_command(ServiceActionKind::Start)),
+            .on_click(move || start_dispatch.emit(Command(ServiceActionKind::Start))),
         button(l10n.services_stop())
             .enabled(has_selection)
-            .on_click(move || stop_dispatch.emit_on_command(ServiceActionKind::Stop)),
+            .on_click(move || stop_dispatch.emit(Command(ServiceActionKind::Stop))),
         button(l10n.services_restart())
             .enabled(has_selection)
-            .on_click(move || restart_dispatch.emit_on_command(ServiceActionKind::Restart)),
+            .on_click(move || restart_dispatch.emit(Command(ServiceActionKind::Restart))),
     ))
     .spacing(space::Header);
 
@@ -42,7 +44,7 @@ pub fn services_view(cx: &mut PageCx) -> Element {
                 descending: state.descending,
             };
             let sort_dispatch = dispatch.clone();
-            let on_sort = SetState::new(move |col: String| sort_dispatch.emit_on_sort(col));
+            let on_sort = SetState::new(move |col: String| sort_dispatch.emit(Sort(col)));
 
             let rows: Vec<ServiceRow> = rows.to_vec();
 
@@ -58,7 +60,7 @@ pub fn services_view(cx: &mut PageCx) -> Element {
                 if idx >= 0
                     && let Some(name) = names_for_select.get(idx as usize)
                 {
-                    select_dispatch.emit_on_select(name.clone());
+                    select_dispatch.emit(Select(name.clone()));
                 }
             });
 
@@ -95,6 +97,6 @@ pub fn services_view(cx: &mut PageCx) -> Element {
         GridLength::Auto,
         GridLength::Auto,
     ])
-    .on_tapped(move || deselect_dispatch.emit_on_deselect())
+    .on_tapped(move || deselect_dispatch.emit(Deselect))
     .into()
 }
